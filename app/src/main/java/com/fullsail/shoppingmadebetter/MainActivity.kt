@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -46,6 +47,7 @@ fun ShoppingMadeBetterApp() {
                     icon = {
                         Icon(
                             painterResource(it.icon),
+                            tint = MaterialTheme.colorScheme.primary,
                             contentDescription = it.label
                         )
                     },
@@ -54,7 +56,7 @@ fun ShoppingMadeBetterApp() {
                     onClick = { currentDestination = it }
                 )
             }
-        }
+        },
     ) {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             Greeting(
