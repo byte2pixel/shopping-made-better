@@ -1,3 +1,18 @@
 <resources>
     <string name="app_name">Shopping Made Better</string>
+
+    <!-- Top-level navigation tabs -->
+    <string name="tab_shopping_lists">Shopping Lists</string>
+    <string name="tab_cart">Cart</string>
+    <string name="tab_pantry">Pantry</string>
+    <string name="tab_history">History</string>
+    <string name="tab_meals">Meals</string>
+
+    <!-- Top app bar navigation icons -->
+    <string name="nav_back">Back</string>
+    <string name="nav_menu">Menu</string>
+
+    <!-- Login / landing (placeholder until auth is wired up) -->
+    <string name="login_subtitle">Log in or sign up</string>
+    <string name="login_continue">Continue</string>
 </resources>
