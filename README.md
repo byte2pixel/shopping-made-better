@@ -87,19 +87,33 @@ We likely only need the REST URL and Authentication Keys for our project.  The R
 #### 5. Point the Android app at your local database
 
 The app reads the Supabase URL and key from `local.properties` (git-ignored — no
-secrets are committed). After `supabase start`, add the **Publishable** key to
-`local.properties`:
+secrets are committed). After `supabase start`, add the **Publishable** key and
+the URL to `local.properties`:
 
 ```properties
-SUPABASE_ANON_KEY=sb_publishable_...   # the "Publishable" key printed above
-# SUPABASE_URL=http://10.0.2.2:54321   # optional; this is the default (Android emulator -> host)
+SUPABASE_ANON_KEY=sb_publishable_...        # the "Publishable" key printed above
+SUPABASE_URL=http://192.168.1.50:54321      # your computer's LAN IP (see below)
 ```
 
-- On an **emulator**, you can omit `SUPABASE_URL` — it defaults to
-  `http://10.0.2.2:54321` (the emulator's alias for your host machine's
-  `127.0.0.1`).
-- On a **physical device**, set `SUPABASE_URL` to your computer's LAN IP, e.g.
-  `SUPABASE_URL=http://192.168.1.50:54321`.
+**Emulator (recommended): use your host machine's LAN IP.** The local Supabase
+stack is published on all interfaces, so the emulator can reach it at your
+computer's LAN IP. Find it with `ipconfig` on Windows (the IPv4 Address, e.g.
+`192.168.1.50`) or `ifconfig`/`ip addr` on macOS/Linux, then set
+`SUPABASE_URL=http://<that-ip>:54321`.
+
+> Note: the built-in emulator alias `http://10.0.2.2:54321` is the code default,
+> but on **Windows + Docker Desktop** it is unreliable — Docker's port proxy
+> accepts the TCP connection but doesn't forward it from the emulator's loopback
+> route, so requests time out. Using the LAN IP avoids this.
+
+**Physical device over USB:** forward the port and point at localhost:
+
+```bash
+adb reverse tcp:54321 tcp:54321   # re-run after each reconnect/reboot
+```
+```properties
+SUPABASE_URL=http://127.0.0.1:54321
+```
 
 These values are injected into `BuildConfig` at build time by `app/build.gradle.kts`.
 If `SUPABASE_ANON_KEY` is missing, the app builds but cannot reach the database.
