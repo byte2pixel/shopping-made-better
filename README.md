@@ -84,6 +84,26 @@ After `supabase start`, credentials print to console. Save them, they should be 
 
 We likely only need the REST URL and Authentication Keys for our project.  The REST URL is the endpoint we will use to make requests to our database.  The Publishable and Secret keys are used for authentication when making requests to the database.
 
+#### 5. Point the Android app at your local database
+
+The app reads the Supabase URL and key from `local.properties` (git-ignored — no
+secrets are committed). After `supabase start`, add the **Publishable** key to
+`local.properties`:
+
+```properties
+SUPABASE_ANON_KEY=sb_publishable_...   # the "Publishable" key printed above
+# SUPABASE_URL=http://10.0.2.2:54321   # optional; this is the default (Android emulator -> host)
+```
+
+- On an **emulator**, you can omit `SUPABASE_URL` — it defaults to
+  `http://10.0.2.2:54321` (the emulator's alias for your host machine's
+  `127.0.0.1`).
+- On a **physical device**, set `SUPABASE_URL` to your computer's LAN IP, e.g.
+  `SUPABASE_URL=http://192.168.1.50:54321`.
+
+These values are injected into `BuildConfig` at build time by `app/build.gradle.kts`.
+If `SUPABASE_ANON_KEY` is missing, the app builds but cannot reach the database.
+
 #### Stop/Reset
 
 ```bash
