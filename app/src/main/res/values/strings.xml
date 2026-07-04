@@ -15,4 +15,10 @@
     <!-- Login / landing (placeholder until auth is wired up) -->
     <string name="login_subtitle">Log in or sign up</string>
     <string name="login_continue">Continue</string>
+
+    <!-- Stores (dev example demonstrating the Supabase use-case flow; SCRUM-79) -->
+    <string name="stores_title">Stores</string>
+    <string name="stores_dev_button">View Stores (dev)</string>
+    <string name="stores_error">Couldn\'t load stores. Is the local Supabase stack running?</string>
+    <string name="stores_empty">No stores found.</string>
 </resources>
