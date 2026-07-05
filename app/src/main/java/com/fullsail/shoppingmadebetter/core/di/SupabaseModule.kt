@@ -1,4 +1,4 @@
-package com.fullsail.shoppingmadebetter.di
+package com.fullsail.shoppingmadebetter.core.di
 
 import com.fullsail.shoppingmadebetter.BuildConfig
 import dagger.Module
