@@ -98,8 +98,8 @@ private fun StoresContentPreview() {
         StoresContent(
             uiState = StoresUiState.Success(
                 listOf(
-                    Store("1", "Corner Market", "100 Main St", "Austin", "TX", "78701", null),
-                    Store("2", "Green Grocer", "200 Oak Ave", "Austin", "TX", "78702", null),
+                    Store("1", "Corner Market", "100 Main St", "Nowhere", "IA", "55555", "555-0100"),
+                    Store("2", "Green Grocer", "200 Oak Ave", "Somewhere", "IA", "55555", null),
                 ),
             ),
         )

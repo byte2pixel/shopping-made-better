@@ -28,8 +28,8 @@ class GetStoresUseCaseTest {
     @Test
     fun `execute maps DTOs to domain stores on success`() = runTest {
         val dtos = listOf(
-            StoreDto("1", "Corner Market", "100 Main St", "Austin", "TX", "78701", "555-0100"),
-            StoreDto("2", "Green Grocer", "200 Oak Ave", "Austin", "TX", "78702", phone = null),
+            StoreDto("1", "Corner Market", "100 Main St", "Nowhere", "IA", "55555", "555-0100"),
+            StoreDto("2", "Green Grocer", "200 Oak Ave", "Somewhere", "IA", "55555", phone = null),
         )
         val useCase = GetStoresUseCaseImpl(FakeStoreRepository(result = dtos))
 
@@ -41,7 +41,7 @@ class GetStoresUseCaseTest {
         assertEquals("1", stores[0].id)
         assertEquals("Corner Market", stores[0].name)
         assertEquals("100 Main St", stores[0].address)
-        assertEquals("78701", stores[0].postalCode)
+        assertEquals("55555", stores[0].postalCode)
         assertEquals("555-0100", stores[0].phone)
         assertEquals(null, stores[1].phone)
     }
