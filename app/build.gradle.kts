@@ -60,6 +60,11 @@ android {
         compose = true
         buildConfig = true
     }
+    testOptions {
+        // Let JVM unit tests call android.util.* (e.g. Log) without throwing
+        // "not mocked" — stubbed calls return default values instead.
+        unitTests.isReturnDefaultValues = true
+    }
     buildToolsVersion = "37.0.0"
 }
 
@@ -83,6 +88,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     ksp(libs.hilt.compiler)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
