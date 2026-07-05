@@ -37,6 +37,7 @@ import com.fullsail.shoppingmadebetter.ui.screens.LoginScreen
 import com.fullsail.shoppingmadebetter.ui.screens.MealsScreen
 import com.fullsail.shoppingmadebetter.ui.screens.PantryScreen
 import com.fullsail.shoppingmadebetter.ui.screens.ShoppingListsScreen
+import com.fullsail.shoppingmadebetter.feature.stores.ui.StoresScreen
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -140,9 +141,13 @@ fun ShoppingMadeBetterApp(
             composable<Dest.Login> { LoginScreen(onContinue = navigationViewModel::onGetStarted) }
             composable<Dest.ShoppingLists> { ShoppingListsScreen() }
             composable<Dest.Cart> { CartScreen() }
-            composable<Dest.Pantry> { PantryScreen() }
+            composable<Dest.Pantry> {
+                PantryScreen(onOpenStores = { navController.navigate(Dest.Stores) })
+            }
             composable<Dest.History> { HistoryScreen() }
             composable<Dest.Meals> { MealsScreen() }
+            // Dev-only example wired to the Supabase store use case (SCRUM-79).
+            composable<Dest.Stores> { StoresScreen() }
         }
     }
 }

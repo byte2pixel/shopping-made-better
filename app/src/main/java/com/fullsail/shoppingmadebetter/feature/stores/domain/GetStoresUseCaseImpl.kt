@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.stores.domain
 
+import android.util.Log
 import com.fullsail.shoppingmadebetter.feature.stores.data.StoreDto
 import com.fullsail.shoppingmadebetter.feature.stores.data.StoreRepository
 import javax.inject.Inject
@@ -17,6 +18,9 @@ class GetStoresUseCaseImpl @Inject constructor(
             val stores = storeRepository.getStores().map { it.toDomain() }
             GetStoresUseCase.Output.Success(stores)
         } catch (e: Exception) {
+            // Log the real cause (network, serialization, permission, …) — the UI
+            // only shows a generic error, so without this the failure is invisible.
+            Log.e(TAG, "Failed to fetch stores: ${e.message}", e)
             GetStoresUseCase.Output.Failure(e)
         }
 
@@ -29,4 +33,8 @@ class GetStoresUseCaseImpl @Inject constructor(
         postalCode = postalCode,
         phone = phone,
     )
+
+    private companion object {
+        const val TAG = "GetStoresUseCase"
+    }
 }
