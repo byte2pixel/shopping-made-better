@@ -1,9 +1,7 @@
-package com.fullsail.shoppingmadebetter.domain.usecase.impl
+package com.fullsail.shoppingmadebetter.feature.stores.domain
 
-import com.fullsail.shoppingmadebetter.data.StoreRepository
-import com.fullsail.shoppingmadebetter.data.dto.StoreDto
-import com.fullsail.shoppingmadebetter.domain.model.Store
-import com.fullsail.shoppingmadebetter.domain.usecase.GetStoresUseCase
+import com.fullsail.shoppingmadebetter.feature.stores.data.StoreDto
+import com.fullsail.shoppingmadebetter.feature.stores.data.StoreRepository
 import javax.inject.Inject
 
 /**

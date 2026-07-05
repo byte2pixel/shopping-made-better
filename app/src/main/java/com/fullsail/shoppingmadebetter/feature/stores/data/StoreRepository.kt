@@ -1,6 +1,4 @@
-package com.fullsail.shoppingmadebetter.data
-
-import com.fullsail.shoppingmadebetter.data.dto.StoreDto
+package com.fullsail.shoppingmadebetter.feature.stores.data
 
 /**
  * Data-access contract for the `stores` table. Implementations talk to Supabase;
