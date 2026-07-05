@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Default / release network policy: cleartext (HTTP) is disabled — all traffic
+    must be HTTPS.
+
+    Local development talks to the Supabase stack over HTTP, which is allowed by
+    a debug-only override at src/debug/res/xml/network_security_config.xml. That
+    override replaces this file entirely in debug builds, so release builds stay
+    HTTPS-only.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>
