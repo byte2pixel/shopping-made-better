@@ -1,6 +1,6 @@
-package com.fullsail.shoppingmadebetter.domain.usecase
+package com.fullsail.shoppingmadebetter.feature.stores.domain
 
-import com.fullsail.shoppingmadebetter.domain.model.Store
+import com.fullsail.shoppingmadebetter.core.domain.UseCase
 
 /**
  * Fetches all stores. Takes no input ([Unit]); returns a sealed [Output] so

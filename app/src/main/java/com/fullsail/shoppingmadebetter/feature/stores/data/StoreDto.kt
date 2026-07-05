@@ -1,4 +1,4 @@
-package com.fullsail.shoppingmadebetter.data.dto
+package com.fullsail.shoppingmadebetter.feature.stores.data
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

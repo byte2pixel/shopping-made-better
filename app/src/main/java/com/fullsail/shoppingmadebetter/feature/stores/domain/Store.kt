@@ -1,9 +1,9 @@
-package com.fullsail.shoppingmadebetter.domain.model
+package com.fullsail.shoppingmadebetter.feature.stores.domain
 
 /**
  * A grocery store location, as used by the app's UI and use cases. This is the
  * clean domain model — decoupled from the Supabase wire format
- * ([com.fullsail.shoppingmadebetter.data.dto.StoreDto]).
+ * ([com.fullsail.shoppingmadebetter.feature.stores.data.StoreDto]).
  */
 data class Store(
     val id: String,

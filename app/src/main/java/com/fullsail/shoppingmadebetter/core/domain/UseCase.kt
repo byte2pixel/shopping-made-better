@@ -1,4 +1,4 @@
-package com.fullsail.shoppingmadebetter.domain.usecase
+package com.fullsail.shoppingmadebetter.core.domain
 
 /**
  * A single unit of application logic: takes an [Input], performs work

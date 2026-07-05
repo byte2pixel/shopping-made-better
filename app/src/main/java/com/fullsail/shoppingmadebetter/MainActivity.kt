@@ -37,7 +37,7 @@ import com.fullsail.shoppingmadebetter.ui.screens.LoginScreen
 import com.fullsail.shoppingmadebetter.ui.screens.MealsScreen
 import com.fullsail.shoppingmadebetter.ui.screens.PantryScreen
 import com.fullsail.shoppingmadebetter.ui.screens.ShoppingListsScreen
-import com.fullsail.shoppingmadebetter.ui.screens.StoresScreen
+import com.fullsail.shoppingmadebetter.feature.stores.ui.StoresScreen
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import dagger.hilt.android.AndroidEntryPoint
 

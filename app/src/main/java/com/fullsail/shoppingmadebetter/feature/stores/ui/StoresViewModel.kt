@@ -1,9 +1,9 @@
-package com.fullsail.shoppingmadebetter.ui.screens
+package com.fullsail.shoppingmadebetter.feature.stores.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.fullsail.shoppingmadebetter.domain.model.Store
-import com.fullsail.shoppingmadebetter.domain.usecase.GetStoresUseCase
+import com.fullsail.shoppingmadebetter.feature.stores.domain.GetStoresUseCase
+import com.fullsail.shoppingmadebetter.feature.stores.domain.Store
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

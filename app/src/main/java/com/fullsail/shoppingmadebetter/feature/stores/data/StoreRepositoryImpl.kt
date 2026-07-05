@@ -1,7 +1,5 @@
-package com.fullsail.shoppingmadebetter.data.repository.impl
+package com.fullsail.shoppingmadebetter.feature.stores.data
 
-import com.fullsail.shoppingmadebetter.data.StoreRepository
-import com.fullsail.shoppingmadebetter.data.dto.StoreDto
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

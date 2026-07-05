@@ -60,6 +60,11 @@ android {
         compose = true
         buildConfig = true
     }
+    testOptions {
+        // Let JVM unit tests call android.util.* (e.g. Log) without throwing
+        // "not mocked" — stubbed calls return default values instead.
+        unitTests.isReturnDefaultValues = true
+    }
     buildToolsVersion = "37.0.0"
 }
 
