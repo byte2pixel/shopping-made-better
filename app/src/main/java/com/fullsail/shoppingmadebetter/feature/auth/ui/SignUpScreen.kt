@@ -1,33 +1,85 @@
-package com.fullsail.shoppingmadebetter.login
+package com.fullsail.shoppingmadebetter.feature.auth.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
-import io.github.jan.supabase.gotrue.auth
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.fullsail.shoppingmadebetter.R
+import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
+
+/**
+ * Registration screen: collects email + password (+ confirmation) and registers
+ * through [SignUpViewModel] -> SignUpUseCase -> Supabase Auth. [onSignedUp] fires
+ * once the account is created; [onNavigateToSignIn] routes back to sign-in.
+ */
+@Composable
+fun SignUpScreen(
+    onSignedUp: () -> Unit,
+    onNavigateToSignIn: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: SignUpViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(uiState) {
+        if (uiState is SignUpUiState.Success) onSignedUp()
+    }
+
+    SignUpContent(
+        uiState = uiState,
+        onSignUp = viewModel::signUp,
+        onNavigateToSignIn = onNavigateToSignIn,
+        modifier = modifier,
+    )
+}
 
 @Composable
-fun SignUpScreen(supabaseClient: io.github.jan.supabase.SupabaseClient? = null) {
+private fun SignUpContent(
+    uiState: SignUpUiState,
+    onSignUp: (email: String, password: String, confirmPassword: String) -> Unit,
+    onNavigateToSignIn: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf("") }
-    var isSuccess by remember { mutableStateOf(false) }
-
-    val scope = rememberCoroutineScope()
-
 
     val lightGreenBg = Color(0xFFC2F0C2)
     val darkGreenActive = Color(0xFF4A5D4E)
@@ -35,7 +87,7 @@ fun SignUpScreen(supabaseClient: io.github.jan.supabase.SupabaseClient? = null) 
     val whiteCardBg = Color(0xFFF7F9F6)
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(lightGreenBg)
             .padding(horizontal = 28.dp),
@@ -43,15 +95,13 @@ fun SignUpScreen(supabaseClient: io.github.jan.supabase.SupabaseClient? = null) 
     ) {
         Spacer(modifier = Modifier.height(50.dp))
 
-
         Image(
-            painter = painterResource(id = com.fullsail.shoppingmadebetter.R.drawable.app_logo),
-            contentDescription = "Shopping Made Better Logo",
+            painter = painterResource(id = R.drawable.app_logo),
+            contentDescription = stringResource(R.string.auth_logo_desc),
             modifier = Modifier.size(200.dp)
         )
 
         Spacer(modifier = Modifier.height(10.dp))
-
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -66,7 +116,7 @@ fun SignUpScreen(supabaseClient: io.github.jan.supabase.SupabaseClient? = null) 
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-
+                // Sign In / Sign Up toggle.
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -80,20 +130,16 @@ fun SignUpScreen(supabaseClient: io.github.jan.supabase.SupabaseClient? = null) 
                         modifier = Modifier
                             .weight(1f)
                             .height(36.dp)
-                            .clickable {
-                                // This will link directly to Mel's Login screen path later
-                                println("Navigation Link: Route user back to Sign In Screen")
-                            },
+                            .clickable(onClick = onNavigateToSignIn),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Sign In",
+                            text = stringResource(R.string.auth_sign_in),
                             color = darkGreenActive,
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp
                         )
                     }
-
 
                     Box(
                         modifier = Modifier
@@ -103,7 +149,7 @@ fun SignUpScreen(supabaseClient: io.github.jan.supabase.SupabaseClient? = null) 
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Sign Up",
+                            text = stringResource(R.string.auth_sign_up),
                             color = Color.White,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 14.sp
@@ -111,11 +157,10 @@ fun SignUpScreen(supabaseClient: io.github.jan.supabase.SupabaseClient? = null) 
                     }
                 }
 
-                // 📥 INPUT REGISTRATION FIELDS
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it; errorMessage = "" },
-                    placeholder = { Text("Enter email", color = Color.Gray) },
+                    onValueChange = { email = it },
+                    placeholder = { Text(stringResource(R.string.auth_email_hint), color = Color.Gray) },
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color.Gray,
@@ -128,13 +173,13 @@ fun SignUpScreen(supabaseClient: io.github.jan.supabase.SupabaseClient? = null) 
 
                 OutlinedTextField(
                     value = password,
-                    onValueChange = { password = it; errorMessage = "" },
-                    placeholder = { Text("Password", color = Color.Gray) },
+                    onValueChange = { password = it },
+                    placeholder = { Text(stringResource(R.string.auth_password_hint), color = Color.Gray) },
                     visualTransformation = PasswordVisualTransformation(),
                     trailingIcon = {
                         Icon(
-                            painter = painterResource(id = com.fullsail.shoppingmadebetter.R.drawable.ic_favorite), // Temporary fallback visibility eyeball indicator
-                            contentDescription = "Toggle Visibility",
+                            painter = painterResource(id = R.drawable.ic_favorite), // Temporary fallback visibility eyeball indicator
+                            contentDescription = stringResource(R.string.auth_toggle_visibility),
                             tint = Color.Black,
                             modifier = Modifier.size(20.dp)
                         )
@@ -151,13 +196,13 @@ fun SignUpScreen(supabaseClient: io.github.jan.supabase.SupabaseClient? = null) 
 
                 OutlinedTextField(
                     value = confirmPassword,
-                    onValueChange = { confirmPassword = it; errorMessage = "" },
-                    placeholder = { Text("Confirm Password", color = Color.Gray) },
+                    onValueChange = { confirmPassword = it },
+                    placeholder = { Text(stringResource(R.string.auth_confirm_password_hint), color = Color.Gray) },
                     visualTransformation = PasswordVisualTransformation(),
                     trailingIcon = {
                         Icon(
-                            painter = painterResource(id = com.fullsail.shoppingmadebetter.R.drawable.ic_favorite),
-                            contentDescription = "Toggle Visibility",
+                            painter = painterResource(id = R.drawable.ic_favorite),
+                            contentDescription = stringResource(R.string.auth_toggle_visibility),
                             tint = Color.Black,
                             modifier = Modifier.size(20.dp)
                         )
@@ -172,61 +217,42 @@ fun SignUpScreen(supabaseClient: io.github.jan.supabase.SupabaseClient? = null) 
                     modifier = Modifier.fillMaxWidth().padding(bottom = 28.dp)
                 )
 
-                if (errorMessage.isNotEmpty()) {
+                if (uiState is SignUpUiState.Error) {
                     Text(
-                        text = errorMessage,
+                        text = uiState.detail ?: stringResource(uiState.messageRes),
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(bottom = 16.dp),
                         fontSize = 13.sp
                     )
                 }
 
-                if (isSuccess) {
-                    Text(
-                        text = "Account created successfully!",
-                        color = darkGreenActive,
-                        modifier = Modifier.padding(bottom = 16.dp),
-                        fontSize = 13.sp
-                    )
-                }
-
-                // 🚀 SUBMIT BUTTON
                 Button(
-                    onClick = {
-                        if (email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
-                            errorMessage = "Error: All registration forms must be complete."
-                        } else if (password != confirmPassword) {
-                            errorMessage = "Error: Passwords do not match."
-                        } else {
-                            scope.launch {
-                                try {
-                                    if (supabaseClient != null) {
-                                        val inputEmail = email
-                                        val inputPassword = password
-
-                                        supabaseClient.auth.signUpWith(io.github.jan.supabase.gotrue.providers.builtin.Email) {
-                                            this.email = inputEmail
-                                            this.password = inputPassword
-                                        }
-                                        isSuccess = true
-                                        errorMessage = ""
-                                    } else {
-                                        println("Database Client Missing: Local Mock Sign Up successful for $email")
-                                        isSuccess = true
-                                    }
-                                } catch (e: Exception) {
-                                    errorMessage = e.localizedMessage ?: "Registration connection failed."
-                                }
-                            }
-                        }
-                    },
+                    onClick = { onSignUp(email, password, confirmPassword) },
+                    enabled = uiState !is SignUpUiState.Submitting,
                     colors = ButtonDefaults.buttonColors(containerColor = darkGreenActive),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.fillMaxWidth().height(46.dp)
                 ) {
-                    Text("Sign Up", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                    Text(
+                        stringResource(R.string.auth_sign_up),
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SignUpContentPreview() {
+    ShoppingMadeBetterTheme {
+        SignUpContent(
+            uiState = SignUpUiState.Idle,
+            onSignUp = { _, _, _ -> },
+            onNavigateToSignIn = {},
+        )
     }
 }

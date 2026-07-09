@@ -33,10 +33,11 @@ import com.fullsail.shoppingmadebetter.navigation.NavigationViewModel
 import com.fullsail.shoppingmadebetter.navigation.TopLevelDestination
 import com.fullsail.shoppingmadebetter.ui.screens.CartScreen
 import com.fullsail.shoppingmadebetter.ui.screens.HistoryScreen
-import com.fullsail.shoppingmadebetter.ui.screens.LoginScreen
 import com.fullsail.shoppingmadebetter.ui.screens.MealsScreen
 import com.fullsail.shoppingmadebetter.ui.screens.PantryScreen
 import com.fullsail.shoppingmadebetter.ui.screens.ShoppingListsScreen
+import com.fullsail.shoppingmadebetter.feature.auth.ui.LoginScreen
+import com.fullsail.shoppingmadebetter.feature.auth.ui.SignUpScreen
 import com.fullsail.shoppingmadebetter.feature.stores.ui.StoresScreen
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -102,7 +103,8 @@ fun ShoppingMadeBetterApp(
             val tab = TopLevelDestination.entries.firstOrNull { tab ->
                 destination.hasRoute(tab.route::class)
             }
-            val showChrome = !destination.hasRoute(Dest.Login::class)
+            val showChrome = !destination.hasRoute(Dest.Login::class) &&
+                !destination.hasRoute(Dest.SignUp::class)
             navigationViewModel.onDestinationChanged(destination.route, tab, showChrome)
         }
         navController.addOnDestinationChangedListener(listener)
@@ -138,7 +140,26 @@ fun ShoppingMadeBetterApp(
             startDestination = Dest.Login,
             modifier = Modifier.padding(innerPadding),
         ) {
-            composable<Dest.Login> { LoginScreen(onContinue = navigationViewModel::onGetStarted) }
+            composable<Dest.Login> {
+                LoginScreen(
+                    onSignedIn = navigationViewModel::onAuthenticated,
+                    onNavigateToSignUp = {
+                        navController.navigate(Dest.SignUp) { launchSingleTop = true }
+                    },
+                )
+            }
+            composable<Dest.SignUp> {
+                SignUpScreen(
+                    onSignedUp = navigationViewModel::onAuthenticated,
+                    onNavigateToSignIn = {
+                        // Return to the sign-in gate without stacking Login entries.
+                        navController.navigate(Dest.Login) {
+                            popUpTo(Dest.Login) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
             composable<Dest.ShoppingLists> { ShoppingListsScreen() }
             composable<Dest.Cart> { CartScreen() }
             composable<Dest.Pantry> {

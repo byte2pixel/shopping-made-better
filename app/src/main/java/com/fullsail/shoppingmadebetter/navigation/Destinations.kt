@@ -12,9 +12,11 @@ import kotlinx.serialization.Serializable
  * Navigation Compose APIs (`composable<Dest.Cart> { }`, `navController.navigate(Dest.Cart)`).
  */
 sealed interface Dest {
-    /** Login / landing gate shown before the tabbed app (placeholder until auth is wired up). */
     @Serializable
     data object Login : Dest
+
+    @Serializable
+    data object SignUp : Dest
 
     @Serializable
     data object ShoppingLists : Dest
