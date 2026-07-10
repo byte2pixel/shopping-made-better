@@ -36,7 +36,7 @@ sealed interface NavEvent {
  * Centralizes all navigation logic for the app.
  *
  * Responsibilities:
- *  - Expose navigation intents ([onTabSelected], [onGetStarted], [navigateUp]) as a stream of
+ *  - Expose navigation intents ([onTabSelected], [onAuthenticated], [navigateUp]) as a stream of
  *    [NavEvent]s that the UI applies to the NavController.
  *  - Track the currently-selected top-level tab ([currentTab]) and whether the app chrome
  *    (top/bottom bars) should be shown ([showAppChrome]) so the UI can render selection, title,
@@ -71,9 +71,9 @@ class NavigationViewModel @Inject constructor() : ViewModel() {
         _events.trySend(NavEvent.ToTab(tab))
     }
 
-    /** Leave the login/landing gate and enter the tabbed app. */
-    fun onGetStarted() {
-        Log.d(NAV_LOG_TAG, "Get started -> entering app")
+    /** Called after a successful sign-in or sign-up: enter the tabbed app. */
+    fun onAuthenticated() {
+        Log.d(NAV_LOG_TAG, "Authenticated -> entering app")
         _events.trySend(NavEvent.EnterApp)
     }
 
