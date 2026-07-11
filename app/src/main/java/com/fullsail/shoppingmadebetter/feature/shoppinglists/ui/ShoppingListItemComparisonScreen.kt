@@ -105,8 +105,8 @@ fun ShoppingListItemComparisonScreen(
                 {
                     if ( store.storeId == product.storeId)
                     {
-                        val item = InsertItem(store.shoppingListId, product.productId, 1, "", false, true)
-                        viewModel.addItem(item)
+                        viewModel.addItem(InsertItem(store.shoppingListId, product.productId, 1, "", false, true)
+                        )
                     }
 
                 }
@@ -155,7 +155,7 @@ fun ShoppingListItemComparisonScreen(
                 CircularProgressIndicator()
 
             ItemComparisonUIState.Error ->
-                Text("Couldn't load your lists")
+                Text("Search suggestions couldnt be loaded")
             is ItemComparisonUIState.SearchSuccess -> {
 
                 searchResults = state.products.map { it.productName }

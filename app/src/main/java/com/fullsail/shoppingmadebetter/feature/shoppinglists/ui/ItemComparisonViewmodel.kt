@@ -36,7 +36,7 @@ class ItemComparisonViewmodel @Inject constructor(
 
 ) : ViewModel()
 {
-    private val _shoppingLists = MutableStateFlow<List<ShoppingTrip>>(emptyList())
+    private val _shoppingLists = MutableStateFlow<List<ShoppingTrip>>(listOf())
     val shoppingLists = _shoppingLists.asStateFlow()
     private val _uiState = MutableStateFlow<ItemComparisonUIState>(ItemComparisonUIState.Loading)
     val uiState: StateFlow<ItemComparisonUIState> = _uiState.asStateFlow()
