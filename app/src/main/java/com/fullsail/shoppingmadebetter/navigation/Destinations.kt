@@ -20,7 +20,11 @@ sealed interface Dest {
 
     @Serializable
     data object ShoppingLists : Dest
+    @Serializable
+    data object ShoppingListItemComparison : Dest
+    {
 
+    }
     @Serializable
     data object Cart : Dest
 

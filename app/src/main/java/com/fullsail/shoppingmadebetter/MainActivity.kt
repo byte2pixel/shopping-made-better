@@ -27,6 +27,7 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListItemComparisonScreen
 import com.fullsail.shoppingmadebetter.navigation.Dest
 import com.fullsail.shoppingmadebetter.navigation.NavEvent
 import com.fullsail.shoppingmadebetter.navigation.NavigationViewModel
@@ -35,7 +36,7 @@ import com.fullsail.shoppingmadebetter.ui.screens.CartScreen
 import com.fullsail.shoppingmadebetter.ui.screens.HistoryScreen
 import com.fullsail.shoppingmadebetter.ui.screens.MealsScreen
 import com.fullsail.shoppingmadebetter.ui.screens.PantryScreen
-import com.fullsail.shoppingmadebetter.ui.screens.ShoppingListsScreen
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListsScreen
 import com.fullsail.shoppingmadebetter.feature.auth.ui.LoginScreen
 import com.fullsail.shoppingmadebetter.feature.auth.ui.SignUpScreen
 import com.fullsail.shoppingmadebetter.feature.stores.ui.StoresScreen
@@ -140,6 +141,17 @@ fun ShoppingMadeBetterApp(
             startDestination = Dest.Login,
             modifier = Modifier.padding(innerPadding),
         ) {
+         
+            composable<Dest.ShoppingLists> { ShoppingListsScreen(onItemComparison  = {
+                navController.navigate(Dest.ShoppingListItemComparison)
+            }) }
+            composable<Dest.ShoppingListItemComparison> {
+                ShoppingListItemComparisonScreen(onItemComparison  = {
+                    navController.popBackStack<Dest.ShoppingLists>(false)
+                }
+                )
+            }
+
             composable<Dest.Login> {
                 LoginScreen(
                     onSignedIn = navigationViewModel::onAuthenticated,
@@ -160,7 +172,7 @@ fun ShoppingMadeBetterApp(
                     },
                 )
             }
-            composable<Dest.ShoppingLists> { ShoppingListsScreen() }
+         
             composable<Dest.Cart> { CartScreen() }
             composable<Dest.Pantry> {
                 PantryScreen(onOpenStores = { navController.navigate(Dest.Stores) })
