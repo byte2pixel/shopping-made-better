@@ -1,0 +1,98 @@
+package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch.ProductSearch
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch.ProductSearchUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.storeProductPricing.StoreProductPricing
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.storeProductPricing.StoreProductPricingUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+sealed interface ItemComparisonUIState {
+    data object Loading : ItemComparisonUIState
+    data class SearchSuccess(val products: List<ProductSearch>) : ItemComparisonUIState
+    data class PriceSuccess(val price: List<StoreProductPricing>) : ItemComparisonUIState
+   // data class ListSuccess(val trips: List<ShoppingTrip>) : ItemComparisonUIState
+ //   data class InsertSuccess(val price: List<StoreProductPricing>) : ItemComparisonUIState
+    data object Error : ItemComparisonUIState
+}
+
+
+@HiltViewModel
+class ItemComparisonViewmodel @Inject constructor(
+    private val getStoreProductPricingUseCase: StoreProductPricingUseCase,
+    private val productSearchUseCase: ProductSearchUseCase,
+    private val insertItemUseCase: InsertItemUseCase,
+    private val getShoppingTripsUseCase: GetShoppingTripsUseCase,
+
+) : ViewModel()
+{
+    private val _shoppingLists = MutableStateFlow<List<ShoppingTrip>>(emptyList())
+    val shoppingLists = _shoppingLists.asStateFlow()
+    private val _uiState = MutableStateFlow<ItemComparisonUIState>(ItemComparisonUIState.Loading)
+    val uiState: StateFlow<ItemComparisonUIState> = _uiState.asStateFlow()
+
+    init { getShoppingLists() }
+
+    fun search(search : String)
+    {
+        _uiState.value = ItemComparisonUIState.Loading
+        viewModelScope.launch {
+            _uiState.value =  when (val out = productSearchUseCase.execute(search)) {
+                is ProductSearchUseCase.Output.Success ->
+                    ItemComparisonUIState.SearchSuccess(out.product)
+                is ProductSearchUseCase.Output.Failure ->
+                    ItemComparisonUIState.Error
+            }
+        }
+    }
+    fun addItem(item : InsertItem)
+    {
+        _uiState.value = ItemComparisonUIState.Loading
+        viewModelScope.launch {
+            insertItemUseCase.execute(item)
+
+        }
+    }
+
+    fun showProducts(prodId : String)
+    {
+        _uiState.value = ItemComparisonUIState.Loading
+        viewModelScope.launch {
+            _uiState.value =  when (val out = getStoreProductPricingUseCase.execute(prodId)) {
+                is StoreProductPricingUseCase.Output.Success ->
+                    ItemComparisonUIState.PriceSuccess(out.prices)
+                is StoreProductPricingUseCase.Output.Failure ->
+                    ItemComparisonUIState.Error
+            }
+        }
+    }
+
+
+
+    fun getShoppingLists()
+    {
+
+        viewModelScope.launch {
+            when (val out = getShoppingTripsUseCase.execute(Unit))
+            {
+                is GetShoppingTripsUseCase.Output.Success ->
+                    _shoppingLists.value = out.trips
+
+                is GetShoppingTripsUseCase.Output.Failure ->
+                    ItemComparisonUIState.Error
+            }
+        }
+    }
+
+
+}

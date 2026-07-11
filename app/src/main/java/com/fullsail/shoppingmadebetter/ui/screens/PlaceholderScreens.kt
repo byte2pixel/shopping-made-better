@@ -28,9 +28,7 @@ private fun PlaceholderScreen(@StringRes titleRes: Int, modifier: Modifier = Mod
     }
 }
 
-@Composable
-fun ShoppingListsScreen(modifier: Modifier = Modifier) =
-    PlaceholderScreen(titleRes = R.string.tab_shopping_lists, modifier = modifier)
+
 
 @Composable
 fun CartScreen(modifier: Modifier = Modifier) =

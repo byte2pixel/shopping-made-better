@@ -11,14 +11,19 @@ import kotlinx.serialization.Serializable
  * Each destination is a [Serializable] route object consumed by the type-safe
  * Navigation Compose APIs (`composable<Dest.Cart> { }`, `navController.navigate(Dest.Cart)`).
  */
-sealed interface Dest {
+sealed interface
+Dest {
     /** Login / landing gate shown before the tabbed app (placeholder until auth is wired up). */
     @Serializable
     data object Login : Dest
 
     @Serializable
     data object ShoppingLists : Dest
+    @Serializable
+    data object ShoppingListItemComparison : Dest
+    {
 
+    }
     @Serializable
     data object Cart : Dest
 
