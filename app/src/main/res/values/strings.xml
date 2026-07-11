@@ -12,9 +12,22 @@
     <string name="nav_back">Back</string>
     <string name="nav_menu">Menu</string>
 
-    <!-- Login / landing (placeholder until auth is wired up) -->
-    <string name="login_subtitle">Log in or sign up</string>
-    <string name="login_continue">Continue</string>
+    <!-- Authentication (sign in / sign up) -->
+    <string name="auth_sign_in">Sign In</string>
+    <string name="auth_sign_up">Sign Up</string>
+    <string name="auth_login_button">Login</string>
+    <string name="auth_prompt_sign_up">Don\'t have an account? Sign Up</string>
+    <string name="auth_email_label">Email</string>
+    <string name="auth_email_hint">Enter email</string>
+    <string name="auth_password_hint">Password</string>
+    <string name="auth_confirm_password_hint">Confirm Password</string>
+    <string name="auth_toggle_visibility">Toggle Visibility</string>
+    <string name="auth_logo_desc">Shopping Made Better Logo</string>
+    <string name="auth_error_fields_blank">Error: Input forms cannot be blank.</string>
+    <string name="auth_error_registration_incomplete">Error: All registration forms must be complete.</string>
+    <string name="auth_error_passwords_mismatch">Error: Passwords do not match.</string>
+    <string name="auth_error_sign_in_failed">Sign in failed. Please try again.</string>
+    <string name="auth_error_sign_up_failed">Registration failed. Please try again.</string>
 
     <!-- Stores (dev example demonstrating the Supabase use-case flow; SCRUM-79) -->
     <string name="stores_title">Stores</string>
