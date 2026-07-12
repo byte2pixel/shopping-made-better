@@ -13,6 +13,7 @@
 - [Development Setup](#development-setup)
   - [Setup Supabase Locally](#setting-up-supabase-locally)
   - [Database Seed Data](#seed-data)
+  - [Temporary Dummy Account](#temporary-dummy-account)
 - [Project Status](#project-status)
 - [Roadmap](#roadmap)
 - [Known Issues](#known-issues)
@@ -278,19 +279,52 @@ Seed the database — with the Supabase containers started, run:
 npx supabase db reset
 ```
 
+### Temporary Dummy Account
+
+For local development there is a **temporary** demo user with pre-populated mock
+data (pantry inventory and shopping trips), so feature screens have something to
+render before auth and data-entry flows are complete. It is defined in
+`supabase/dummy_account.sql` and loaded on every `npx supabase db reset` via the
+`[db.seed] sql_paths` list in `supabase/config.toml` (loaded **after** `seed.sql`
+so its rows can reference the seeded stores and products).
+
+**Sign-in credentials** (email confirmation is disabled locally, so this works
+immediately from the app's sign-in screen):
+
+| Field    | Value           |
+|----------|-----------------|
+| Email    | `demo@smb.test` |
+| Password | `password123`   |
+
+The account also seeds pantry items and two demo shopping trips for that user.
+
+> **Note:** This is throwaway local test data — never commit real credentials or
+> use it for anything deployed.
+
+#### Removing the dummy account
+
+Once the app can create accounts and data on its own and the demo user is no
+longer needed:
+
+1. Delete `supabase/dummy_account.sql`.
+2. Remove `"./dummy_account.sql"` from the `sql_paths` list under `[db.seed]` in
+   `supabase/config.toml` (leaving `sql_paths = ["./seed.sql"]`).
+3. Run `npx supabase db reset` to rebuild the database without the dummy data.
+
 ### Project Paths
 
 Key locations in the repository:
 
-| Path                       | Purpose                                            |
-| -------------------------- | -------------------------------------------------- |
-| `app/`                     | Android application module (Kotlin + Compose)      |
-| `app/src/main/java/com/fullsail/shoppingmadebetter/` | App source (UI, navigation, DI) |
-| `gradle/libs.versions.toml`| Gradle version catalog (dependency versions)       |
-| `supabase/migrations/`     | Database schema migrations                         |
-| `supabase/seed.sql`        | Generated seed data                                |
-| `scripts/generate_seed.py` | Seed-data generator                                |
-| `grocery_data/`            | Source grocery pricing CSVs                        |
+| Path                                                 | Purpose                                       |
+|------------------------------------------------------|-----------------------------------------------|
+| `app/`                                               | Android application module (Kotlin + Compose) |
+| `app/src/main/java/com/fullsail/shoppingmadebetter/` | App source (UI, navigation, DI)               |
+| `gradle/libs.versions.toml`                          | Gradle version catalog (dependency versions)  |
+| `supabase/migrations/`                               | Database schema migrations                    |
+| `supabase/seed.sql`                                  | Generated seed data                           |
+| `supabase/dummy_account.sql`                         | Temporary demo user + mock data (removable)   |
+| `scripts/generate_seed.py`                           | Seed-data generator                           |
+| `grocery_data/`                                      | Source grocery pricing CSVs                   |
 
 ## Project Status
 
