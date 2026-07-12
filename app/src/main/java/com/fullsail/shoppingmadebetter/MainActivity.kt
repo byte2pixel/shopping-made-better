@@ -35,7 +35,7 @@ import com.fullsail.shoppingmadebetter.navigation.TopLevelDestination
 import com.fullsail.shoppingmadebetter.ui.screens.CartScreen
 import com.fullsail.shoppingmadebetter.ui.screens.HistoryScreen
 import com.fullsail.shoppingmadebetter.ui.screens.MealsScreen
-import com.fullsail.shoppingmadebetter.ui.screens.PantryScreen
+import com.fullsail.shoppingmadebetter.feature.pantry.ui.PantryScreen
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListsScreen
 import com.fullsail.shoppingmadebetter.feature.auth.ui.LoginScreen
 import com.fullsail.shoppingmadebetter.feature.auth.ui.SignUpScreen
@@ -174,9 +174,7 @@ fun ShoppingMadeBetterApp(
             }
          
             composable<Dest.Cart> { CartScreen() }
-            composable<Dest.Pantry> {
-                PantryScreen(onOpenStores = { navController.navigate(Dest.Stores) })
-            }
+            composable<Dest.Pantry> { PantryScreen() }
             composable<Dest.History> { HistoryScreen() }
             composable<Dest.Meals> { MealsScreen() }
             // Dev-only example wired to the Supabase store use case (SCRUM-79).
