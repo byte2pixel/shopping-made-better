@@ -17,7 +17,7 @@ class GetInventoryUseCaseImpl @Inject constructor(
             GetInventoryUseCase.Output.Failure(e)
         }
 
-    private fun InventoryItemDto.toDomain() = InventoryItem(id, name, brand, description, size, imageUrl)
+    private fun InventoryItemDto.toDomain() = InventoryItem(id, name, brand, description, size, imageUrl, quantity)
 
     private companion object { const val TAG = "GetInventoryUseCase" }
 }

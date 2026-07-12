@@ -34,4 +34,7 @@
     <string name="stores_dev_button">View Stores (dev)</string>
     <string name="stores_error">Couldn\'t load stores. Is the local Supabase stack running?</string>
     <string name="stores_empty">No stores found.</string>
+    <string name="unknown_error">Unknown error</string>
+    <string name="pantry_retry">Retry</string>
+    <string name="pantry_error">Error loading pantry</string>
 </resources>
