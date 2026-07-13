@@ -6,5 +6,6 @@ data class InventoryItem(
     val brand: String,
     val description: String,
     val size: String,
-    val imageUrl: String
+    val imageUrl: String,
+    val quantity: Int
 )
