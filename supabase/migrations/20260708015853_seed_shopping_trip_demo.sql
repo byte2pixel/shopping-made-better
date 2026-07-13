@@ -1,67 +1,12 @@
--- === Shopping-trip demo data + summary view =================================
--- Fixed UUID so we can find/remove this user later. (Any valid uuid works.)
--- demo user id: 11111111-1111-1111-1111-111111111111
+-- === Shopping-trip summary view ============================================
+-- Schema only. The demo user and the demo shopping-trip DATA that this view
+-- summarizes now live in supabase/dummy_account.sql (loaded from seed.sql),
+-- so they can be removed without touching schema -- and so their SELECTs run
+-- AFTER seed.sql has populated stores/products/pricing (during the migration
+-- phase those tables are still empty, so the inserts matched zero rows here).
 
--- 1) Seed a confirmed auth user. Direct inserts into auth.* are unusual, but it's
---    the only way to get a user without going through the app. Password = 'password123'.
-insert into auth.users (
-  instance_id, id, aud, role, email, encrypted_password,
-  email_confirmed_at, created_at, updated_at,
-  raw_app_meta_data, raw_user_meta_data
-)
-values (
-  '00000000-0000-0000-0000-000000000000',
-  '11111111-1111-1111-1111-111111111111',
-  'authenticated', 'authenticated',
-  'demo@shoppingmadebetter.test',
-  crypt('password123', gen_salt('bf')),           -- pgcrypto is available on Supabase
-  now(), now(), now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"display_name":"Demo Shopper"}'               -- so the profile trigger has a name
-)
-on conflict (id) do nothing;
-
-insert into auth.identities (
-  id, user_id, provider_id, identity_data, provider,
-  last_sign_in_at, created_at, updated_at
-)
-values (
-  gen_random_uuid(),
-  '11111111-1111-1111-1111-111111111111',
-  '11111111-1111-1111-1111-111111111111',
-  '{"sub":"11111111-1111-1111-1111-111111111111","email":"demo@shoppingmadebetter.test"}',
-  'email', now(), now(), now()
-)
-on conflict do nothing;
-
--- 2) Ensure the profile row exists. The handle_new_user() trigger may already have
---    created it from the metadata above; this is a safe fallback either way.
-insert into public.profiles (id, display_name)
-values ('11111111-1111-1111-1111-111111111111', 'Demo Shopper')
-on conflict (id) do nothing;
-
--- 3) One shopping list ("trip") per store, for two stores.
-insert into public.shopping_lists (user_id, store_id, name)
-select '11111111-1111-1111-1111-111111111111', s.id, s.name || ' Weekly'
-from public.stores s
-where s.name in ('ALDI', 'Publix');
-
--- 4) Put 5 real, currently-priced products on each list, so totals are non-zero.
---    LATERAL picks 5 products that actually have current pricing AT THAT STORE.
-insert into public.shopping_list_items (shopping_list_id, product_id, quantity)
-select sl.id, picked.product_id, 1
-from public.shopping_lists sl
-join lateral (
-  select spp.product_id
-  from public.store_product_pricing spp
-  where spp.store_id = sl.store_id
-    and spp.is_current = true
-  order by spp.product_id
-  limit 5
-) picked on true
-where sl.user_id = '11111111-1111-1111-1111-111111111111';
-
--- 5) The summary view your app reads: one row per trip, item count + total cost.
+-- One row per trip: item count + total cost. The view exposes only the
+-- summary, never the raw per-user rows.
 create view public.shopping_trip_summaries as
 select
   sl.id   as shopping_list_id,
@@ -79,7 +24,6 @@ left join public.store_product_pricing spp
       and spp.is_current = true
 group by sl.id, sl.name, s.id, s.name;
 
--- 6) Let the app's anon key READ the view (same idea as the stores grant migration
---    20260704120000_grant_public_read_stores.sql). The view exposes only the summary,
---    never the raw per-user rows.
+-- Let the app's anon key READ the view (same idea as the stores grant migration
+-- 20260704120000_grant_public_read_stores.sql).
 grant select on public.shopping_trip_summaries to anon, authenticated;
