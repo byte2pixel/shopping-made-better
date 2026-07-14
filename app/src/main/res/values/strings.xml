@@ -37,4 +37,14 @@
     <string name="unknown_error">Unknown error</string>
     <string name="pantry_retry">Retry</string>
     <string name="pantry_error">Error loading pantry</string>
+
+    <!-- Pantry item detail -->
+    <string name="pantry_detail_brand">Brand</string>
+    <string name="pantry_detail_size">Size</string>
+    <string name="pantry_detail_stock">Stock</string>
+    <string name="pantry_detail_description">Description</string>
+    <string name="pantry_detail_stores">Stores</string>
+    <string name="pantry_detail_expiration">Expiration</string>
+    <string name="pantry_detail_coming_soon">Coming soon</string>
+    <string name="pantry_detail_not_found">Item not found</string>
 </resources>

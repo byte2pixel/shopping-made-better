@@ -31,6 +31,13 @@ sealed interface Dest {
     @Serializable
     data object Pantry : Dest
 
+    /**
+     * A detail screen for an item in the pantry.
+     * @param id The ID of the item to show.
+     */
+    @Serializable
+    data class PantryItemDetail(val id: String) : Dest
+
     @Serializable
     data object History : Dest
 
