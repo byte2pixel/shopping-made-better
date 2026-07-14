@@ -27,7 +27,14 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
+import com.fullsail.shoppingmadebetter.feature.auth.ui.LoginScreen
+import com.fullsail.shoppingmadebetter.feature.auth.ui.SignUpScreen
+import com.fullsail.shoppingmadebetter.feature.pantry.ui.PantryItemDetailScreen
+import com.fullsail.shoppingmadebetter.feature.pantry.ui.PantryScreen
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListItemComparisonScreen
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListsScreen
+import com.fullsail.shoppingmadebetter.feature.stores.ui.StoresScreen
 import com.fullsail.shoppingmadebetter.navigation.Dest
 import com.fullsail.shoppingmadebetter.navigation.NavEvent
 import com.fullsail.shoppingmadebetter.navigation.NavigationViewModel
@@ -35,11 +42,6 @@ import com.fullsail.shoppingmadebetter.navigation.TopLevelDestination
 import com.fullsail.shoppingmadebetter.ui.screens.CartScreen
 import com.fullsail.shoppingmadebetter.ui.screens.HistoryScreen
 import com.fullsail.shoppingmadebetter.ui.screens.MealsScreen
-import com.fullsail.shoppingmadebetter.feature.pantry.ui.PantryScreen
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListsScreen
-import com.fullsail.shoppingmadebetter.feature.auth.ui.LoginScreen
-import com.fullsail.shoppingmadebetter.feature.auth.ui.SignUpScreen
-import com.fullsail.shoppingmadebetter.feature.stores.ui.StoresScreen
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -104,8 +106,8 @@ fun ShoppingMadeBetterApp(
             val tab = TopLevelDestination.entries.firstOrNull { tab ->
                 destination.hasRoute(tab.route::class)
             }
-            val showChrome = !destination.hasRoute(Dest.Login::class) &&
-                !destination.hasRoute(Dest.SignUp::class)
+            val showChrome =
+                !destination.hasRoute(Dest.Login::class) && !destination.hasRoute(Dest.SignUp::class)
             navigationViewModel.onDestinationChanged(destination.route, tab, showChrome)
         }
         navController.addOnDestinationChangedListener(listener)
@@ -141,15 +143,16 @@ fun ShoppingMadeBetterApp(
             startDestination = Dest.Login,
             modifier = Modifier.padding(innerPadding),
         ) {
-         
-            composable<Dest.ShoppingLists> { ShoppingListsScreen(onItemComparison  = {
-                navController.navigate(Dest.ShoppingListItemComparison)
-            }) }
+
+            composable<Dest.ShoppingLists> {
+                ShoppingListsScreen(onItemComparison = {
+                    navController.navigate(Dest.ShoppingListItemComparison)
+                })
+            }
             composable<Dest.ShoppingListItemComparison> {
-                ShoppingListItemComparisonScreen(onItemComparison  = {
+                ShoppingListItemComparisonScreen(onItemComparison = {
                     navController.popBackStack<Dest.ShoppingLists>(false)
-                }
-                )
+                })
             }
 
             composable<Dest.Login> {
@@ -172,9 +175,14 @@ fun ShoppingMadeBetterApp(
                     },
                 )
             }
-         
+
             composable<Dest.Cart> { CartScreen() }
-            composable<Dest.Pantry> { PantryScreen() }
+            composable<Dest.Pantry> {
+                PantryScreen(onItemClick = { id -> navController.navigate(Dest.PantryItemDetail(id)) })
+            }
+            composable<Dest.PantryItemDetail> { entry ->
+                PantryItemDetailScreen(itemId = entry.toRoute<Dest.PantryItemDetail>().id)
+            }
             composable<Dest.History> { HistoryScreen() }
             composable<Dest.Meals> { MealsScreen() }
             // Dev-only example wired to the Supabase store use case (SCRUM-79).
