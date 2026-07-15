@@ -1,11 +1,10 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem
 
-interface InsertItemUseCase
-{
-    suspend fun execute(item: InsertItem)
+import com.fullsail.shoppingmadebetter.core.domain.UseCase
 
+interface InsertItemUseCase : UseCase<InsertItem, InsertItemUseCase.Output> {
     sealed interface Output {
-        data class Success( val product: Unit) : Output
+        data object Success : Output
         data class Failure(val error: Throwable) : Output
     }
 }
