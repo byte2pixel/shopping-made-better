@@ -1,4 +1,4 @@
-package com.fullsail.shoppingmadebetter.feature.shoppinglists.data.productSearch
+package com.fullsail.shoppingmadebetter.feature.shoppinglists.data
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

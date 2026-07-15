@@ -1,7 +1,7 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.domain
 
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.shoppingTrip.ShoppingTripDto
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.shoppingTrip.ShoppingTripRepository
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingTripDto
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCaseImpl
 import kotlinx.coroutines.test.runTest
@@ -14,7 +14,7 @@ class GetShoppingTripsUseCaseTest {
     private class FakeRepo(
         private val result: List<ShoppingTripDto> = emptyList(),
         private val error: Throwable? = null,
-    ) : ShoppingTripRepository {
+    ) : ShoppingListRepository {
         override suspend fun getTrips() = error?.let { throw it } ?: result
     }
 

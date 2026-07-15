@@ -1,15 +1,15 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.storeProductPricing
 
 import android.util.Log
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
 
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.storeProductPricing.StoreProductPricingDto
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.storeProductPricing.StoreProductPricingRepository
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.StoreProductPricingDto
 import javax.inject.Inject
 import kotlin.String
 
 
 class StoreProductPricingUseCaseImpl @Inject constructor(
-    private val repository: StoreProductPricingRepository,
+    private val repository: ShoppingListRepository,
 ) : StoreProductPricingUseCase {
     //Used to get the price of a particular product
     override suspend fun execute(input: String): StoreProductPricingUseCase.Output =

@@ -1,6 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem
 
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.insertItem.InsertItemRepository
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
@@ -12,7 +12,7 @@ class InsertItemUseCaseTest {
 
     private class FakeRepo(
         private val error: Throwable? = null,
-    ) : InsertItemRepository {
+    ) : ShoppingListRepository {
         var added: InsertItem? = null
         override suspend fun addItem(item: InsertItem) {
             error?.let { throw it }

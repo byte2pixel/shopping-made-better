@@ -1,13 +1,7 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.di
 
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.insertItem.InsertItemRepository
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.insertItem.InsertItemRepositoryImpl
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.productSearch.ProductSearchRepository
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.productSearch.ProductSearchRepositoryImpl
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.shoppingTrip.ShoppingTripRepository
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.shoppingTrip.ShoppingTripRepositoryImpl
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.storeProductPricing.StoreProductPricingRepository
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.storeProductPricing.StoreProductPricingRepositoryImpl
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepositoryImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch.ProductSearchUseCase
@@ -29,8 +23,8 @@ abstract class ShoppingListsModule {
     @Binds
     @Singleton
     abstract fun bindShoppingTripRepository(
-        impl: ShoppingTripRepositoryImpl,
-    ): ShoppingTripRepository
+        impl: ShoppingListRepositoryImpl,
+    ): ShoppingListRepository
 
     @Binds
     abstract fun bindGetShoppingTripsUseCase(
@@ -38,30 +32,16 @@ abstract class ShoppingListsModule {
     ): GetShoppingTripsUseCase
 
     @Binds
-    @Singleton
-    abstract fun bindStoreProductPricingRepository(
-        impl: StoreProductPricingRepositoryImpl,
-    ): StoreProductPricingRepository
-
-    @Binds
     abstract fun bindStoreProductPricingUseCase(
         impl: StoreProductPricingUseCaseImpl,
     ): StoreProductPricingUseCase
-    @Binds
-    @Singleton
-    abstract fun bindProductSearchRepository(
-        impl: ProductSearchRepositoryImpl,
-    ): ProductSearchRepository
+
 
     @Binds
     abstract fun bindProductSearchUseCase(
         impl: ProductSearchUseCaseImpl,
     ): ProductSearchUseCase
-    @Binds
-    @Singleton
-    abstract fun bindInsertItemRepository(
-        impl: InsertItemRepositoryImpl,
-    ): InsertItemRepository
+
 
     @Binds
     abstract fun bindInsertItemUseCase(

@@ -1,13 +1,13 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch
 
 import android.util.Log
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.productSearch.ProductSearchDto
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.productSearch.ProductSearchRepository
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ProductSearchDto
 import javax.inject.Inject
 
 
 class ProductSearchUseCaseImpl @Inject constructor(
-    private val repository: ProductSearchRepository,
+    private val repository: ShoppingListRepository,
 
 ) : ProductSearchUseCase
 {
