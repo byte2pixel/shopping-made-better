@@ -15,7 +15,7 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
-
+@Suppress("UNUSED_PARAMETER")
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class ShoppingListsModule {
