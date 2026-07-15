@@ -1,6 +1,9 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem
 
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ProductSearchDto
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingTripDto
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.StoreProductPricingDto
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
@@ -14,6 +17,18 @@ class InsertItemUseCaseTest {
         private val error: Throwable? = null,
     ) : ShoppingListRepository {
         var added: InsertItem? = null
+        override suspend fun getTrips(): List<ShoppingTripDto> {
+            TODO("Not yet implemented")
+        }
+
+        override suspend fun getStores(productName: String): List<StoreProductPricingDto> {
+            TODO("Not yet implemented")
+        }
+
+        override suspend fun getProduct(searchName: String): List<ProductSearchDto> {
+            TODO("Not yet implemented")
+        }
+
         override suspend fun addItem(item: InsertItem) {
             error?.let { throw it }
             added = item
