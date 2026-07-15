@@ -21,8 +21,6 @@ sealed interface ItemComparisonUIState {
     data object Loading : ItemComparisonUIState
     data class SearchSuccess(val products: List<ProductSearch>) : ItemComparisonUIState
     data class PriceSuccess(val price: List<StoreProductPricing>) : ItemComparisonUIState
-   // data class ListSuccess(val trips: List<ShoppingTrip>) : ItemComparisonUIState
- //   data class InsertSuccess(val price: List<StoreProductPricing>) : ItemComparisonUIState
     data object Error : ItemComparisonUIState
 }
 
@@ -47,7 +45,7 @@ class ItemComparisonViewmodel @Inject constructor(
     {
         _uiState.value = ItemComparisonUIState.Loading
         viewModelScope.launch {
-            _uiState.value =  when (val out = productSearchUseCase.execute(search)) {
+            _uiState.value = when (val out = productSearchUseCase.execute(search)) {
                 is ProductSearchUseCase.Output.Success ->
                     ItemComparisonUIState.SearchSuccess(out.product)
                 is ProductSearchUseCase.Output.Failure ->

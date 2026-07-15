@@ -1,7 +1,10 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.domain
 
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.shoppingTrip.ShoppingTripDto
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.shoppingTrip.ShoppingTripRepository
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ProductSearchDto
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingTripDto
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.StoreProductPricingDto
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCaseImpl
 import kotlinx.coroutines.test.runTest
@@ -14,8 +17,19 @@ class GetShoppingTripsUseCaseTest {
     private class FakeRepo(
         private val result: List<ShoppingTripDto> = emptyList(),
         private val error: Throwable? = null,
-    ) : ShoppingTripRepository {
+    ) : ShoppingListRepository {
         override suspend fun getTrips() = error?.let { throw it } ?: result
+        override suspend fun getStores(productName: String): List<StoreProductPricingDto> {
+            TODO("Not yet implemented")
+        }
+
+        override suspend fun getProduct(searchName: String): List<ProductSearchDto> {
+            TODO("Not yet implemented")
+        }
+
+        override suspend fun addItem(item: InsertItem) {
+            TODO("Not yet implemented")
+        }
     }
 
     @Test

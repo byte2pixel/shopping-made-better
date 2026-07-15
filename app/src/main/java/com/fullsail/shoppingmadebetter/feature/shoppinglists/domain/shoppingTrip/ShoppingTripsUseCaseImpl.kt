@@ -1,12 +1,12 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip
 
 import android.util.Log
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.shoppingTrip.ShoppingTripDto
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.shoppingTrip.ShoppingTripRepository
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingTripDto
 import javax.inject.Inject
 
 class GetShoppingTripsUseCaseImpl @Inject constructor(
-    private val repository: ShoppingTripRepository,
+    private val repository: ShoppingListRepository,
 ) : GetShoppingTripsUseCase {
     //Checks the prices of each list used to get the name of the store and the total
     override suspend fun execute(input: Unit): GetShoppingTripsUseCase.Output =
