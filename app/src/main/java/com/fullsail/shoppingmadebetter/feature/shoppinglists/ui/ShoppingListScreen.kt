@@ -94,14 +94,14 @@ fun ShoppingListsScreen(
 @Composable
 private fun TripCard(trip: ShoppingTrip)
 {
-    Card(
+    OutlinedCard(
         onClick = {
 
             //Add viewing shopping list logic
         },
         Modifier.fillMaxWidth())
     {
-        Column(Modifier.padding(16.dp))
+        Column(Modifier.padding(16.dp).fillMaxWidth())
         {
             Text(trip.storeName, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
@@ -109,6 +109,21 @@ private fun TripCard(trip: ShoppingTrip)
                 "${trip.itemCount} items · \$${"%.2f".format(trip.totalCost)}",
                 style = MaterialTheme.typography.bodyMedium,
             )
+            Spacer(Modifier.height(8.dp))
+            Row(modifier= Modifier.fillMaxWidth(),
+                Arrangement.End){
+
+
+            OutlinedButton(onClick = {})
+            {
+                Text("Delete")
+            }
+            Button(onClick = {})
+            {
+                Text("Details")
+            }
+            }
+
         }
     }
 }
