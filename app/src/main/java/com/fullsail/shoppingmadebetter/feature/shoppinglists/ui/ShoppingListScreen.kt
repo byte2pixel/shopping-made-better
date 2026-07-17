@@ -110,20 +110,19 @@ private fun TripCard(trip: ShoppingTrip)
                 style = MaterialTheme.typography.bodyMedium,
             )
             Spacer(Modifier.height(8.dp))
-            Row(modifier= Modifier.fillMaxWidth(),
-                Arrangement.End){
-
-
-            OutlinedButton(onClick = {})
+            Row(
+                modifier= Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End)
             {
-                Text("Delete")
+                OutlinedButton(onClick = {})
+                {
+                    Text("Delete")
+                }
+                Button(onClick = {})
+                {
+                    Text("Details")
+                }
             }
-            Button(onClick = {})
-            {
-                Text("Details")
-            }
-            }
-
         }
     }
 }

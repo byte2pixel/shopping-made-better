@@ -136,14 +136,15 @@ fun ShoppingListItemComparisonScreen(
                 )
 
                 Button(
+                    onClick =
+                        {
 
-                    onClick = {
-
-                },Modifier.align(Alignment.End)
-                ){
+                        },
+                    Modifier.align(Alignment.End)
+                )
+                {
                     Text("Add")
                 }
-
             }
         }
     }
