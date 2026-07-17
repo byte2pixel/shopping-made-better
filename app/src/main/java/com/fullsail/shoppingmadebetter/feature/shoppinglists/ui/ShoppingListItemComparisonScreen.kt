@@ -14,11 +14,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
@@ -31,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ModifierInfo
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
@@ -99,7 +102,7 @@ fun ShoppingListItemComparisonScreen(
     {
         val storeList  by viewModel.shoppingLists.collectAsState()
 
-        Card(
+        OutlinedCard(
             onClick = {
                 for(store in storeList)
                 {
@@ -120,15 +123,28 @@ fun ShoppingListItemComparisonScreen(
         ) {
 
 
-            Column(Modifier.padding(16.dp))
+            Column(modifier = Modifier .padding(16.dp).fillMaxWidth())
             {
 
-                Text(product.productTitle + " @ " + product.storeName, style = MaterialTheme.typography.titleMedium)
+                Text(product.storeName, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(4.dp))
+                Text(product.productTitle, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(12.dp))
                 Text(
-                    product.price ,
+                    product.price + " - x miles away",
                     style = MaterialTheme.typography.bodyMedium,
                 )
+
+                Button(
+                    onClick =
+                        {
+
+                        },
+                    Modifier.align(Alignment.End)
+                )
+                {
+                    Text("Add")
+                }
             }
         }
     }
