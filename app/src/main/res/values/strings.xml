@@ -47,4 +47,16 @@
     <string name="pantry_detail_expiration">Expiration</string>
     <string name="pantry_detail_coming_soon">Coming soon</string>
     <string name="pantry_detail_not_found">Item not found</string>
+
+    <!-- Pantry: add an item to a shopping list -->
+    <string name="pantry_add_to_list">Add to shopping list</string>
+    <string name="add_to_list_title">Add \"%1$s\" to…</string>
+    <string name="add_to_list_empty">No shopping lists yet</string>
+    <string name="add_to_list_error">Couldn\'t load your shopping lists</string>
+    <string name="added_to_list">Added %1$s to %2$s</string>
+    <string name="add_to_list_failed">Couldn\'t add %1$s</string>
+    <plurals name="add_to_list_item_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
 </resources>

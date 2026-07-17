@@ -2,6 +2,7 @@ package com.fullsail.shoppingmadebetter.feature.pantry.domain
 
 data class InventoryItem(
     val id: String,
+    val productId: String,
     val name: String,
     val brand: String,
     val description: String,
