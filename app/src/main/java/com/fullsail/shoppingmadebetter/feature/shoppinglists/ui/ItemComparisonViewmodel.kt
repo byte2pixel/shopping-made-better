@@ -1,7 +1,10 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch.ProductSearch
@@ -31,8 +34,9 @@ class ItemComparisonViewmodel @Inject constructor(
     private val productSearchUseCase: ProductSearchUseCase,
     private val insertItemUseCase: InsertItemUseCase,
     private val getShoppingTripsUseCase: GetShoppingTripsUseCase,
+    private val getShoppingListUseCase: ShoppingListUseCase,
 
-) : ViewModel()
+    ) : ViewModel()
 {
     private val _shoppingLists = MutableStateFlow<List<ShoppingTrip>>(listOf())
     val shoppingLists = _shoppingLists.asStateFlow()
@@ -58,9 +62,20 @@ class ItemComparisonViewmodel @Inject constructor(
         _uiState.value = ItemComparisonUIState.Loading
         viewModelScope.launch {
             insertItemUseCase.execute(item)
-
         }
     }
+
+    fun createListAddItem(product : StoreProductPricing)
+    {
+        viewModelScope.launch {
+            getShoppingListUseCase.execute(ShoppingList("11111111-1111-1111-1111-111111111111", product.storeId, product.storeName + " Weekly", false))
+            getShoppingLists{
+            val list = shoppingLists.value.first { it.storeId == product.storeId}
+            addItem(InsertItem(list.shoppingListId, product.productId, 1, "", false, true))
+            }
+        }
+    }
+
 
     fun showProducts(prodId : String)
     {
@@ -77,20 +92,19 @@ class ItemComparisonViewmodel @Inject constructor(
 
 
 
-    fun getShoppingLists()
+      fun getShoppingLists(waiting : () -> Unit = {})
     {
-
         viewModelScope.launch {
+            Log.d("ShoppingList", "Refreshed Lists")
             when (val out = getShoppingTripsUseCase.execute(Unit))
             {
-                is GetShoppingTripsUseCase.Output.Success ->
+                is GetShoppingTripsUseCase.Output.Success ->{
                     _shoppingLists.value = out.trips
-
+                    waiting()
+                }
                 is GetShoppingTripsUseCase.Output.Failure ->
                     ItemComparisonUIState.Error
             }
         }
     }
-
-
 }
