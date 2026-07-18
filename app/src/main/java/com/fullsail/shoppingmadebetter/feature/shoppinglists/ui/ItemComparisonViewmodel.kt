@@ -92,7 +92,7 @@ class ItemComparisonViewmodel @Inject constructor(
 
 
 
-      fun getShoppingLists(waiting : () -> Unit = {})
+    fun getShoppingLists(waiting : () -> Unit = {})
     {
         viewModelScope.launch {
             Log.d("ShoppingList", "Refreshed Lists")
