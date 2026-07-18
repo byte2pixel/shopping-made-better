@@ -49,7 +49,7 @@ class ShoppingListRepositoryImpl @Inject constructor(
 
     override suspend fun addList(list: ShoppingList) {
             postgrest.from("shopping_lists").insert(ShoppingListDto(
-            list.userId, list.storeId, list.name, list.shared)){ select()}.decodeSingle<ShoppingListDto>()
+             list.storeId, list.name, list.shared)){ select()}.decodeSingle<ShoppingListDto>()
          }
 
 }

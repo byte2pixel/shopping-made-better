@@ -5,7 +5,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ShoppingListDto (
-    @SerialName("user_id") val userId: String,
     @SerialName("store_id") val storeId: String,
     @SerialName("name") val name: String,
     @SerialName("is_shared") val shared: Boolean,
