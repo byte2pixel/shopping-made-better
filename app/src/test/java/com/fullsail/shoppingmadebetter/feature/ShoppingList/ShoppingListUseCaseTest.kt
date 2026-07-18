@@ -30,6 +30,10 @@ class GetShoppingTripsUseCaseTest {
         override suspend fun addItem(item: InsertItem) {
             TODO("Not yet implemented")
         }
+
+        override suspend fun addList(list: ShoppingList) {
+            TODO("Not yet implemented")
+        }
     }
 
     @Test
