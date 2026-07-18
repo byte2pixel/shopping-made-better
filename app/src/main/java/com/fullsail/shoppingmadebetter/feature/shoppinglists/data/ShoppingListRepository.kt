@@ -8,6 +8,6 @@ interface ShoppingListRepository {
     suspend fun getStores(productName : String): List<StoreProductPricingDto>
     suspend fun getProduct(searchName : String): List<ProductSearchDto>
     suspend fun addItem(item: InsertItem)
-    suspend fun addList(list: ShoppingList): ShoppingListDto
+    suspend fun addList(list: ShoppingList)
 
 }
