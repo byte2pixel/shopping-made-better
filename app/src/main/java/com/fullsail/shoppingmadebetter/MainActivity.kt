@@ -44,6 +44,7 @@ import com.fullsail.shoppingmadebetter.ui.screens.HistoryScreen
 import com.fullsail.shoppingmadebetter.ui.screens.MealsScreen
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import dagger.hilt.android.AndroidEntryPoint
+import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingScreen
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
