@@ -4,6 +4,7 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ProductSearchD
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingTripDto
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.StoreProductPricingDto
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
@@ -32,6 +33,10 @@ class InsertItemUseCaseTest {
         override suspend fun addItem(item: InsertItem) {
             error?.let { throw it }
             added = item
+        }
+
+        override suspend fun addList(list: ShoppingList) {
+            TODO("Not yet implemented")
         }
     }
 
