@@ -38,6 +38,18 @@
     <string name="pantry_retry">Retry</string>
     <string name="pantry_error">Error loading pantry</string>
 
+    <!-- Pantry mini dashboard (SCRUM-99) -->
+    <string name="pantry_dashboard_expiring">Expiring</string>
+    <string name="pantry_dashboard_running_low">Low</string>
+    <string name="pantry_dashboard_out">Out</string>
+    <string name="pantry_dashboard_freezer">Freezer</string>
+    <string name="pantry_dashboard_fridge">Fridge</string>
+    <string name="pantry_dashboard_pantry">Pantry</string>
+    <plurals name="pantry_dashboard_card_desc">
+        <item quantity="one">%1$s: %2$d item</item>
+        <item quantity="other">%1$s: %2$d items</item>
+    </plurals>
+
     <!-- Pantry item detail -->
     <string name="pantry_detail_brand">Brand</string>
     <string name="pantry_detail_size">Size</string>
