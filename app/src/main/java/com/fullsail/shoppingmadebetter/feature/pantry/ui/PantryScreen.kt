@@ -27,7 +27,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
@@ -41,6 +45,12 @@ import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
+
+/** Persists the set of selected dashboard filters across configuration changes. */
+private val filterSetSaver = listSaver<Set<PantryDashboardFilter>, String>(
+    save = { selected -> selected.map { it.name } },
+    restore = { names -> names.map { PantryDashboardFilter.valueOf(it) }.toSet() },
+)
 
 @Composable
 fun PantryScreen(
@@ -118,14 +128,33 @@ private fun PantryContent(
             }
 
             is PantryUiState.Success -> {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(uiState.inventoryItems, key = { it.id }) { inventoryItem ->
-                        InventoryItemRow(
-                            inventoryItem = inventoryItem,
-                            onClick = { onItemClick(inventoryItem.id) },
-                            onAddToList = { onAddToListClick(inventoryItem) },
-                        )
-                        HorizontalDivider()
+                val dashboardCards = remember { placeholderDashboardCards() }
+                var selectedFilters by rememberSaveable(stateSaver = filterSetSaver) {
+                    mutableStateOf(emptySet<PantryDashboardFilter>())
+                }
+
+                Column(modifier = Modifier.fillMaxSize()) {
+                    PantryDashboard(
+                        cards = dashboardCards,
+                        selected = selectedFilters,
+                        onToggle = { filter ->
+                            selectedFilters = if (filter in selectedFilters) {
+                                selectedFilters - filter
+                            } else {
+                                selectedFilters + filter
+                            }
+                        },
+                    )
+                    HorizontalDivider()
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(uiState.inventoryItems, key = { it.id }) { inventoryItem ->
+                            InventoryItemRow(
+                                inventoryItem = inventoryItem,
+                                onClick = { onItemClick(inventoryItem.id) },
+                                onAddToList = { onAddToListClick(inventoryItem) },
+                            )
+                            HorizontalDivider()
+                        }
                     }
                 }
             }
