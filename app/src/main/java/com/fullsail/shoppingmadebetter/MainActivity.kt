@@ -166,14 +166,47 @@ fun ShoppingMadeBetterApp(
             }
             composable<Dest.SignUp> {
                 SignUpScreen(
-                    onSignedUp = navigationViewModel::onAuthenticated,
+                    onSignedUp = {
+                        // Bypass Mel's auto-login event and force onboarding for new accounts
+                        navController.navigate(Dest.Onboarding) {
+                            popUpTo(Dest.Login) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
                     onNavigateToSignIn = {
-                        // Return to the sign-in gate without stacking Login entries.
                         navController.navigate(Dest.Login) {
                             popUpTo(Dest.Login) { inclusive = true }
                             launchSingleTop = true
                         }
                     },
+                )
+            }
+
+            composable<Dest.Onboarding> {
+                OnboardingScreen(
+                    isSubmitting = false,
+                    selectedDiets = emptySet(),
+                    selectedCategories = emptySet(),
+                    selectedGoal = "",
+                    onDietToggled = { _ -> },
+                    onCategoryToggled = { _ -> },
+                    onGoalSelected = {},
+                    onSubmit = {
+                        navController.navigate(Dest.ShoppingLists) {
+                            popUpTo(Dest.Onboarding::class) { inclusive = true }
+                        }
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable<Dest.Profile> {
+                com.fullsail.shoppingmadebetter.feature.profile.ui.ProfileScreen(
+                    onNavigateToChangePassword = { navController.navigate(Dest.ChangePassword) },
+                    onNavigateBack = { navController.popBackStack() },
+                    onEditPreferences = { navController.navigate(Dest.Onboarding) }
                 )
             }
 
