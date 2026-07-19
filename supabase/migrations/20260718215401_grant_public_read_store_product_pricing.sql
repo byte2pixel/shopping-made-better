@@ -5,5 +5,5 @@ GRANT SELECT ON public.store_product_pricing TO authenticated;
 CREATE POLICY "product pricing are readable by authenticated users"
   ON public.store_product_pricing
   FOR SELECT
-  TO anon, authenticated
+  TO authenticated
   USING (true);
