@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
 
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -104,18 +105,17 @@ fun ShoppingListItemComparisonScreen(
 
         OutlinedCard(
             onClick = {
-                for(store in storeList)
+
+                val list = storeList.firstOrNull { it.storeId == product.storeId }
+                if (list != null)
                 {
-                    if ( store.storeId == product.storeId)
-                    {
-                        viewModel.addItem(InsertItem(store.shoppingListId, product.productId, 1, "", false, true)
-                        )
-                    }
-
+                    viewModel.addItem(InsertItem(list.shoppingListId, product.productId, 1, "", false, true))
+                    onItemComparison()
                 }
-
-                onItemComparison()
-
+                else{
+                    viewModel.createListAddItem(product)
+                    onItemComparison()
+                }
             },
 
 
@@ -171,7 +171,7 @@ fun ShoppingListItemComparisonScreen(
                 CircularProgressIndicator()
 
             ItemComparisonUIState.Error ->
-                Text("Search suggestions couldnt be loaded")
+                Text("Search suggestions couldn't be loaded")
             is ItemComparisonUIState.SearchSuccess -> {
 
                 searchResults = state.products.map { it.productName }
@@ -181,8 +181,6 @@ fun ShoppingListItemComparisonScreen(
 
 
             }
-
-
             else -> {}
         }
     Box(
