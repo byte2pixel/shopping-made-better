@@ -154,6 +154,7 @@ private fun PantryItemDetailPreview() {
         PantryItemDetailContent(
             item = InventoryItem(
                 id = "1",
+                productId = "p1",
                 name = "2% Milk",
                 brand = "Great Value",
                 description = "Reduced-fat milk, one gallon.",

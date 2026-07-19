@@ -5,9 +5,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class InventoryItemDto(
     val id: String,
+    val productId: String,
     val name: String,
     val brand: String,
     val description: String,
     val size: String,
     val quantity: Int,
-    val imageUrl: String)
+    val imageUrl: String
+)

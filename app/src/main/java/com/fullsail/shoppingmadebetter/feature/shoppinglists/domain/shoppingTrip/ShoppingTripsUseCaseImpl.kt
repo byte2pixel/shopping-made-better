@@ -19,6 +19,7 @@ class GetShoppingTripsUseCaseImpl @Inject constructor(
 
     private fun ShoppingTripDto.toDomain() = ShoppingTrip(
         shoppingListId = shoppingListId,
+        listName = listName,
         storeId = storeId,
         storeName = storeName,
         itemCount = itemCount,
