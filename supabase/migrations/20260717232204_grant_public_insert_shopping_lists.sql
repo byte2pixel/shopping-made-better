@@ -1,6 +1,6 @@
 ALTER TABLE public.shopping_lists ENABLE ROW LEVEL SECURITY;
 
-GRANT INSERT ON public.shopping_lists TO anon, authenticated;
+GRANT INSERT ON public.shopping_lists TO authenticated;
 
 CREATE POLICY "Shopping Lists are writable by everyone"
   ON public.shopping_lists
