@@ -19,6 +19,8 @@ sealed interface Dest {
     data object SignUp : Dest
 
     @Serializable
+    data object Onboarding : Dest
+    @Serializable
     data object ShoppingLists : Dest
     @Serializable
     data object ShoppingListItemComparison : Dest
