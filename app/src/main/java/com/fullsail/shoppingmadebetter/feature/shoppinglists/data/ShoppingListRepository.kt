@@ -9,6 +9,6 @@ interface ShoppingListRepository {
     suspend fun getProduct(searchName : String): List<ProductSearchDto>
     suspend fun addItem(item: InsertItem)
     suspend fun addList(list: ShoppingList)
-    suspend fun deleteList(listName : String)
+    suspend fun removeList(listName : String)
 
 }

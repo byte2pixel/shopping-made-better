@@ -9,7 +9,7 @@ class RemoveListUseCaseImpl @Inject constructor(
 ) : RemoveListUseCase {
     override suspend fun execute(input: String): ShoppingListUseCase.Output {
         return try {
-            repository.deleteList(input)
+            repository.removeList(input)
             ShoppingListUseCase.Output.Success
 
         } catch (e: Exception) {
