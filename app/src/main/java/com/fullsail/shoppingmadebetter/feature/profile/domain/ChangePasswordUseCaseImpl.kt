@@ -7,11 +7,12 @@ class ChangePasswordUseCaseImpl @Inject constructor(
     private val repository: ProfileRepository
 ) : ChangePasswordUseCase {
 
-    override suspend fun invoke(newPassword: String): Result<Unit> {
-        return if (newPassword.isBlank() || newPassword.length < 6) {
-            Result.failure(IllegalArgumentException("Password must be at least 6 characters long."))
-        } else {
-            repository.changePassword(newPassword)
+    override suspend fun execute(input: ChangePasswordUseCase.Input): ChangePasswordUseCase.Output {
+        return try {
+            repository.changePassword(input.newPassword)
+            ChangePasswordUseCase.Output.Success
+        } catch (e: Exception) {
+            ChangePasswordUseCase.Output.Failure(e)
         }
     }
 }

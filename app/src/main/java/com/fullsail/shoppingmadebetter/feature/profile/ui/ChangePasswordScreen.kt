@@ -3,84 +3,99 @@ package com.fullsail.shoppingmadebetter.feature.profile.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.fullsail.shoppingmadebetter.R
+import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
 @Composable
 fun ChangePasswordScreen(
     viewModel: ProfileViewModel,
-    onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    onNavigateBack: () -> Unit
 ) {
-    val password by viewModel.passwordInput.collectAsState()
-    val confirmPassword by viewModel.confirmPasswordInput.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val passwordInput by viewModel.passwordInput.collectAsState()
+    val confirmPasswordInput by viewModel.confirmPasswordInput.collectAsState()
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Change Password",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 24.dp)
-        )
+    ChangePasswordContent(
+        uiState = uiState,
+        passwordInput = passwordInput,
+        confirmPasswordInput = confirmPasswordInput,
+        onPasswordChanged = viewModel::onPasswordChanged,
+        onConfirmPasswordChanged = viewModel::onConfirmPasswordChanged,
+        onSubmit = viewModel::executePasswordChange,
+        onNavigateBack = onNavigateBack
+    )
+}
 
-        OutlinedTextField(
-            value = password,
-            onValueChange = { viewModel.onPasswordChanged(it) },
-            label = { Text("New Password") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = confirmPassword,
-            onValueChange = { viewModel.onConfirmPasswordChanged(it) },
-            label = { Text("Confirm New Password") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        when (uiState) {
-            is PasswordUiState.Loading -> CircularProgressIndicator()
-            is PasswordUiState.Success -> {
-                Text("Password changed successfully!", color = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-            is PasswordUiState.Error -> {
-                Text(
-                    text = (uiState as PasswordUiState.Error).message,
-                    color = MaterialTheme.colorScheme.error
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-            else -> {}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChangePasswordContent(
+    uiState: PasswordUiState,
+    passwordInput: String,
+    confirmPasswordInput: String,
+    onPasswordChanged: (String) -> Unit,
+    onConfirmPasswordChanged: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onNavigateBack: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Change Password") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_arrow_back),
+                            contentDescription = "Back"
+                        )
+                    }
+                }
+            )
         }
-
-        Button(
-            onClick = { viewModel.executePasswordChange() },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = uiState !is PasswordUiState.Loading
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Update Password")
-        }
+            if (uiState is PasswordUiState.Error) {
+                Text(
+                    text = uiState.message,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
 
-        TextButton(onClick = onNavigateBack) {
-            Text("Cancel")
+            OutlinedTextField(
+                value = passwordInput,
+                onValueChange = onPasswordChanged,
+                label = { Text("New Password") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = confirmPasswordInput,
+                onValueChange = onConfirmPasswordChanged,
+                label = { Text("Confirm New Password") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Button(
+                onClick = onSubmit,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = uiState !is PasswordUiState.Loading
+            ) {
+                if (uiState is PasswordUiState.Loading) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                } else {
+                    Text("Update Password")
+                }
+            }
         }
     }
 }
@@ -88,15 +103,15 @@ fun ChangePasswordScreen(
 @Preview(showBackground = true)
 @Composable
 fun ChangePasswordScreenPreview() {
-    // We pass dummy lambda handlers just to see the layout visual
-    Column {
-        Text("Change Password Preview (Mock View)")
-        // Renders the visual form layout shells
-        OutlinedTextField(
-            value = "",
-            onValueChange = {},
-            label = { Text("New Password") },
-            modifier = Modifier.fillMaxWidth()
+    ShoppingMadeBetterTheme {
+        ChangePasswordContent(
+            uiState = PasswordUiState.Idle,
+            passwordInput = "",
+            confirmPasswordInput = "",
+            onPasswordChanged = {},
+            onConfirmPasswordChanged = {},
+            onSubmit = {},
+            onNavigateBack = {}
         )
     }
 }

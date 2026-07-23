@@ -4,11 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.feature.profile.domain.ChangePasswordUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.launch
-import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 sealed interface PasswordUiState {
     object Idle : PasswordUiState
@@ -43,6 +43,13 @@ class ProfileViewModel @Inject constructor(
         val password = _passwordInput.value
         val confirmPassword = _confirmPasswordInput.value
 
+        // 1. Validate length in ViewModel (Mel's Tier 2 request)
+        if (password.length < 6) {
+            _uiState.value = PasswordUiState.Error("Password must be at least 6 characters long.")
+            return
+        }
+
+        // 2. Validate passwords match
         if (password != confirmPassword) {
             _uiState.value = PasswordUiState.Error("Passwords do not match.")
             return
@@ -50,15 +57,22 @@ class ProfileViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.value = PasswordUiState.Loading
-            changePasswordUseCase(newPassword = password)
-                .onSuccess {
+
+            // 3. Call execute with Input object matching the UseCase contract
+            val result = changePasswordUseCase.execute(ChangePasswordUseCase.Input(password))
+
+            when (result) {
+                is ChangePasswordUseCase.Output.Success -> {
                     _uiState.value = PasswordUiState.Success
                     _passwordInput.value = ""
                     _confirmPasswordInput.value = ""
                 }
-                .onFailure { error ->
-                    _uiState.value = PasswordUiState.Error(error.localizedMessage ?: "Failed to update password.")
+                is ChangePasswordUseCase.Output.Failure -> {
+                    _uiState.value = PasswordUiState.Error(
+                        result.error.localizedMessage ?: "Failed to update password."
+                    )
                 }
+            }
         }
     }
 

@@ -1,5 +1,5 @@
 package com.fullsail.shoppingmadebetter.feature.profile.data
 
 interface ProfileRepository {
-    suspend fun changePassword(newPassword: String): Result<Unit>
+    suspend fun changePassword(newPassword: String)
 }

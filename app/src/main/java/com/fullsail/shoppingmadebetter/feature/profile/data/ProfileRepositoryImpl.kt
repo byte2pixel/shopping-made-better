@@ -8,14 +8,9 @@ class ProfileRepositoryImpl @Inject constructor(
     private val supabaseClient: SupabaseClient
 ) : ProfileRepository {
 
-    override suspend fun changePassword(newPassword: String): Result<Unit> {
-        return try {
-            supabaseClient.auth.updateUser {
-                password = newPassword
-            }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
+    override suspend fun changePassword(newPassword: String) {
+        supabaseClient.auth.updateUser {
+            password = newPassword
         }
     }
 }
