@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -31,10 +30,16 @@ fun OnboardingScreen(
             TopAppBar(
                 title = { Text("Profile Setup (${currentStep + 1}/3)") },
                 navigationIcon = {
-                    if (currentStep > 0) {
-                        TextButton(onClick = { currentStep-- }) {
-                            Text("Back", color = MaterialTheme.colorScheme.primary)
+                    TextButton(
+                        onClick = {
+                            if (currentStep > 0) {
+                                currentStep--
+                            } else {
+                                onNavigateBack()
+                            }
                         }
+                    ) {
+                        Text("Back", color = MaterialTheme.colorScheme.primary)
                     }
                 }
             )
@@ -60,7 +65,7 @@ fun OnboardingScreen(
                     } else {
                         Button(
                             onClick = onSubmit,
-                            enabled = !isSubmitting && selectedGoal != null, // 👈 Simpler checks
+                            enabled = !isSubmitting && selectedGoal != null,
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
                             if (isSubmitting) {
