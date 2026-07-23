@@ -15,6 +15,7 @@ import javax.inject.Inject
 sealed interface ShoppingTripsUiState {
     data object Loading : ShoppingTripsUiState
     data class Success(val trips: List<ShoppingTrip>) : ShoppingTripsUiState
+    data object RemovalSuccess : ShoppingTripsUiState
     data object Error : ShoppingTripsUiState
 }
 
@@ -32,8 +33,17 @@ class ShoppingTripsViewModel @Inject constructor(
     {
         _uiState.value = ShoppingTripsUiState.Loading
         viewModelScope.launch {
-            getRemoveListUseCase.execute(listName)
-            load()
+             when ( val out = getRemoveListUseCase.execute(listName)) {
+                is RemoveListUseCase.Output.Success ->{
+                    load()
+                }
+                is RemoveListUseCase.Output.Failure ->
+                {
+                    ShoppingTripsUiState.Error
+                }
+
+            }
+
         }
 
     }

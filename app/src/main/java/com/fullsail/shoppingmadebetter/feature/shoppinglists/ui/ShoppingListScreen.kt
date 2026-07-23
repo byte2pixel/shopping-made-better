@@ -63,12 +63,17 @@ fun ShoppingListsScreen(
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
 
-                                items(state.trips, key = { it.shoppingListId }) { TripCard(it,viewModel) }
+                                items(state.trips, key = { it.shoppingListId }) { TripCard(it) {
+                                    viewModel.removeList(
+                                        it.shoppingListId
+                                    )
+                                }
+                                }
                             }
                         }
 
 
-
+                    else -> {}
                 }
             }
 
@@ -92,7 +97,7 @@ fun ShoppingListsScreen(
 
         }
 @Composable
-private fun TripCard(trip: ShoppingTrip,viewModel : ShoppingTripsViewModel)
+private fun TripCard(trip: ShoppingTrip,onDelete: () -> Unit)
 {
     OutlinedCard(
         onClick = {
@@ -116,7 +121,7 @@ private fun TripCard(trip: ShoppingTrip,viewModel : ShoppingTripsViewModel)
                 modifier= Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End)
             {
-                OutlinedButton(onClick = {viewModel.removeList(trip.listName)})
+                OutlinedButton(onClick = {onDelete})
                 {
                     Text("Delete")
                 }

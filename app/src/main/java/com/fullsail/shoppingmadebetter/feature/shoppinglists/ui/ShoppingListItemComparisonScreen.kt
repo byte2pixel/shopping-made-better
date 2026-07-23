@@ -107,22 +107,28 @@ fun ShoppingListItemComparisonScreen(
     fun ItemCard(product: StoreProductPricing, viewModel : ItemComparisonViewmodel, onItemComparison: () -> Unit)
     {
         val storeList  by viewModel.shoppingLists.collectAsState()
-        var cardClicked by remember {mutableStateOf(false)}
+        var showDialog by remember {mutableStateOf(false)}
         var listName by remember {mutableStateOf("")}
 
-
-        if (cardClicked)
+        fun onAddClicked()
         {
+            val list = storeList.firstOrNull { it.storeId == product.storeId }
+            if (list != null)
+            {
+                showDialog = false
+                viewModel.addItem(InsertItem(list.shoppingListId, product.productId, 1, "", false, true))
+                onItemComparison()
+            }
+            else {
+                showDialog = true
+            }
 
 
-        val list = storeList.firstOrNull { it.storeId == product.storeId }
-        if (list != null)
-        {
-            cardClicked = false
-            viewModel.addItem(InsertItem(list.shoppingListId, product.productId, 1, "", false, true))
-            onItemComparison()
         }
-        else{
+
+
+        if (showDialog)
+        {
                BasicAlertDialog(onDismissRequest = {}, Modifier.fillMaxWidth(), DialogProperties(),
                 {
                     Column(modifier = Modifier.fillMaxWidth().background( color = MaterialTheme.colorScheme.surface).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -131,8 +137,7 @@ fun ShoppingListItemComparisonScreen(
                     Spacer(modifier = Modifier.height(50.dp))
                     Button(enabled= listName.isNotBlank(),
                             onClick = {
-
-                                cardClicked = false
+                                showDialog = false
                         viewModel.createListAddItem(product,listName)
                         onItemComparison()
                     }
@@ -149,11 +154,11 @@ fun ShoppingListItemComparisonScreen(
 
 
         }
-        }
+
 
         OutlinedCard(
             onClick = {
-                cardClicked = true
+               onAddClicked()
 
             },
 
@@ -179,7 +184,7 @@ fun ShoppingListItemComparisonScreen(
                 Button(
                     onClick =
                         {
-                            cardClicked = true
+                            onAddClicked()
 
                         },
                     Modifier.align(Alignment.End)

@@ -7,18 +7,18 @@ import javax.inject.Inject
 class RemoveListUseCaseImpl @Inject constructor(
     private val repository: ShoppingListRepository,
 ) : RemoveListUseCase {
-    override suspend fun execute(input: String): ShoppingListUseCase.Output {
+    override suspend fun execute(listId: String): RemoveListUseCase.Output {
         return try {
-            repository.removeList(input)
-            ShoppingListUseCase.Output.Success
+            repository.removeList(listId)
+            RemoveListUseCase.Output.Success
 
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to add item to shopping list: ${e.message}", e)
-            ShoppingListUseCase.Output.Failure(e)
+            Log.e(TAG, "Failed to remove list: ${e.message}", e)
+            RemoveListUseCase.Output.Failure(e)
         }
     }
 
     private companion object {
-        const val TAG = "RemoveJUseCase"
+        const val TAG = "RemoveListUseCase"
     }
 }

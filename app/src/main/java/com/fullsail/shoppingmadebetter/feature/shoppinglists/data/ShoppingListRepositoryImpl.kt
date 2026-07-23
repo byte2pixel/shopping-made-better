@@ -52,10 +52,10 @@ class ShoppingListRepositoryImpl @Inject constructor(
              list.storeId, list.name, list.shared)){ select()}.decodeSingle<ShoppingListDto>()
          }
 
-    override suspend fun removeList(listName: String) {
+    override suspend fun removeList(listId: String) {
         postgrest.from("shopping_lists").delete{
             filter{
-                eq("name", listName)
+                eq("shopping_list_id", listId)
             }
 
         }
