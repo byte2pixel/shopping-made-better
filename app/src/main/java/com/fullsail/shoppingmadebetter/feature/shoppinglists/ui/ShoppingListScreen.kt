@@ -85,12 +85,6 @@ fun ShoppingListsScreen(
                 }
             }
 
-            if (bSearching)
-            {
-
-            }
-
-
         }
 @Composable
 private fun TripCard(trip: ShoppingTrip, onItemComparison :(Dest) -> Unit)

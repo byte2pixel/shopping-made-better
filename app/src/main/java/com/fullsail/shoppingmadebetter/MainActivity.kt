@@ -162,7 +162,7 @@ fun ShoppingMadeBetterApp(
                 })
             }
             composable<Dest.ShoppingListItemsScreen>{
-                ShoppingListItemsScreen(onItemComparison = {}, listId = it.toRoute<Dest.ShoppingListItemsScreen>().listId )
+                ShoppingListItemsScreen( listId = it.toRoute<Dest.ShoppingListItemsScreen>().listId )
             }
             composable<Dest.ShoppingListItemComparison> {
                 ShoppingListItemComparisonScreen(onItemComparison = {

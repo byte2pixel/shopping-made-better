@@ -27,7 +27,6 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
 
 @Composable
 fun ShoppingListItemsScreen(
-    onItemComparison :() -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ShoppingListItemsViewModel = hiltViewModel(),
     listId : String
