@@ -3,7 +3,6 @@ package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RemoveListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
