@@ -121,7 +121,7 @@ private fun TripCard(trip: ShoppingTrip,onDelete: () -> Unit)
                 modifier= Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End)
             {
-                OutlinedButton(onClick = {onDelete})
+                OutlinedButton(onClick = {onDelete()})
                 {
                     Text("Delete")
                 }

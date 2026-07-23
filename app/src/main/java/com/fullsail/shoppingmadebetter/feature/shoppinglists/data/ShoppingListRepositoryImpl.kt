@@ -55,7 +55,7 @@ class ShoppingListRepositoryImpl @Inject constructor(
     override suspend fun removeList(listId: String) {
         postgrest.from("shopping_lists").delete{
             filter{
-                eq("shopping_list_id", listId)
+                eq("id", listId)
             }
 
         }
