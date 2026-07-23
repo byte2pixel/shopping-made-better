@@ -2,6 +2,7 @@ package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RemoveListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,12 +21,22 @@ sealed interface ShoppingTripsUiState {
 @HiltViewModel
 class ShoppingTripsViewModel @Inject constructor(
     private val getShoppingTripsUseCase: GetShoppingTripsUseCase,
+    private val getRemoveListUseCase: RemoveListUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ShoppingTripsUiState>(ShoppingTripsUiState.Loading)
     val uiState: StateFlow<ShoppingTripsUiState> = _uiState.asStateFlow()
 
     init { load() }
+    fun removeList (listName : String)
+    {
+        _uiState.value = ShoppingTripsUiState.Loading
+        viewModelScope.launch {
+            getRemoveListUseCase.execute(listName)
+            load()
+        }
+
+    }
 
     fun load() {
         _uiState.value = ShoppingTripsUiState.Loading

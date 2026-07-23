@@ -2,6 +2,8 @@ package com.fullsail.shoppingmadebetter.feature.shoppinglists.di
 
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepositoryImpl
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RemoveListUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RemoveListUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
@@ -41,6 +43,10 @@ abstract class ShoppingListsModule {
     abstract fun bindStoreProductPricingUseCase(
         impl: StoreProductPricingUseCaseImpl,
     ): StoreProductPricingUseCase
+    @Binds
+    abstract fun bindRemoveListUseCase(
+        impl: RemoveListUseCaseImpl,
+    ): RemoveListUseCase
 
 
     @Binds
