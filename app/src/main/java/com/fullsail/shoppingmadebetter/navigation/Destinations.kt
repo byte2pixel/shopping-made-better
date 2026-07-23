@@ -33,6 +33,11 @@ sealed interface Dest {
     @Serializable
     data object Pantry : Dest
 
+    @Serializable
+    data object Profile : Dest
+
+    @Serializable
+    data object ChangePassword : Dest
     /**
      * A detail screen for an item in the pantry.
      * @param id The ID of the item to show.
