@@ -1,6 +1,7 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
 
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,13 +16,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
@@ -34,11 +36,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ModifierInfo
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.storeProductPricing.StoreProductPricing
@@ -84,7 +86,9 @@ fun ShoppingListItemComparisonScreen(
                       else  {
 
             LazyColumn(
-                Modifier.fillMaxSize().padding(16.dp),
+                Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(state.price.filter { it.productTitle == selectedProduct }, key = {it.productId + it.storeId }) {ItemCard(it, viewModel, onItemComparison) }
@@ -98,24 +102,64 @@ fun ShoppingListItemComparisonScreen(
     }
 
 }
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ItemCard(product: StoreProductPricing, viewModel : ItemComparisonViewmodel, onItemComparison: () -> Unit)
     {
         val storeList  by viewModel.shoppingLists.collectAsState()
+        var showDialog by remember {mutableStateOf(false)}
+        var listName by remember {mutableStateOf("")}
+
+        fun onAddClicked()
+        {
+            val list = storeList.firstOrNull { it.storeId == product.storeId }
+            if (list != null)
+            {
+                showDialog = false
+                viewModel.addItem(InsertItem(list.shoppingListId, product.productId, 1, "", false, true))
+                onItemComparison()
+            }
+            else {
+                showDialog = true
+            }
+
+
+        }
+
+
+        if (showDialog)
+        {
+               BasicAlertDialog(onDismissRequest = {}, Modifier.fillMaxWidth(), DialogProperties(),
+                {
+                    Column(modifier = Modifier.fillMaxWidth().background( color = MaterialTheme.colorScheme.surface).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+
+                    OutlinedTextField(modifier = Modifier.fillMaxWidth(),value = listName, onValueChange = {listName = it},label= { Text("Enter list name") })
+                    Spacer(modifier = Modifier.height(50.dp))
+                    Button(enabled= listName.isNotBlank(),
+                            onClick = {
+                                showDialog = false
+                        viewModel.createListAddItem(product,listName)
+                        onItemComparison()
+                    }
+                        )
+                    {
+                        Text("Ok")
+                    }
+
+                    }
+            })
+
+
+
+
+
+        }
+
 
         OutlinedCard(
             onClick = {
+               onAddClicked()
 
-                val list = storeList.firstOrNull { it.storeId == product.storeId }
-                if (list != null)
-                {
-                    viewModel.addItem(InsertItem(list.shoppingListId, product.productId, 1, "", false, true))
-                    onItemComparison()
-                }
-                else{
-                    viewModel.createListAddItem(product)
-                    onItemComparison()
-                }
             },
 
 
@@ -123,7 +167,9 @@ fun ShoppingListItemComparisonScreen(
         ) {
 
 
-            Column(modifier = Modifier .padding(16.dp).fillMaxWidth())
+            Column(modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth())
             {
 
                 Text(product.storeName, style = MaterialTheme.typography.titleMedium)
@@ -138,6 +184,7 @@ fun ShoppingListItemComparisonScreen(
                 Button(
                     onClick =
                         {
+                            onAddClicked()
 
                         },
                     Modifier.align(Alignment.End)
@@ -147,6 +194,7 @@ fun ShoppingListItemComparisonScreen(
                 }
             }
         }
+
     }
 
     @OptIn(ExperimentalMaterial3Api::class)

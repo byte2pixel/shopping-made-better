@@ -2,6 +2,7 @@ package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RemoveListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,18 +15,38 @@ import javax.inject.Inject
 sealed interface ShoppingTripsUiState {
     data object Loading : ShoppingTripsUiState
     data class Success(val trips: List<ShoppingTrip>) : ShoppingTripsUiState
+    data object RemovalSuccess : ShoppingTripsUiState
     data object Error : ShoppingTripsUiState
 }
 
 @HiltViewModel
 class ShoppingTripsViewModel @Inject constructor(
     private val getShoppingTripsUseCase: GetShoppingTripsUseCase,
+    private val getRemoveListUseCase: RemoveListUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ShoppingTripsUiState>(ShoppingTripsUiState.Loading)
     val uiState: StateFlow<ShoppingTripsUiState> = _uiState.asStateFlow()
 
     init { load() }
+    fun removeList (listName : String)
+    {
+        _uiState.value = ShoppingTripsUiState.Loading
+        viewModelScope.launch {
+             when ( val out = getRemoveListUseCase.execute(listName)) {
+                is RemoveListUseCase.Output.Success ->{
+                    load()
+                }
+                is RemoveListUseCase.Output.Failure ->
+                {
+                    ShoppingTripsUiState.Error
+                }
+
+            }
+
+        }
+
+    }
 
     fun load() {
         _uiState.value = ShoppingTripsUiState.Loading
