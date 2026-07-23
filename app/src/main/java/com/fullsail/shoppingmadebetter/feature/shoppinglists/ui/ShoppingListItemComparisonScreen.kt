@@ -138,7 +138,16 @@ fun ShoppingListItemComparisonScreen(
                 Button(
                     onClick =
                         {
-
+                            val list = storeList.firstOrNull { it.storeId == product.storeId }
+                            if (list != null)
+                            {
+                                viewModel.addItem(InsertItem(list.shoppingListId, product.productId, 1, "", false, true))
+                                onItemComparison()
+                            }
+                            else{
+                                viewModel.createListAddItem(product)
+                                onItemComparison()
+                            }
                         },
                     Modifier.align(Alignment.End)
                 )

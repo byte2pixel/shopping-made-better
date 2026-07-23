@@ -72,8 +72,6 @@ fun ShoppingListsScreen(
 
                 }
             }
-
-            var bSearching by remember { mutableStateOf(false) }
             Box(modifier = Modifier.fillMaxSize())
             {
                 OutlinedButton(
