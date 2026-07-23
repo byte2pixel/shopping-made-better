@@ -20,10 +20,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
+import com.fullsail.shoppingmadebetter.navigation.Dest
 
 @Composable
 fun ShoppingListsScreen(
-    onItemComparison :() -> Unit,
+    onItemComparison :(dest : Dest) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ShoppingTripsViewModel = hiltViewModel(),
 ) {
@@ -63,7 +64,7 @@ fun ShoppingListsScreen(
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
 
-                                items(state.trips, key = { it.shoppingListId }) { TripCard(it) }
+                                items(state.trips, key = { it.shoppingListId }) { TripCard(it, onItemComparison) }
                             }
                         }
 
@@ -76,7 +77,7 @@ fun ShoppingListsScreen(
             Box(modifier = Modifier.fillMaxSize())
             {
                 OutlinedButton(
-                    onClick = { bSearching = true },
+                    onClick = { onItemComparison(Dest.ShoppingListItemComparison) },
                     modifier = Modifier.align(Alignment.BottomEnd),
                     shape = CircleShape
                 ) {
@@ -86,13 +87,13 @@ fun ShoppingListsScreen(
 
             if (bSearching)
             {
-                onItemComparison()
+
             }
 
 
         }
 @Composable
-private fun TripCard(trip: ShoppingTrip)
+private fun TripCard(trip: ShoppingTrip, onItemComparison :(Dest) -> Unit)
 {
     OutlinedCard(
         onClick = {
@@ -118,7 +119,7 @@ private fun TripCard(trip: ShoppingTrip)
                 {
                     Text("Delete")
                 }
-                Button(onClick = {})
+                Button(onClick = {onItemComparison(Dest.ShoppingListItemsScreen(trip.shoppingListId))})
                 {
                     Text("Details")
                 }

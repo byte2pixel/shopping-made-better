@@ -1,0 +1,1 @@
+GRANT SELECT ON TABLE public.shopping_list_item_named_view to authenticated;
