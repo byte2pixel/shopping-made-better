@@ -7,9 +7,9 @@ import javax.inject.Inject
 class DeleteItemsUseCaseImpl @Inject constructor(
     private val repository: ShoppingListRepository,
 ) : DeleteItemsUseCase {
-    override suspend fun execute(input : String): DeleteItemsUseCase.Output {
+    override suspend fun execute(id : String): DeleteItemsUseCase.Output {
         return try {
-            repository.deleteItem(input)
+            repository.deleteItem(id)
             DeleteItemsUseCase.Output.Success
         } catch (e: Exception) {
             Log.e(TAG, "Failed to remove item: ${e.message}", e)

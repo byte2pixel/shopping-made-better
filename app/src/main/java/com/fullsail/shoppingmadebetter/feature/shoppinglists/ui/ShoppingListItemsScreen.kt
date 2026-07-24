@@ -70,7 +70,7 @@ fun ListRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel)
             viewModel.deleteItems(item.id)
             viewModel.getItems(item.shoppingListId)})
         {
-            Icon(painterResource(id = R.drawable.delete_24px), contentDescription = "delete")
+            Icon(painterResource(id = R.drawable.ic_delete), contentDescription = "delete")
         }
         Text(item.title)
     }
