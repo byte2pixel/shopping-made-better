@@ -52,6 +52,31 @@ class ShoppingListRepositoryImpl @Inject constructor(
              list.storeId, list.name, list.shared)){ select()}.decodeSingle<ShoppingListDto>()
          }
 
+    override suspend fun getItems(list: String) : List<ShoppingListItemsDto> = withContext(Dispatchers.IO) {
+        postgrest
+            .from("shopping_list_item_named_view")
+            .select {
+                filter {
+                    eq("shopping_id", list )
+                }
+            }
+            .decodeList<ShoppingListItemsDto>()
+    }
+    override suspend fun deleteItem(itemId : String)
+    {
+        postgrest
+            .from("shopping_list_items")
+            .delete {
+                filter {
+                    eq("id", itemId )
+                }
+            }
+
+        Log.d("DeleteItem", "Item: $itemId deleted")
+
+    }
+
+
     override suspend fun removeList(listId: String) {
         postgrest.from("shopping_lists").delete{
             filter{

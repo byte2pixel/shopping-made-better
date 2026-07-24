@@ -47,6 +47,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingScreen
 import com.fullsail.shoppingmadebetter.feature.profile.ui.ChangePasswordScreen
 import com.fullsail.shoppingmadebetter.feature.profile.ui.ProfileScreen
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListItemsScreen
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -157,8 +158,11 @@ fun ShoppingMadeBetterApp(
 
             composable<Dest.ShoppingLists> {
                 ShoppingListsScreen(onItemComparison = {
-                    navController.navigate(Dest.ShoppingListItemComparison)
+                    navController.navigate(it)
                 })
+            }
+            composable<Dest.ShoppingListItemsScreen>{
+                ShoppingListItemsScreen( listId = it.toRoute<Dest.ShoppingListItemsScreen>().listId )
             }
             composable<Dest.ShoppingListItemComparison> {
                 ShoppingListItemComparisonScreen(onItemComparison = {

@@ -9,9 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -20,10 +17,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
+import com.fullsail.shoppingmadebetter.navigation.Dest
 
 @Composable
 fun ShoppingListsScreen(
-    onItemComparison :() -> Unit,
+    onItemComparison :(dest : Dest) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ShoppingTripsViewModel = hiltViewModel(),
 ) {
@@ -63,11 +61,11 @@ fun ShoppingListsScreen(
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
 
-                                items(state.trips, key = { it.shoppingListId }) { TripCard(it) {
+                                items(state.trips, key = { it.shoppingListId }) { TripCard(it, onDelete =  {
                                     viewModel.removeList(
                                         it.shoppingListId
                                     )
-                                }
+                                }, onItemComparison = onItemComparison)
                                 }
                             }
                         }
@@ -76,12 +74,10 @@ fun ShoppingListsScreen(
                     else -> {}
                 }
             }
-
-            var bSearching by remember { mutableStateOf(false) }
             Box(modifier = Modifier.fillMaxSize())
             {
                 OutlinedButton(
-                    onClick = { bSearching = true },
+                    onClick = { onItemComparison(Dest.ShoppingListItemComparison) },
                     modifier = Modifier.align(Alignment.BottomEnd),
                     shape = CircleShape
                 ) {
@@ -89,15 +85,9 @@ fun ShoppingListsScreen(
                 }
             }
 
-            if (bSearching)
-            {
-                onItemComparison()
-            }
-
-
         }
 @Composable
-private fun TripCard(trip: ShoppingTrip,onDelete: () -> Unit)
+private fun TripCard(trip: ShoppingTrip,onDelete: () -> Unit, onItemComparison :(dest : Dest) -> Unit)
 {
     OutlinedCard(
         onClick = {
@@ -125,7 +115,7 @@ private fun TripCard(trip: ShoppingTrip,onDelete: () -> Unit)
                 {
                     Text("Delete")
                 }
-                Button(onClick = {})
+                Button(onClick = {onItemComparison(Dest.ShoppingListItemsScreen(trip.shoppingListId))})
                 {
                     Text("Details")
                 }
