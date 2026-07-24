@@ -61,12 +61,17 @@ fun ShoppingListsScreen(
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
 
-                                items(state.trips, key = { it.shoppingListId }) { TripCard(it, onItemComparison) }
+                                items(state.trips, key = { it.shoppingListId }) { TripCard(it) {
+                                    viewModel.removeList(
+                                        it.shoppingListId
+                                    )
+                                }
+                                }
                             }
                         }
 
 
-
+                    else -> {}
                 }
             }
             Box(modifier = Modifier.fillMaxSize())
@@ -82,7 +87,7 @@ fun ShoppingListsScreen(
 
         }
 @Composable
-private fun TripCard(trip: ShoppingTrip, onItemComparison :(Dest) -> Unit)
+private fun TripCard(trip: ShoppingTrip,onDelete: () -> Unit)
 {
     OutlinedCard(
         onClick = {
@@ -93,6 +98,8 @@ private fun TripCard(trip: ShoppingTrip, onItemComparison :(Dest) -> Unit)
     {
         Column(Modifier.padding(16.dp).fillMaxWidth())
         {
+            Text(trip.listName, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
             Text(trip.storeName, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
             Text(
@@ -104,7 +111,7 @@ private fun TripCard(trip: ShoppingTrip, onItemComparison :(Dest) -> Unit)
                 modifier= Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End)
             {
-                OutlinedButton(onClick = {})
+                OutlinedButton(onClick = {onDelete()})
                 {
                     Text("Delete")
                 }

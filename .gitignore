@@ -36,3 +36,7 @@ google-services.json
 # Node modules
 node_modules/
 supabase/seed.sql
+
+# Python
+__pycache__/
+*.pyc

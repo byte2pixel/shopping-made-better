@@ -6,6 +6,8 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsU
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetShoppingListItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetShoppingListItemsUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RemoveListUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RemoveListUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
@@ -53,6 +55,9 @@ abstract class ShoppingListsModule {
     abstract fun bindDeleteItemUseCase(
         impl: DeleteItemsUseCaseImpl,
     ): DeleteItemsUseCase
+    abstract fun bindRemoveListUseCase(
+        impl: RemoveListUseCaseImpl,
+    ): RemoveListUseCase
 
 
     @Binds
