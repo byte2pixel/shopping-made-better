@@ -76,31 +76,43 @@ on conflict (id) do nothing;
 delete from public.inventory_items
 where user_id = '11111111-1111-1111-1111-111111111111';
 
+-- expires_at is intentionally NOT set here: the trg_inventory_set_expiry trigger
+-- (migration 20260723120000) fills it as purchased_at + products.shelf_life_days.
+-- We seed only purchased_at, as a randomized slice of each product's shelf life
+-- BEFORE today, so expiry always lands fresh relative to *now* on every
+-- `db reset`. used_lo/used_hi bound how much of the shelf life has already
+-- elapsed at seed time:  used ~1 -> expiring now / just expired,  used ~0 -> just
+-- bought. The bands are hand-tuned to give a realistic spread the pantry
+-- dashboard can show off (a few expired, several expiring soon, the rest fresh).
 insert into public.inventory_items (
-  user_id, product_id, quantity, unit, location, purchased_at, expires_at
+  user_id, product_id, quantity, unit, location, purchased_at
 )
 select
   '11111111-1111-1111-1111-111111111111',
   p.id,
-  v.quantity, v.unit, v.location, v.purchased_at, v.expires_at
+  v.quantity, v.unit, v.location,
+  current_date - round(
+    coalesce(p.shelf_life_days, 30)
+    * (v.used_lo + random() * (v.used_hi - v.used_lo))
+  )::int
 from (values
-  -- source_product_id, quantity, unit, location, purchased_at, expires_at
-  ('20962518_EA',    1, 'carton', 'fridge',  current_date - 2, current_date + 5),   -- Milk, 2%
-  ('21397475_EA',    1, 'tub',    'fridge',  current_date - 5, current_date + 10),  -- Cream Cheese Spread
-  ('20324557_EA',    1, 'tub',    'fridge',  current_date - 3, current_date + 7),   -- Cottage Cheese
-  ('20162840001_EA', 1, 'bunch',  'fridge',  current_date - 1, current_date + 3),   -- Spinach, Bunched
-  ('20143381001_KG', 6, 'ea',     'fridge',  current_date - 1, current_date + 6),   -- Roma Tomatoes
-  ('20091825001_EA', 1, 'bunch',  'fridge',  current_date - 1, current_date + 4),   -- Cilantro
-  ('20179038001_KG', 1, 'ea',     'fridge',  current_date - 4, current_date + 21),  -- Ginger
-  ('21191828_EA',    2, 'bag',    'freezer', current_date - 7, current_date + 120), -- Chicken Strips
-  ('21470667_EA',    1, 'bag',    'freezer', current_date - 7, current_date + 90),  -- Gnocchi
-  ('20788443_EA',    1, 'loaf',   'pantry',  current_date - 1, current_date + 4),   -- Bread, French
-  ('20811362001_EA', 1, 'bag',    'pantry',  current_date - 3, current_date + 14),  -- Red Onions, 3 lb
-  ('21219491_EA',    1, 'jar',    'pantry',  current_date - 10, current_date + 200),-- Peanut Butter Chocolatey
-  ('21535597_EA',    3, 'pouch',  'pantry',  current_date - 10, current_date + 300),-- Jasmine Rice pouch
-  ('21125083_EA',    2, 'jar',    'pantry',  current_date - 10, current_date + 250),-- Mac & Cheese Sauce
-  ('21169553_EA',    1, 'loaf',   'pantry',  current_date - 2, current_date + 6)    -- 100% Whole Grain Bread
-) as v(source_product_id, quantity, unit, location, purchased_at, expires_at)
+  -- source_product_id, quantity, unit, location, used_lo, used_hi  (shelf life, expiry band)
+  ('20962518_EA',    1, 'carton', 'fridge',  1.00, 1.20),  -- Milk, 2%            (10d)  expired / at expiry
+  ('20091825001_EA', 1, 'bunch',  'fridge',  0.85, 1.05),  -- Cilantro            (7d)   just expired -> ~1d left
+  ('20162840001_EA', 1, 'bunch',  'fridge',  0.80, 1.00),  -- Spinach, Bunched    (7d)   expiring very soon
+  ('20788443_EA',    1, 'loaf',   'pantry',  1.00, 1.35),  -- Bread, French       (7d)   expired
+  ('21169553_EA',    1, 'loaf',   'pantry',  0.70, 0.95),  -- Whole Grain Bread   (7d)   expiring soon
+  ('21397475_EA',    1, 'tub',    'fridge',  0.60, 0.85),  -- Cream Cheese Spread (10d)  expiring soon
+  ('20143381001_KG', 6, 'ea',     'fridge',  0.45, 0.65),  -- Roma Tomatoes       (14d)  ~1 week left
+  ('20324557_EA',    1, 'tub',    'fridge',  0.55, 0.75),  -- Cottage Cheese      (30d)  a week or two left
+  ('20811362001_EA', 1, 'bag',    'pantry',  0.35, 0.55),  -- Red Onions, 3 lb    (30d)  a couple weeks left
+  ('20179038001_KG', 1, 'ea',     'fridge',  0.30, 0.50),  -- Ginger              (30d)  a couple weeks left
+  ('21125083_EA',    2, 'jar',    'pantry',  0.10, 0.35),  -- Mac & Cheese Sauce  (365d) fresh
+  ('21219491_EA',    1, 'jar',    'pantry',  0.10, 0.30),  -- Peanut Butter       (365d) fresh
+  ('21535597_EA',    3, 'pouch',  'pantry',  0.05, 0.25),  -- Jasmine Rice pouch  (365d) fresh
+  ('21469394_EA',    2, 'bag',    'freezer', 0.10, 0.30),  -- Jerk Chicken Wings  (180d) fresh (frozen)
+  ('21496426_EA',    1, 'bag',    'freezer', 0.05, 0.25)   -- Frozen Red Raspberries (180d) fresh (frozen)
+) as v(source_product_id, quantity, unit, location, used_lo, used_hi)
 join public.products p on p.source_product_id = v.source_product_id;
 
 -- 4) Demo shopping trips (moved here from migration 20260708015853). These

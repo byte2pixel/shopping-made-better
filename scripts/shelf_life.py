@@ -199,7 +199,7 @@ RULES: list[tuple[str, tuple[str, ...]]] = [
     ("berries", ("strawberr", "blueberr", "raspberr", "blackberr", "cranberr",
                  "fresh berries")),
     ("root_vegetables", ("potato", "onion", "carrot", "beet", "turnip", "parsnip",
-                         "rutabaga", "sweet potato", " yam", "radish", "ginger root",
+                         "rutabaga", "sweet potato", " yam", "radish", "ginger",
                          "garlic bulb", "shallot")),
     ("fresh_vegetables", ("broccoli", "cauliflower", "celery", "cucumber",
                          "zucchini", "bell pepper", "tomato", "mushroom",
@@ -217,9 +217,20 @@ def _norm(text: str | None) -> str:
     return f" {(text or '').lower()} "
 
 
-def _match(text: str) -> str | None:
+# Rules with the non-food bucket removed, used ONLY for the description fallback.
+# Food descriptions routinely mention non-food words in passing ("enriched with
+# Vitamins A and D", "great with a glass of wine") -- letting those flip a food
+# to household_nonfood is a trap (e.g. 2% milk -> non-food via "vitamin"). A real
+# non-food item declares itself in its TITLE, so the title pass keeps the full
+# rule set; only the description pass drops the non-food bucket.
+_FOOD_RULES: list[tuple[str, tuple[str, ...]]] = [
+    rule for rule in RULES if rule[0] != "household_nonfood"
+]
+
+
+def _match(text: str, rules: list[tuple[str, tuple[str, ...]]] = RULES) -> str | None:
     """Return the first category whose keyword appears in `text`, else None."""
-    for category, keywords in RULES:
+    for category, keywords in rules:
         for kw in keywords:
             if kw in text:
                 return category
@@ -242,7 +253,9 @@ def classify(title: str | None, description: str | None = None) -> tuple[str, in
     """
     category = _match(_norm(title))
     if category is None and description:
-        category = _match(_norm(description))
+        # Non-food is excluded here on purpose (see _FOOD_RULES): a food's prose
+        # must not be able to demote it to household_nonfood.
+        category = _match(_norm(description), _FOOD_RULES)
     if category is None:
         category = "unclassified"
     return category, CATEGORY_DAYS[category]
