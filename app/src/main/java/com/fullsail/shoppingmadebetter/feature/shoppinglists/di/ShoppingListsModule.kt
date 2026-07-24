@@ -55,6 +55,7 @@ abstract class ShoppingListsModule {
     abstract fun bindDeleteItemUseCase(
         impl: DeleteItemsUseCaseImpl,
     ): DeleteItemsUseCase
+    @Binds
     abstract fun bindRemoveListUseCase(
         impl: RemoveListUseCaseImpl,
     ): RemoveListUseCase

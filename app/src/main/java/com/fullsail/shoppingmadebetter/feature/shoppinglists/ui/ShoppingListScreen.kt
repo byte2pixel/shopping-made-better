@@ -61,11 +61,11 @@ fun ShoppingListsScreen(
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
 
-                                items(state.trips, key = { it.shoppingListId }) { TripCard(it) {
+                                items(state.trips, key = { it.shoppingListId }) { TripCard(it, onDelete =  {
                                     viewModel.removeList(
                                         it.shoppingListId
                                     )
-                                }
+                                }, onItemComparison = onItemComparison)
                                 }
                             }
                         }
@@ -87,7 +87,7 @@ fun ShoppingListsScreen(
 
         }
 @Composable
-private fun TripCard(trip: ShoppingTrip,onDelete: () -> Unit)
+private fun TripCard(trip: ShoppingTrip,onDelete: () -> Unit, onItemComparison :(dest : Dest) -> Unit)
 {
     OutlinedCard(
         onClick = {
