@@ -57,6 +57,7 @@ class ItemComparisonViewmodel @Inject constructor(
             }
         }
     }
+
     fun addItem(item : InsertItem)
     {
         _uiState.value = ItemComparisonUIState.Loading
@@ -65,11 +66,11 @@ class ItemComparisonViewmodel @Inject constructor(
         }
     }
 
-    fun createListAddItem(product : StoreProductPricing)
+    fun createListAddItem(product : StoreProductPricing, listName : String)
     {
         viewModelScope.launch {
 
-            getShoppingListUseCase.execute(ShoppingList( product.storeId, product.storeName + " Weekly", false))
+            getShoppingListUseCase.execute(ShoppingList( product.storeId, listName, false))
             getShoppingLists{
             val list = shoppingLists.value.first { it.storeId == product.storeId}
             addItem(InsertItem(list.shoppingListId, product.productId, 1, "", false, true))

@@ -23,8 +23,11 @@ import os
 import re
 import sys
 import uuid
+from collections import Counter
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
+
+import shelf_life
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -233,10 +236,13 @@ def main() -> None:
     products: list[dict] = []
     for row in unique_rows:
         pid = row.get("productId", "").strip()
+        category, days = shelf_life.classify(row.get("title"), row.get("description"))
         products.append(
             {
                 "uuid": str(uuid.uuid5(uuid.NAMESPACE_URL, f"grocery:{pid}")),
                 "source_product_id": pid,
+                "shelf_life_days": str(days) if days is not None else "NULL",
+                "shelf_life_category": sql_str(category),
                 "article_number": sql_int(row.get("articleNumber")),
                 "title": sql_str(row.get("title")),
                 "brand": sql_str(row.get("brand")),
@@ -293,7 +299,8 @@ def main() -> None:
                 "INSERT INTO public.products (\n"
                 "  id, source_product_id, article_number, title, brand, description,\n"
                 "  package_sizing, uom, image_url, source_link,\n"
-                "  pricing_type, pricing_unit, pricing_interval, min_order_quantity, is_variant\n"
+                "  pricing_type, pricing_unit, pricing_interval, min_order_quantity, is_variant,\n"
+                "  shelf_life_days, shelf_life_category\n"
                 ") VALUES\n"
             )
             product_vals = []
@@ -303,7 +310,8 @@ def main() -> None:
                     f"{p['title']}, {p['brand']}, {p['description']},\n"
                     f"   {p['package_sizing']}, {p['uom']}, {p['image_url']}, {p['source_link']},\n"
                     f"   {p['pricing_type']}, {p['pricing_unit']}, {p['pricing_interval']}, "
-                    f"{p['min_order_quantity']}, {p['is_variant']})"
+                    f"{p['min_order_quantity']}, {p['is_variant']},\n"
+                    f"   {p['shelf_life_days']}, {p['shelf_life_category']})"
                 )
             out.write(",\n".join(product_vals))
             out.write("\nON CONFLICT (source_product_id) DO NOTHING;\n\n")
@@ -341,6 +349,17 @@ def main() -> None:
     print(f"  Stores:          {len(STORES)}")
     print(f"  Products:        {len(products):,}")
     print(f"  Pricing rows:    {len(pricing_rows):,}")
+
+    # Shelf-life classification coverage
+    cat_counts = Counter(p["shelf_life_category"].strip("'") for p in products)
+    unclassified = cat_counts.get("unclassified", 0)
+    classified = len(products) - unclassified
+    print(f"\n  Shelf life classified: {classified:,} / {len(products):,} "
+          f"({classified / len(products):.0%})")
+    for cat, n in cat_counts.most_common():
+        days = shelf_life.CATEGORY_DAYS.get(cat)
+        days_str = f"{days}d" if days is not None else "NULL"
+        print(f"    {cat:<28} {n:>5}  ({days_str})")
 
 
 if __name__ == "__main__":
