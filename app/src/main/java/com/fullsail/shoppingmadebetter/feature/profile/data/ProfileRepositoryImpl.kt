@@ -13,4 +13,11 @@ class ProfileRepositoryImpl @Inject constructor(
             password = newPassword
         }
     }
+
+    override suspend fun updateContactInfo(email: String?, phone: String?) {
+        supabaseClient.auth.updateUser {
+            if (!email.isNullOrBlank()) this.email = email
+            if (!phone.isNullOrBlank()) this.phone = phone
+        }
+    }
 }

@@ -4,6 +4,8 @@ import com.fullsail.shoppingmadebetter.feature.profile.data.ProfileRepository
 import com.fullsail.shoppingmadebetter.feature.profile.data.ProfileRepositoryImpl
 import com.fullsail.shoppingmadebetter.feature.profile.domain.ChangePasswordUseCase
 import com.fullsail.shoppingmadebetter.feature.profile.domain.ChangePasswordUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.profile.domain.UpdateProfileInfoUseCase
+import com.fullsail.shoppingmadebetter.feature.profile.domain.UpdateProfileInfoUseCaseImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -25,4 +27,10 @@ abstract class ProfileModule {
     abstract fun bindChangePasswordUseCase(
         impl: ChangePasswordUseCaseImpl
     ): ChangePasswordUseCase
+
+    @Binds
+    @ViewModelScoped
+    abstract fun bindUpdateProfileInfoUseCase(
+        impl: UpdateProfileInfoUseCaseImpl
+    ): UpdateProfileInfoUseCase
 }
