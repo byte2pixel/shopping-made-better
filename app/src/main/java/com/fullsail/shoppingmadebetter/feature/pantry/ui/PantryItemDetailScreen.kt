@@ -31,20 +31,23 @@ import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
-// mostly just a temporary screen to show that routing with data
-// is working, in this case the item id.
-
 @Composable
 fun PantryItemDetailScreen(
     itemId: String,
     modifier: Modifier = Modifier,
+    onTitleChange: (String) -> Unit = {},
     viewModel: PantryItemDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     LaunchedEffect(itemId) { viewModel.load(itemId) }
 
+    val state = uiState
+    if (state is PantryItemDetailUiState.Success) {
+        LaunchedEffect(state.item.name) { onTitleChange(state.item.name) }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
-        when (val state = uiState) {
+        when (state) {
             PantryItemDetailUiState.Loading -> CircularProgressIndicator(
                 modifier = Modifier.align(
                     Alignment.Center
@@ -72,8 +75,6 @@ private fun PantryItemDetailContent(item: InventoryItem, modifier: Modifier = Mo
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(text = item.name, style = MaterialTheme.typography.titleLarge)
-
         DetailField(label = stringResource(R.string.pantry_detail_brand), value = item.brand)
         DetailField(label = stringResource(R.string.pantry_detail_size), value = item.size)
         // Stock is how many of this item are in the pantry (adjustment UI comes later).

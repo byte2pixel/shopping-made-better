@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -77,6 +78,7 @@ fun ShoppingMadeBetterApp(
     val navController = rememberNavController()
     val currentTab by navigationViewModel.currentTab.collectAsState()
     val showAppChrome by navigationViewModel.showAppChrome.collectAsState()
+    val screenTitle by navigationViewModel.screenTitle.collectAsState()
 
     // Apply one-shot navigation commands from the ViewModel to the NavController.
     LaunchedEffect(navController, navigationViewModel) {
@@ -133,7 +135,10 @@ fun ShoppingMadeBetterApp(
         topBar = {
             if (showAppChrome) {
                 AppTopBar(
-                    title = currentTab?.let { stringResource(it.label) }
+                    // A screen-supplied title wins (e.g. the pantry item's name); otherwise
+                    // fall back to the tab label, then the app name on a titleless non-tab screen.
+                    title = screenTitle
+                        ?: currentTab?.let { stringResource(it.label) }
                         ?: stringResource(R.string.app_name),
                     canNavigateBack = canNavigateBack,
                     onMenuClick = { /* TODO: open navigation drawer (future ticket) */ },
@@ -237,7 +242,10 @@ fun ShoppingMadeBetterApp(
                 PantryScreen(onItemClick = { id -> navController.navigate(Dest.PantryItemDetail(id)) })
             }
             composable<Dest.PantryItemDetail> { entry ->
-                PantryItemDetailScreen(itemId = entry.toRoute<Dest.PantryItemDetail>().id)
+                PantryItemDetailScreen(
+                    itemId = entry.toRoute<Dest.PantryItemDetail>().id,
+                    onTitleChange = navigationViewModel::setScreenTitle,
+                )
             }
             composable<Dest.History> { HistoryScreen() }
             composable<Dest.Meals> { MealsScreen() }
@@ -256,7 +264,7 @@ private fun AppTopBar(
     onBackClick: () -> Unit,
 ) {
     TopAppBar(
-        title = { Text(title) },
+        title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         navigationIcon = {
             if (canNavigateBack) {
                 IconButton(onClick = onBackClick) {
