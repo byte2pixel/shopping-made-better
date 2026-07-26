@@ -52,6 +52,31 @@ private val filterSetSaver = listSaver<Set<PantryDashboardFilter>, String>(
     restore = { names -> names.map { PantryDashboardFilter.valueOf(it) }.toSet() },
 )
 
+/**
+ * Items with a known expiration date fewer than this many days out — including
+ * already-expired ones — count as "expiring soon". Hard-coded for now; a future
+ * task may let the user configure it (e.g. by long-pressing the dashboard card).
+ */
+internal const val EXPIRING_SOON_DAYS = 5
+
+/**
+ * Narrows [items] to those matching the active dashboard [filters]. Only the
+ * expiring filter is wired up so far. Any other selected filter is ignored
+ * filter is ignored. With no filters, returns [items] unchanged.
+ */
+internal fun applyPantryFilters(
+    items: List<InventoryItem>,
+    filters: Set<PantryDashboardFilter>,
+): List<InventoryItem> =
+    if (PantryDashboardFilter.Expiring in filters) {
+        items.filter { it.isExpiringSoon() }
+    } else {
+        items
+    }
+
+private fun InventoryItem.isExpiringSoon(): Boolean =
+    expiresInDays != null && expiresInDays < EXPIRING_SOON_DAYS
+
 @Composable
 fun PantryScreen(
     onItemClick: (String) -> Unit,
@@ -133,6 +158,10 @@ private fun PantryContent(
                     mutableStateOf(emptySet<PantryDashboardFilter>())
                 }
 
+                val visibleItems = remember(uiState.inventoryItems, selectedFilters) {
+                    applyPantryFilters(uiState.inventoryItems, selectedFilters)
+                }
+
                 Column(modifier = Modifier.fillMaxSize()) {
                     PantryDashboard(
                         cards = dashboardCards,
@@ -147,7 +176,7 @@ private fun PantryContent(
                     )
                     HorizontalDivider()
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(uiState.inventoryItems, key = { it.id }) { inventoryItem ->
+                        items(visibleItems, key = { it.id }) { inventoryItem ->
                             InventoryItemRow(
                                 inventoryItem = inventoryItem,
                                 onClick = { onItemClick(inventoryItem.id) },
