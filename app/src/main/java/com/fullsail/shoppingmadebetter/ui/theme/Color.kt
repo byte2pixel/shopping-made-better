@@ -217,6 +217,12 @@ val surfaceContainerDarkHighContrast = Color(0xFF2D322C)
 val surfaceContainerHighDarkHighContrast = Color(0xFF383D37)
 val surfaceContainerHighestDarkHighContrast = Color(0xFF434842)
 
+// Pantry expiry chip accents
+val expiryUrgentAccentLight = Color(0xFFC84E06)
+val expiryUrgentAccentDark = Color(0xFFE0711C)
+val expirySoonAccentLight = Color(0xFF967100)
+val expirySoonAccentDark = Color(0xFFE7C24A)
+
 
 
 

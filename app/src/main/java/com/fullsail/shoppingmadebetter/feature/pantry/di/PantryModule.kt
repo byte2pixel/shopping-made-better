@@ -2,6 +2,8 @@ package com.fullsail.shoppingmadebetter.feature.pantry.di
 
 import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryRepositoryImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryRepository
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryItemUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
@@ -23,4 +25,7 @@ abstract class PantryModule {
 
     @Binds
     abstract fun bindGetInventoryItemUseCase(impl: GetInventoryItemUseCaseImpl): GetInventoryItemUseCase
+
+    @Binds
+    abstract fun bindDeleteInventoryItemUseCase(impl: DeleteInventoryItemUseCaseImpl): DeleteInventoryItemUseCase
 }

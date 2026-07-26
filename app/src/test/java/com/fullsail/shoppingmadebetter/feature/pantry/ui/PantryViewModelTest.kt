@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
@@ -72,6 +73,17 @@ class PantryViewModelTest {
         }
     }
 
+    /** Fake pantry-delete use case: records the id it received and returns [output]. */
+    private class FakeDeleteInventoryItemUseCase(
+        var output: DeleteInventoryItemUseCase.Output = DeleteInventoryItemUseCase.Output.Success,
+    ) : DeleteInventoryItemUseCase {
+        var lastId: String? = null
+        override suspend fun execute(input: String): DeleteInventoryItemUseCase.Output {
+            lastId = input
+            return output
+        }
+    }
+
     private val sampleItem = InventoryItem(
         id = "i1",
         productId = "p1",
@@ -98,7 +110,8 @@ class PantryViewModelTest {
         trips: FakeGetShoppingTripsUseCase = FakeGetShoppingTripsUseCase(),
         insert: FakeInsertItemUseCase = FakeInsertItemUseCase(),
         delete: FakeDeleteItemsUseCase = FakeDeleteItemsUseCase(),
-    ) = PantryViewModel(inventory, trips, insert, delete)
+        deleteInventory: FakeDeleteInventoryItemUseCase = FakeDeleteInventoryItemUseCase(),
+    ) = PantryViewModel(inventory, trips, insert, delete, deleteInventory)
 
     @Test
     fun `initial load exposes Success with the inventory items`() = runTest {
@@ -281,6 +294,68 @@ class PantryViewModelTest {
         val event = viewModel.events.first()
         assertTrue(event is PantryEvent.UndoFailed)
         assertEquals("Milk", (event as PantryEvent.UndoFailed).itemName)
+    }
+
+    @Test
+    fun `onRemoveClicked opens the confirmation dialog for the item`() = runTest {
+        val viewModel = buildViewModel()
+
+        viewModel.onRemoveClicked(sampleItem)
+
+        assertEquals(sampleItem, viewModel.removeConfirm.value)
+    }
+
+    @Test
+    fun `dismissRemove closes the dialog without deleting`() = runTest {
+        val deleteInventory = FakeDeleteInventoryItemUseCase()
+        val viewModel = buildViewModel(deleteInventory = deleteInventory)
+        viewModel.onRemoveClicked(sampleItem)
+
+        viewModel.dismissRemove()
+
+        assertNull(viewModel.removeConfirm.value)
+        assertNull(deleteInventory.lastId)
+    }
+
+    @Test
+    fun `confirmRemove deletes the item and emits RemovedFromPantry on success`() = runTest {
+        val deleteInventory = FakeDeleteInventoryItemUseCase(DeleteInventoryItemUseCase.Output.Success)
+        val viewModel = buildViewModel(deleteInventory = deleteInventory)
+        viewModel.onRemoveClicked(sampleItem)
+
+        viewModel.confirmRemove()
+
+        // The dialog closes and exactly the chosen item's id is deleted.
+        assertNull(viewModel.removeConfirm.value)
+        assertEquals("i1", deleteInventory.lastId)
+        val event = viewModel.events.first()
+        assertTrue(event is PantryEvent.RemovedFromPantry)
+        assertEquals("Milk", (event as PantryEvent.RemovedFromPantry).itemName)
+    }
+
+    @Test
+    fun `confirmRemove emits RemoveFailed when the delete fails`() = runTest {
+        val deleteInventory = FakeDeleteInventoryItemUseCase(
+            DeleteInventoryItemUseCase.Output.Failure(IOException("boom"))
+        )
+        val viewModel = buildViewModel(deleteInventory = deleteInventory)
+        viewModel.onRemoveClicked(sampleItem)
+
+        viewModel.confirmRemove()
+
+        val event = viewModel.events.first()
+        assertTrue(event is PantryEvent.RemoveFailed)
+        assertEquals("Milk", (event as PantryEvent.RemoveFailed).itemName)
+    }
+
+    @Test
+    fun `confirmRemove does nothing when no item is pending`() = runTest {
+        val deleteInventory = FakeDeleteInventoryItemUseCase()
+        val viewModel = buildViewModel(deleteInventory = deleteInventory)
+
+        viewModel.confirmRemove()
+
+        assertNull(deleteInventory.lastId)
     }
 
     @Test
