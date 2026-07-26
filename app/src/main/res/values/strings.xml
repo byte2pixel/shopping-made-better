@@ -75,6 +75,9 @@
     <string name="add_to_list_error">Couldn\'t load your shopping lists</string>
     <string name="added_to_list">Added %1$s to %2$s</string>
     <string name="add_to_list_failed">Couldn\'t add %1$s</string>
+    <string name="add_to_list_undo">Undo</string>
+    <string name="removed_from_list">Removed %1$s</string>
+    <string name="undo_failed">Couldn\'t remove %1$s</string>
     <plurals name="add_to_list_item_count">
         <item quantity="one">%1$d item</item>
         <item quantity="other">%1$d items</item>

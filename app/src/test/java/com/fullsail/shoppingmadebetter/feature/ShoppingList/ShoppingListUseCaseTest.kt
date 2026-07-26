@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.domain
 
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.InsertItemResultDto
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ProductSearchDto
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListItemsDto
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
@@ -28,7 +29,7 @@ class GetShoppingTripsUseCaseTest {
             TODO("Not yet implemented")
         }
 
-        override suspend fun addItem(item: InsertItem) {
+        override suspend fun addItem(item: InsertItem): InsertItemResultDto {
             TODO("Not yet implemented")
         }
 

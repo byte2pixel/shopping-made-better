@@ -38,13 +38,14 @@ class ShoppingListRepositoryImpl @Inject constructor(
             limit(10)
         }.decodeList<ProductSearchDto>()
     }
-    override suspend fun addItem(item: InsertItem){
-        //Convert item into Dto and then insert it into shopping_list_items
-           postgrest.from("shopping_list_items").insert(InsertItemDto(
+    override suspend fun addItem(item: InsertItem): InsertItemResultDto {
+        // insert the item but also return the result back in case the id is needed.
+        val inserted = postgrest.from("shopping_list_items").insert(InsertItemDto(
             item.shoppingListId, item.productId, item.quantity,
             item.note, item.isChecked, item.addInventory)
-        )
-        Log.d("InsertItem", "Insert completed successfully")
+        ) { select() }.decodeSingle<InsertItemResultDto>()
+        Log.d("InsertItem", "Insert completed successfully: ${inserted.id}")
+        return inserted
     }
 
     override suspend fun addList(list: ShoppingList) {
