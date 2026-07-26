@@ -12,6 +12,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryItemUse
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import kotlinx.coroutines.CompletableDeferred
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
@@ -45,18 +47,26 @@ class PantryItemDetailScreenTest {
         size = "1 gal",
         imageUrl = "",
         quantity = 2,
+        expiresInDays = null,
     )
 
     /** Convenience: look up a string resource the way the screen does. */
     private fun string(resId: Int, vararg args: Any) =
         composeTestRule.activity.getString(resId, *args)
 
+    /** The last title the screen reported for the top app bar, or null if none yet. */
+    private var reportedTitle: String? = null
+
     /** Renders the screen wired to [useCase], inside the app theme. */
     private fun setScreen(useCase: GetInventoryItemUseCase) {
         val viewModel = PantryItemDetailViewModel(useCase)
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
-                PantryItemDetailScreen(itemId = "i1", viewModel = viewModel)
+                PantryItemDetailScreen(
+                    itemId = "i1",
+                    onTitleChange = { reportedTitle = it },
+                    viewModel = viewModel,
+                )
             }
         }
     }
@@ -75,14 +85,16 @@ class PantryItemDetailScreenTest {
             .onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("2% Milk").assertDoesNotExist()
+        // No title is reported until the item loads.
+        assertNull(reportedTitle)
     }
 
     @Test
     fun showsItemDetailsOnSuccess() {
         setScreen(FakeGetInventoryItemUseCase(GetInventoryItemUseCase.Output.Success(milk)))
 
-        // The title, plus each labeled DetailField (label + value are separate nodes).
-        composeTestRule.onNodeWithText("2% Milk").assertIsDisplayed()
+        composeTestRule.waitForIdle()
+        assertEquals("2% Milk", reportedTitle)
         composeTestRule.onNodeWithText(string(R.string.pantry_detail_brand)).assertIsDisplayed()
         composeTestRule.onNodeWithText("Great Value").assertIsDisplayed()
         composeTestRule.onNodeWithText("1 gal").assertIsDisplayed()
@@ -110,6 +122,8 @@ class PantryItemDetailScreenTest {
         useCase.output = GetInventoryItemUseCase.Output.Success(milk)
         composeTestRule.onNodeWithText(string(R.string.pantry_retry)).performClick()
 
-        composeTestRule.onNodeWithText("2% Milk").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Great Value").assertIsDisplayed()
+        composeTestRule.waitForIdle()
+        assertEquals("2% Milk", reportedTitle)
     }
 }

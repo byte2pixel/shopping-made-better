@@ -59,6 +59,17 @@ class NavigationViewModel @Inject constructor() : ViewModel() {
     /** The selected top-level tab, or null when the current screen is not a top-level tab. */
     val currentTab: StateFlow<TopLevelDestination?> = _currentTab.asStateFlow()
 
+    private val _screenTitle = MutableStateFlow<String?>(null)
+
+    /**
+     * A title supplied by the current screen for the top app bar, or null to use the
+     * default (the tab label, or the app name on a non-tab screen that sets no title).
+     *
+     * Non-tab screens (e.g. the pantry item detail) call [setScreenTitle] once their
+     * content is known to show something meaningful like the item's name 
+     */
+    val screenTitle: StateFlow<String?> = _screenTitle.asStateFlow()
+
     // Starts false so the login/landing gate (the start destination) shows no bars on cold start.
     private val _showAppChrome = MutableStateFlow(false)
 
@@ -84,6 +95,16 @@ class NavigationViewModel @Inject constructor() : ViewModel() {
     }
 
     /**
+     * Sets the top-app-bar [title] for the current (non-tab) screen. Call this once the
+     * screen has the data it wants to show, like `onTitleChange(item.name)` when a detail
+     * screen finishes loading. The title is reset on the next destination change, 
+     */
+    fun setScreenTitle(title: String) {
+        Log.d(NAV_LOG_TAG, "Screen title set: $title")
+        _screenTitle.value = title
+    }
+
+    /**
      * Called by the UI whenever the NavController's destination changes, keeping [currentTab]
      * and [showAppChrome] in sync with the real back stack (the single source of truth for
      * "where we are").
@@ -96,5 +117,7 @@ class NavigationViewModel @Inject constructor() : ViewModel() {
         Log.d(NAV_LOG_TAG, "Destination changed -> route=$routeName, tab=${tab?.name}, chrome=$showChrome")
         _currentTab.value = tab
         _showAppChrome.value = showChrome
+        // Drop any custom title from the previous screen; the new screen re-sets its own.
+        _screenTitle.value = null
     }
 }

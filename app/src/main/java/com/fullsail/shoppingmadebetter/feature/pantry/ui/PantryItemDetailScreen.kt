@@ -22,6 +22,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -30,20 +31,23 @@ import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
-// mostly just a temporary screen to show that routing with data
-// is working, in this case the item id.
-
 @Composable
 fun PantryItemDetailScreen(
     itemId: String,
     modifier: Modifier = Modifier,
+    onTitleChange: (String) -> Unit = {},
     viewModel: PantryItemDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     LaunchedEffect(itemId) { viewModel.load(itemId) }
 
+    val state = uiState
+    if (state is PantryItemDetailUiState.Success) {
+        LaunchedEffect(state.item.name) { onTitleChange(state.item.name) }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
-        when (val state = uiState) {
+        when (state) {
             PantryItemDetailUiState.Loading -> CircularProgressIndicator(
                 modifier = Modifier.align(
                     Alignment.Center
@@ -71,8 +75,6 @@ private fun PantryItemDetailContent(item: InventoryItem, modifier: Modifier = Mo
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(text = item.name, style = MaterialTheme.typography.titleLarge)
-
         DetailField(label = stringResource(R.string.pantry_detail_brand), value = item.brand)
         DetailField(label = stringResource(R.string.pantry_detail_size), value = item.size)
         // Stock is how many of this item are in the pantry (adjustment UI comes later).
@@ -90,7 +92,42 @@ private fun PantryItemDetailContent(item: InventoryItem, modifier: Modifier = Mo
         HorizontalDivider()
 
         DetailStubRow(label = stringResource(R.string.pantry_detail_stores))
-        DetailStubRow(label = stringResource(R.string.pantry_detail_expiration))
+        ExpirationRow(expiresInDays = item.expiresInDays)
+    }
+}
+
+@Composable
+private fun ExpirationRow(expiresInDays: Int?, modifier: Modifier = Modifier) {
+    // Negative = overdue, 0 = due today, positive = days remaining, null = no known date.
+    val isExpired = expiresInDays != null && expiresInDays < 0
+    val value = when {
+        expiresInDays == null -> stringResource(R.string.pantry_detail_expires_unknown)
+        expiresInDays < 0 -> stringResource(R.string.pantry_detail_expired)
+        expiresInDays == 0 -> stringResource(R.string.pantry_detail_expires_today)
+        else -> pluralStringResource(
+            R.plurals.pantry_detail_expires_in_days,
+            expiresInDays,
+            expiresInDays,
+        )
+    }
+    val valueColor = when {
+        isExpired -> MaterialTheme.colorScheme.error
+        expiresInDays == null -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = stringResource(R.string.pantry_detail_expiration),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = valueColor,
+        )
     }
 }
 
@@ -147,21 +184,30 @@ private fun CenteredMessage(
     }
 }
 
-@Preview(showBackground = true)
+private fun previewItem(expiresInDays: Int?) = InventoryItem(
+    id = "1",
+    productId = "p1",
+    name = "2% Milk",
+    brand = "Great Value",
+    description = "Reduced-fat milk, one gallon.",
+    size = "1 gal",
+    imageUrl = "",
+    quantity = 2,
+    expiresInDays = expiresInDays,
+)
+
+@Preview(showBackground = true, name = "5 days left")
 @Composable
 private fun PantryItemDetailPreview() {
     ShoppingMadeBetterTheme {
-        PantryItemDetailContent(
-            item = InventoryItem(
-                id = "1",
-                productId = "p1",
-                name = "2% Milk",
-                brand = "Great Value",
-                description = "Reduced-fat milk, one gallon.",
-                size = "1 gal",
-                imageUrl = "",
-                quantity = 2,
-            ),
-        )
+        PantryItemDetailContent(item = previewItem(expiresInDays = 5))
+    }
+}
+
+@Preview(showBackground = true, name = "Expired")
+@Composable
+private fun PantryItemDetailExpiredPreview() {
+    ShoppingMadeBetterTheme {
+        PantryItemDetailContent(item = previewItem(expiresInDays = -3))
     }
 }

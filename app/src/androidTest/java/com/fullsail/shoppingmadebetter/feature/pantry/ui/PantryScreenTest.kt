@@ -54,6 +54,23 @@ class PantryScreenTest {
         size = "1 gal",
         imageUrl = "",
         quantity = 2,
+        expiresInDays = null,
+    )
+
+    // Expires within the threshold, so it survives the "Expiring" filter.
+    private val expiringYogurt = milk.copy(
+        id = "i2",
+        productId = "p2",
+        name = "Yogurt",
+        expiresInDays = 2,
+    )
+
+    // No expiration date, so the "Expiring" filter hides it.
+    private val cannedBeans = milk.copy(
+        id = "i3",
+        productId = "p3",
+        name = "Canned Beans",
+        expiresInDays = null,
     )
 
     private val weeklyTrip = ShoppingTrip(
@@ -67,6 +84,15 @@ class PantryScreenTest {
 
     private fun string(resId: Int, vararg args: Any) =
         composeTestRule.activity.getString(resId, *args)
+
+    /** Content description of the "Expiring" dashboard card, used to tap it. */
+    private fun expiringCardDescription(count: Int) =
+        composeTestRule.activity.resources.getQuantityString(
+            R.plurals.pantry_dashboard_card_desc,
+            count,
+            string(R.string.pantry_dashboard_expiring),
+            count,
+        )
 
     /** Builds the screen; callers can pre-configure the fakes and observe [onItemClick]. */
     private fun setScreen(
@@ -130,5 +156,28 @@ class PantryScreenTest {
 
         composeTestRule.onNodeWithText(string(R.string.pantry_error)).assertIsDisplayed()
         composeTestRule.onNodeWithText(string(R.string.pantry_retry)).assertIsDisplayed()
+    }
+
+    @Test
+    fun tappingTheExpiringCardTogglesTheFilter() {
+        setScreen(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(expiringYogurt, cannedBeans))
+            )
+        )
+        // Both items show before any filter is applied.
+        composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Canned Beans").assertIsDisplayed()
+
+        // Turn the filter on: only the soon-to-expire item remains.
+        val expiringCard = expiringCardDescription(count = 3)
+        composeTestRule.onNodeWithContentDescription(expiringCard).performClick()
+        composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Canned Beans").assertDoesNotExist()
+
+        // Turn it off again: the full list comes back.
+        composeTestRule.onNodeWithContentDescription(expiringCard).performClick()
+        composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Canned Beans").assertIsDisplayed()
     }
 }
