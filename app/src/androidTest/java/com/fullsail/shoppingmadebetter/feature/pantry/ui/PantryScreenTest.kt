@@ -54,6 +54,7 @@ class PantryScreenTest {
         size = "1 gal",
         imageUrl = "",
         quantity = 2,
+        expiresInDays = null,
     )
 
     private val weeklyTrip = ShoppingTrip(

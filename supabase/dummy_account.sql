@@ -100,7 +100,7 @@ from (values
   ('20962518_EA',    1, 'carton', 'fridge',  1.00, 1.20),  -- Milk, 2%            (10d)  expired / at expiry
   ('20091825001_EA', 1, 'bunch',  'fridge',  0.85, 1.05),  -- Cilantro            (7d)   just expired -> ~1d left
   ('20162840001_EA', 1, 'bunch',  'fridge',  0.80, 1.00),  -- Spinach, Bunched    (7d)   expiring very soon
-  ('20788443_EA',    1, 'loaf',   'pantry',  1.00, 1.35),  -- Bread, French       (7d)   expired
+  ('20788443_EA',    1, 'loaf',   'pantry',  1.10, 1.35),  -- Bread, French       (7d)   expired
   ('21169553_EA',    1, 'loaf',   'pantry',  0.70, 0.95),  -- Whole Grain Bread   (7d)   expiring soon
   ('21397475_EA',    1, 'tub',    'fridge',  0.60, 0.85),  -- Cream Cheese Spread (10d)  expiring soon
   ('20143381001_KG', 6, 'ea',     'fridge',  0.45, 0.65),  -- Roma Tomatoes       (14d)  ~1 week left

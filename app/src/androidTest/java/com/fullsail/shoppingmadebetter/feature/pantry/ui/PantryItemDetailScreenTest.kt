@@ -45,6 +45,7 @@ class PantryItemDetailScreenTest {
         size = "1 gal",
         imageUrl = "",
         quantity = 2,
+        expiresInDays = null,
     )
 
     /** Convenience: look up a string resource the way the screen does. */

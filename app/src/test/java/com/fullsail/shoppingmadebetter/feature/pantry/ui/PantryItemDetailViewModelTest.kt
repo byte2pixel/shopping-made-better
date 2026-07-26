@@ -39,6 +39,7 @@ class PantryItemDetailViewModelTest {
         size = "1 gal",
         imageUrl = "http://img/milk.png",
         quantity = 2,
+        expiresInDays = null,
     )
 
     @Test
