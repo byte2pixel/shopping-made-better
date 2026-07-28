@@ -68,6 +68,27 @@
         <item quantity="other">%1$d days left</item>
     </plurals>
 
+    <!-- Pantry inventory card chip indicators - quantity -->
+    <string name="pantry_card_quantity">Qty %1$d</string>
+    <plurals name="pantry_card_quantity_desc">
+        <item quantity="one">%1$d in stock</item>
+        <item quantity="other">%1$d in stock</item>
+    </plurals>
+
+    <!-- Pantry inventory card chip indicators - expire -->
+    <string name="pantry_expiry_expired">Expired</string>
+    <string name="pantry_expiry_today">Today</string>
+    <string name="pantry_expiry_in_days_short">%1$dd</string>
+
+    <!-- Pantry: remove an item from the pantry -->
+    <string name="pantry_remove_from_pantry">Remove from pantry</string>
+    <string name="pantry_remove_confirm_title">Remove item?</string>
+    <string name="pantry_remove_confirm_message">Remove \"%1$s\" from your pantry? This can\'t be undone.</string>
+    <string name="pantry_remove_confirm_action">Remove</string>
+    <string name="pantry_remove_cancel">Cancel</string>
+    <string name="pantry_removed">Removed %1$s from pantry</string>
+    <string name="pantry_remove_failed">Couldn\'t remove %1$s</string>
+
     <!-- Pantry: add an item to a shopping list -->
     <string name="pantry_add_to_list">Add to shopping list</string>
     <string name="add_to_list_title">Add \"%1$s\" to…</string>

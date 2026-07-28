@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.fullsail.shoppingmadebetter.R
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
@@ -51,6 +52,16 @@ class PantryScreenTest {
     ) : DeleteItemsUseCase {
         var lastId: String? = null
         override suspend fun execute(input: String): DeleteItemsUseCase.Output {
+            lastId = input
+            return output
+        }
+    }
+
+    private class FakeDeleteInventoryItemUseCase(
+        var output: DeleteInventoryItemUseCase.Output = DeleteInventoryItemUseCase.Output.Success,
+    ) : DeleteInventoryItemUseCase {
+        var lastId: String? = null
+        override suspend fun execute(input: String): DeleteInventoryItemUseCase.Output {
             lastId = input
             return output
         }
@@ -115,9 +126,10 @@ class PantryScreenTest {
         ),
         insert: InsertItemUseCase = FakeInsertItemUseCase(),
         delete: DeleteItemsUseCase = FakeDeleteItemsUseCase(),
+        deleteInventory: DeleteInventoryItemUseCase = FakeDeleteInventoryItemUseCase(),
         onItemClick: (String) -> Unit = {},
     ) {
-        val viewModel = PantryViewModel(inventory, trips, insert, delete)
+        val viewModel = PantryViewModel(inventory, trips, insert, delete, deleteInventory)
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
                 PantryScreen(onItemClick = onItemClick, viewModel = viewModel)
@@ -126,12 +138,19 @@ class PantryScreenTest {
     }
 
     @Test
-    fun rendersTheInventoryRow() {
+    fun rendersTheInventoryCard() {
         setScreen()
 
         composeTestRule.onNodeWithText("2% Milk").assertIsDisplayed()
         composeTestRule.onNodeWithText("Great Value").assertIsDisplayed()
-        composeTestRule.onNodeWithText("2 1 gal").assertIsDisplayed()
+        composeTestRule.onNodeWithText("1 gal").assertIsDisplayed()
+        composeTestRule
+            .onNodeWithContentDescription(
+                composeTestRule.activity.resources.getQuantityString(
+                    R.plurals.pantry_card_quantity_desc, 2, 2,
+                )
+            )
+            .assertIsDisplayed()
     }
 
     @Test
@@ -195,6 +214,49 @@ class PantryScreenTest {
             .onNodeWithText(string(R.string.removed_from_list, "2% Milk"))
             .assertIsDisplayed()
         assertEquals("sli-1", delete.lastId)
+    }
+
+    @Test
+    fun removingAnItemConfirmsThenDeletesIt() {
+        val deleteInventory = FakeDeleteInventoryItemUseCase()
+        setScreen(deleteInventory = deleteInventory)
+
+        // Tapping the card's remove action opens a confirmation dialog.
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_remove_from_pantry))
+            .performClick()
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_remove_confirm_title))
+            .assertIsDisplayed()
+
+        // Confirming deletes exactly this item and reports the removal.
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_remove_confirm_action))
+            .performClick()
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_removed, "2% Milk"))
+            .assertIsDisplayed()
+        assertEquals("i1", deleteInventory.lastId)
+    }
+
+    @Test
+    fun cancellingRemoveKeepsTheItem() {
+        val deleteInventory = FakeDeleteInventoryItemUseCase()
+        setScreen(deleteInventory = deleteInventory)
+
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_remove_from_pantry))
+            .performClick()
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_remove_cancel))
+            .performClick()
+
+        // Dialog dismissed, nothing deleted, item still shown.
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_remove_confirm_title))
+            .assertDoesNotExist()
+        composeTestRule.onNodeWithText("2% Milk").assertIsDisplayed()
+        assertEquals(null, deleteInventory.lastId)
     }
 
     @Test

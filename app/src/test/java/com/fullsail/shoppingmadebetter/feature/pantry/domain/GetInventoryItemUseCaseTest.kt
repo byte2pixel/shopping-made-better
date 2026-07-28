@@ -37,6 +37,8 @@ class GetInventoryItemUseCaseTest {
             requestedId = id
             return error?.let { throw it } ?: item
         }
+
+        override suspend fun deleteInventoryItem(id: String) = Unit
     }
 
     private val fixedClock = object : Clock {
