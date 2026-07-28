@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performClick
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
@@ -40,9 +41,19 @@ class PantryScreenTest {
     }
 
     private class FakeInsertItemUseCase(
-        var output: InsertItemUseCase.Output = InsertItemUseCase.Output.Success,
+        var output: InsertItemUseCase.Output = InsertItemUseCase.Output.Success("sli-1"),
     ) : InsertItemUseCase {
         override suspend fun execute(input: InsertItem) = output
+    }
+
+    private class FakeDeleteItemsUseCase(
+        var output: DeleteItemsUseCase.Output = DeleteItemsUseCase.Output.Success,
+    ) : DeleteItemsUseCase {
+        var lastId: String? = null
+        override suspend fun execute(input: String): DeleteItemsUseCase.Output {
+            lastId = input
+            return output
+        }
     }
 
     private val milk = InventoryItem(
@@ -103,9 +114,10 @@ class PantryScreenTest {
             GetShoppingTripsUseCase.Output.Success(listOf(weeklyTrip))
         ),
         insert: InsertItemUseCase = FakeInsertItemUseCase(),
+        delete: DeleteItemsUseCase = FakeDeleteItemsUseCase(),
         onItemClick: (String) -> Unit = {},
     ) {
-        val viewModel = PantryViewModel(inventory, trips, insert)
+        val viewModel = PantryViewModel(inventory, trips, insert, delete)
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
                 PantryScreen(onItemClick = onItemClick, viewModel = viewModel)
@@ -156,6 +168,33 @@ class PantryScreenTest {
 
         composeTestRule.onNodeWithText(string(R.string.pantry_error)).assertIsDisplayed()
         composeTestRule.onNodeWithText(string(R.string.pantry_retry)).assertIsDisplayed()
+    }
+
+    @Test
+    fun tappingUndoOnTheAddSnackbarRemovesTheJustAddedItem() {
+        val delete = FakeDeleteItemsUseCase()
+        setScreen(
+            insert = FakeInsertItemUseCase(InsertItemUseCase.Output.Success("sli-1")),
+            delete = delete,
+        )
+
+        // Add "2% Milk" to the "Weekly" list via the sheet.
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_add_to_list))
+            .performClick()
+        composeTestRule.onNodeWithText("Weekly").performClick()
+
+        // The confirmation snackbar shows an Undo action; tap it.
+        composeTestRule
+            .onNodeWithText(string(R.string.added_to_list, "2% Milk", "Weekly"))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText(string(R.string.add_to_list_undo)).performClick()
+
+        // Undo removes exactly the row that was inserted, and confirms removal.
+        composeTestRule
+            .onNodeWithText(string(R.string.removed_from_list, "2% Milk"))
+            .assertIsDisplayed()
+        assertEquals("sli-1", delete.lastId)
     }
 
     @Test

@@ -20,8 +20,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -90,16 +92,32 @@ fun PantryScreen(
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
-            val message = when (event) {
-                is PantryEvent.ItemAdded -> resources.getString(
-                    R.string.added_to_list, event.itemName, event.listName
+            when (event) {
+                is PantryEvent.ItemAdded -> {
+                    val result = snackbarHostState.showSnackbar(
+                        message = resources.getString(
+                            R.string.added_to_list, event.itemName, event.listName
+                        ),
+                        actionLabel = resources.getString(R.string.add_to_list_undo),
+                        duration = SnackbarDuration.Short,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        viewModel.undoAdd(event.insertedItemId, event.itemName)
+                    }
+                }
+
+                is PantryEvent.AddFailed -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.add_to_list_failed, event.itemName)
                 )
 
-                is PantryEvent.AddFailed -> resources.getString(
-                    R.string.add_to_list_failed, event.itemName
+                is PantryEvent.ItemRemoved -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.removed_from_list, event.itemName)
+                )
+
+                is PantryEvent.UndoFailed -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.undo_failed, event.itemName)
                 )
             }
-            snackbarHostState.showSnackbar(message)
         }
     }
 

@@ -10,8 +10,8 @@ class InsertItemUseCaseImpl @Inject constructor(
     // Inserts the item into shopping_list_items; returns Success, or Failure(error) if it throws.
     override suspend fun execute(input: InsertItem): InsertItemUseCase.Output {
         return try {
-            repository.addItem(input)
-            InsertItemUseCase.Output.Success
+            val inserted = repository.addItem(input)
+            InsertItemUseCase.Output.Success(inserted.id)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add item to shopping list: ${e.message}", e)
             InsertItemUseCase.Output.Failure(e)

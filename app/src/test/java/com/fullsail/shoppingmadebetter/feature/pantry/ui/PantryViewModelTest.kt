@@ -2,6 +2,7 @@ package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
@@ -51,11 +52,22 @@ class PantryViewModelTest {
 
     /** Fake insert use case: records the item it received and returns [output]. */
     private class FakeInsertItemUseCase(
-        var output: InsertItemUseCase.Output = InsertItemUseCase.Output.Success,
+        var output: InsertItemUseCase.Output = InsertItemUseCase.Output.Success("sli-1"),
     ) : InsertItemUseCase {
         var lastItem: InsertItem? = null
         override suspend fun execute(input: InsertItem): InsertItemUseCase.Output {
             lastItem = input
+            return output
+        }
+    }
+
+    /** Fake delete use case: records the id it received and returns [output]. */
+    private class FakeDeleteItemsUseCase(
+        var output: DeleteItemsUseCase.Output = DeleteItemsUseCase.Output.Success,
+    ) : DeleteItemsUseCase {
+        var lastId: String? = null
+        override suspend fun execute(input: String): DeleteItemsUseCase.Output {
+            lastId = input
             return output
         }
     }
@@ -85,7 +97,8 @@ class PantryViewModelTest {
         inventory: FakeGetInventoryUseCase = FakeGetInventoryUseCase(),
         trips: FakeGetShoppingTripsUseCase = FakeGetShoppingTripsUseCase(),
         insert: FakeInsertItemUseCase = FakeInsertItemUseCase(),
-    ) = PantryViewModel(inventory, trips, insert)
+        delete: FakeDeleteItemsUseCase = FakeDeleteItemsUseCase(),
+    ) = PantryViewModel(inventory, trips, insert, delete)
 
     @Test
     fun `initial load exposes Success with the inventory items`() = runTest {
@@ -217,7 +230,7 @@ class PantryViewModelTest {
 
     @Test
     fun `onListChosen inserts the item and emits ItemAdded on success`() = runTest {
-        val insert = FakeInsertItemUseCase(InsertItemUseCase.Output.Success)
+        val insert = FakeInsertItemUseCase(InsertItemUseCase.Output.Success("sli-9"))
         val viewModel = buildViewModel(
             trips = FakeGetShoppingTripsUseCase(
                 GetShoppingTripsUseCase.Output.Success(listOf(sampleTrip))
@@ -236,12 +249,38 @@ class PantryViewModelTest {
         assertEquals("p1", inserted.productId)
         assertEquals(1, inserted.quantity)
         assertTrue(inserted.addInventory)
-        // A success event is surfaced.
+        // A success event is surfaced, with the new item id so undo can use it.
         val event = viewModel.events.first()
         assertTrue(event is PantryEvent.ItemAdded)
         event as PantryEvent.ItemAdded
         assertEquals("Milk", event.itemName)
         assertEquals("Weekly", event.listName)
+        assertEquals("sli-9", event.insertedItemId)
+    }
+
+    @Test
+    fun `undoAdd deletes the inserted item and emits ItemRemoved on success`() = runTest {
+        val delete = FakeDeleteItemsUseCase(DeleteItemsUseCase.Output.Success)
+        val viewModel = buildViewModel(delete = delete)
+
+        viewModel.undoAdd(insertedItemId = "sli-9", itemName = "Milk")
+
+        assertEquals("sli-9", delete.lastId)
+        val event = viewModel.events.first()
+        assertTrue(event is PantryEvent.ItemRemoved)
+        assertEquals("Milk", (event as PantryEvent.ItemRemoved).itemName)
+    }
+
+    @Test
+    fun `undoAdd emits UndoFailed when the delete fails`() = runTest {
+        val delete = FakeDeleteItemsUseCase(DeleteItemsUseCase.Output.Failure(IOException("boom")))
+        val viewModel = buildViewModel(delete = delete)
+
+        viewModel.undoAdd(insertedItemId = "sli-9", itemName = "Milk")
+
+        val event = viewModel.events.first()
+        assertTrue(event is PantryEvent.UndoFailed)
+        assertEquals("Milk", (event as PantryEvent.UndoFailed).itemName)
     }
 
     @Test

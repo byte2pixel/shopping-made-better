@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
@@ -39,8 +40,19 @@ sealed interface AddToListSheetState {
 
 /** One-shot outcomes surfaced to the user as a snackbar. */
 sealed interface PantryEvent {
-    data class ItemAdded(val itemName: String, val listName: String) : PantryEvent
+    data class ItemAdded(
+        val itemName: String,
+        val listName: String,
+        val insertedItemId: String,
+    ) : PantryEvent
+
     data class AddFailed(val itemName: String) : PantryEvent
+
+    /** The just-added item was removed via Undo. */
+    data class ItemRemoved(val itemName: String) : PantryEvent
+
+    /** Undo failed to remove the just-added item. */
+    data class UndoFailed(val itemName: String) : PantryEvent
 }
 
 @HiltViewModel
@@ -48,6 +60,7 @@ class PantryViewModel @Inject constructor(
     private val getInventoryUseCase: GetInventoryUseCase,
     private val getShoppingTripsUseCase: GetShoppingTripsUseCase,
     private val insertItemUseCase: InsertItemUseCase,
+    private val deleteItemsUseCase: DeleteItemsUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PantryUiState>(PantryUiState.Loading)
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
@@ -112,11 +125,26 @@ class PantryViewModel @Inject constructor(
             )
             val event = when (out) {
                 is InsertItemUseCase.Output.Success -> PantryEvent.ItemAdded(
-                    item.name,
-                    trip.listName
+                    itemName = item.name,
+                    listName = trip.listName,
+                    insertedItemId = out.insertedItemId,
                 )
 
                 is InsertItemUseCase.Output.Failure -> PantryEvent.AddFailed(item.name)
+            }
+            _events.send(event)
+        }
+    }
+
+    /**
+     * Undoes an add by removing the just-created shopping-list item [insertedItemId],
+     * then reports the outcome. [itemName] is only used to label the resulting snackbar.
+     */
+    fun undoAdd(insertedItemId: String, itemName: String) {
+        viewModelScope.launch {
+            val event = when (deleteItemsUseCase.execute(insertedItemId)) {
+                is DeleteItemsUseCase.Output.Success -> PantryEvent.ItemRemoved(itemName)
+                is DeleteItemsUseCase.Output.Failure -> PantryEvent.UndoFailed(itemName)
             }
             _events.send(event)
         }
