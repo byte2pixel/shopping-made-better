@@ -23,6 +23,7 @@ import os
 import re
 import sys
 import uuid
+import html
 from collections import Counter
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
@@ -206,6 +207,14 @@ def extract_image_url(raw: str) -> str:
     return ""
 
 
+def strip_html(value : str | None) -> str:
+    if not value:
+        return ""
+    value = re.sub(r"<[^>]+>", "", value)
+    value = html.unescape(value)
+    return value
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -246,7 +255,7 @@ def main() -> None:
                 "article_number": sql_int(row.get("articleNumber")),
                 "title": sql_str(row.get("title")),
                 "brand": sql_str(row.get("brand")),
-                "description": sql_str(row.get("description")),
+                "description": sql_str(strip_html(row.get("description"))),
                 "package_sizing": sql_str(row.get("packageSizing")),
                 "uom": sql_str(row.get("uom")),
                 "image_url": sql_str(extract_image_url(row.get("productImage", ""))),
