@@ -18,4 +18,9 @@ interface AuthRepository {
      * fails (bad credentials, network, …).
      */
     suspend fun signIn(email: String, password: String)
+
+    /**
+     * Signs out the current user.
+     */
+    suspend fun signOut()
 }
