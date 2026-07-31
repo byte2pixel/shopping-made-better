@@ -2,13 +2,18 @@ package com.fullsail.shoppingmadebetter.navigation
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.fullsail.shoppingmadebetter.feature.auth.data.AuthRepository
+import com.fullsail.shoppingmadebetter.feature.auth.domain.AuthState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 const val NAV_LOG_TAG = "NavigationViewModel"
@@ -25,8 +30,11 @@ sealed interface NavEvent {
     /** Navigate to a bottom-bar tab, preserving/restoring each tab's back stack. */
     data class ToTab(val destination: TopLevelDestination) : NavEvent
 
-    /** Leave the login/landing gate and enter the tabbed app, clearing login from the back stack. */
+    /** Leave the login/splash gate and enter the tabbed app, clearing the gate from the back stack. */
     data object EnterApp : NavEvent
+
+    /** Leave the splash gate for the login screen (no cached session), clearing splash from the back stack. */
+    data object ToLogin : NavEvent
 
     /** Up navigation (respects the navigation hierarchy). */
     data object Up : NavEvent
@@ -48,11 +56,27 @@ sealed interface NavEvent {
  * navigation intent + state.
  */
 @HiltViewModel
-class NavigationViewModel @Inject constructor() : ViewModel() {
+class NavigationViewModel @Inject constructor(
+    authRepository: AuthRepository,
+) : ViewModel() {
 
     // BUFFERED so intents emitted before the UI starts collecting are not dropped.
     private val _events = Channel<NavEvent>(Channel.BUFFERED)
     val events: Flow<NavEvent> = _events.receiveAsFlow()
+
+    init {
+        // Cold-start gate: wait for the cached session to settle (past Initializing),
+        // then leave the splash for the app or the login screen. One-shot — later
+        // sign-in/sign-out is driven by the screens themselves, so a new sign-up's
+        // session doesn't yank the user off the onboarding flow.
+        viewModelScope.launch {
+            val settled = authRepository.authState.first { it != AuthState.Initializing }
+            Log.d(NAV_LOG_TAG, "Auth settled: $settled")
+            _events.trySend(
+                if (settled == AuthState.Authenticated) NavEvent.EnterApp else NavEvent.ToLogin
+            )
+        }
+    }
 
     private val _currentTab = MutableStateFlow<TopLevelDestination?>(null)
 
