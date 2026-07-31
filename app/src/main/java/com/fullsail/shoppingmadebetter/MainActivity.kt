@@ -4,8 +4,18 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
@@ -18,10 +28,12 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -94,8 +106,15 @@ fun ShoppingMadeBetterApp(
                 }
 
                 NavEvent.EnterApp -> navController.navigate(Dest.ShoppingLists) {
-                    // Drop the login gate so system-back exits the app instead of returning to it.
-                    popUpTo(Dest.Login) { inclusive = true }
+                    // Drop the splash/login gate so system-back exits the app instead of returning to it.
+                    // popUpTo(Splash) clears both the splash (auto-login) and any login screen above it.
+                    popUpTo(Dest.Splash) { inclusive = true }
+                    launchSingleTop = true
+                }
+
+                NavEvent.ToLogin -> navController.navigate(Dest.Login) {
+                    // Drop the splash gate so system-back from login exits the app.
+                    popUpTo(Dest.Splash) { inclusive = true }
                     launchSingleTop = true
                 }
 
@@ -111,7 +130,8 @@ fun ShoppingMadeBetterApp(
                 destination.hasRoute(tab.route::class)
             }
             val showChrome =
-                !destination.hasRoute(Dest.Login::class) &&
+                !destination.hasRoute(Dest.Splash::class) &&
+                        !destination.hasRoute(Dest.Login::class) &&
                         !destination.hasRoute(Dest.SignUp::class) &&
                         !destination.hasRoute(Dest.Onboarding::class) &&
                         !destination.hasRoute(Dest.Profile::class) &&
@@ -157,9 +177,11 @@ fun ShoppingMadeBetterApp(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Dest.Login,
+            startDestination = Dest.Splash,
             modifier = Modifier.padding(innerPadding),
         ) {
+
+            composable<Dest.Splash> { SplashScreen() }
 
             composable<Dest.ShoppingLists> {
                 ShoppingListsScreen(onItemComparison = {
@@ -252,6 +274,31 @@ fun ShoppingMadeBetterApp(
             // Dev-only example wired to the Supabase store use case (SCRUM-79).
             composable<Dest.Stores> { StoresScreen() }
         }
+    }
+}
+
+/**
+ * The cold-start gate shown while the cached Supabase session is being restored.
+ * Once [NavigationViewModel] resolves the session it routes away from here, so this
+ * is only ever visible for the brief initializing window. Mirrors the login screen's
+ * green backdrop and logo for a seamless hand-off into either destination.
+ */
+@Composable
+private fun SplashScreen() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.app_logo),
+            contentDescription = stringResource(R.string.auth_logo_desc),
+            modifier = Modifier.size(200.dp),
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        CircularProgressIndicator()
     }
 }
 
