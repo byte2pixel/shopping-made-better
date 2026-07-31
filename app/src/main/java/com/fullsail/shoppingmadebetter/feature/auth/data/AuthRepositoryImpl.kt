@@ -28,4 +28,8 @@ class AuthRepositoryImpl @Inject constructor(
             this.password = password
         }
     }
+
+    override suspend fun signOut() {
+        auth.signOut()
+    }
 }

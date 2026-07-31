@@ -22,6 +22,7 @@ class SignInUseCaseTest {
             error?.let { throw it }
         }
         override suspend fun signUp(email: String, password: String) = Unit
+        override suspend fun signOut() = Unit
     }
 
     @Test
