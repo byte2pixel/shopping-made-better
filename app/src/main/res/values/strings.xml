@@ -12,6 +12,9 @@
     <string name="nav_back">Back</string>
     <string name="nav_menu">Menu</string>
 
+    <!-- Navigation drawer menu -->
+    <string name="menu_logout">Log out</string>
+
     <!-- Authentication (sign in / sign up) -->
     <string name="auth_sign_in">Sign In</string>
     <string name="auth_sign_up">Sign Up</string>

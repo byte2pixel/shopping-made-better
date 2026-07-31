@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -28,9 +29,10 @@ class NavigationViewModelTest {
     ) : AuthRepository {
         val authStateFlow = MutableStateFlow(initial)
         override val authState: StateFlow<AuthState> = authStateFlow
+        var signedOut = false
         override suspend fun signUp(email: String, password: String) = Unit
         override suspend fun signIn(email: String, password: String) = Unit
-        override suspend fun signOut() = Unit
+        override suspend fun signOut() { signedOut = true }
     }
 
     private fun buildViewModel(
@@ -60,6 +62,17 @@ class NavigationViewModelTest {
         auth.authStateFlow.value = AuthState.Authenticated
 
         assertEquals(NavEvent.EnterApp, viewModel.events.first())
+    }
+
+    @Test
+    fun `logout signs out and routes to login`() = runTest {
+        val auth = FakeAuthRepository() // stays Initializing
+        val viewModel = buildViewModel(auth)
+
+        viewModel.logout()
+
+        assertEquals(NavEvent.ToLogin, viewModel.events.first())
+        assertTrue(auth.signedOut)
     }
 
     @Test

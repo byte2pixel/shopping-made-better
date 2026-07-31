@@ -57,7 +57,7 @@ sealed interface NavEvent {
  */
 @HiltViewModel
 class NavigationViewModel @Inject constructor(
-    authRepository: AuthRepository,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
 
     // BUFFERED so intents emitted before the UI starts collecting are not dropped.
@@ -110,6 +110,17 @@ class NavigationViewModel @Inject constructor(
     fun onAuthenticated() {
         Log.d(NAV_LOG_TAG, "Authenticated -> entering app")
         _events.trySend(NavEvent.EnterApp)
+    }
+
+    /**
+     * Signs the user out and returns to the login screen.
+     */
+    fun logout() {
+        viewModelScope.launch {
+            Log.d(NAV_LOG_TAG, "Logging out")
+            authRepository.signOut()
+            _events.trySend(NavEvent.ToLogin)
+        }
     }
 
     /** Up navigation, typically from the top bar's back arrow. */
