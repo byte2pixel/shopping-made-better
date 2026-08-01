@@ -62,21 +62,24 @@ private val filterSetSaver = listSaver<Set<PantryDashboardFilter>, String>(
 internal const val EXPIRING_SOON_DAYS = 5
 
 /**
- * Narrows [items] to those matching the active dashboard [filters]. Only the
- * expiring filter is wired up so far. Any other selected filter is ignored
- * filter is ignored. With no filters, returns [items] unchanged.
+ * Narrows [items] to those matching every active, wired-up dashboard filter in
+ * [filters]. Filters without a [PantryDashboardFilter.predicate] yet are ignored;
+ * when no active filter has a predicate, [items] is returned unchanged. Multiple
+ * wired filters compose as an intersection — an item must match them all.
  */
 internal fun applyPantryFilters(
     items: List<InventoryItem>,
     filters: Set<PantryDashboardFilter>,
-): List<InventoryItem> =
-    if (PantryDashboardFilter.Expiring in filters) {
-        items.filter { it.isExpiringSoon() }
-    } else {
+): List<InventoryItem> {
+    val predicates = filters.mapNotNull { it.predicate }
+    return if (predicates.isEmpty()) {
         items
+    } else {
+        items.filter { item -> predicates.all { predicate -> predicate(item) } }
     }
+}
 
-private fun InventoryItem.isExpiringSoon(): Boolean =
+internal fun InventoryItem.isExpiringSoon(): Boolean =
     expiresInDays != null && expiresInDays < EXPIRING_SOON_DAYS
 
 @Composable
@@ -190,7 +193,9 @@ private fun PantryContent(
             }
 
             is PantryUiState.Success -> {
-                val dashboardCards = remember { placeholderDashboardCards() }
+                val dashboardCards = remember(uiState.inventoryItems) {
+                    pantryDashboardCards(uiState.inventoryItems)
+                }
                 var selectedFilters by rememberSaveable(stateSaver = filterSetSaver) {
                     mutableStateOf(emptySet<PantryDashboardFilter>())
                 }

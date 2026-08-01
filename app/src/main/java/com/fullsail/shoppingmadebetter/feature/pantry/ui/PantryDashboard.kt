@@ -34,6 +34,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
 /**
@@ -45,12 +46,21 @@ enum class PantryDashboardFilter(
     @param:DrawableRes val iconRes: Int,
     @param:StringRes val labelRes: Int,
 ) {
-    Expiring(R.drawable.ic_expiring, R.string.pantry_dashboard_expiring),
+    Expiring(R.drawable.ic_expiring, R.string.pantry_dashboard_expiring) {
+        override val predicate: (InventoryItem) -> Boolean = { it.isExpiringSoon() }
+    },
     RunningLow(R.drawable.ic_running_low, R.string.pantry_dashboard_running_low),
     Out(R.drawable.ic_out_of_stock, R.string.pantry_dashboard_out),
     Freezer(R.drawable.ic_freezer, R.string.pantry_dashboard_freezer),
     Fridge(R.drawable.ic_fridge, R.string.pantry_dashboard_fridge),
     Pantry(R.drawable.ic_pantry, R.string.pantry_dashboard_pantry),
+    ;
+
+    /**
+     * How this card decides whether an inventory item belongs to its category,
+     * or `null` while still a placeholder.
+     */
+    open val predicate: ((InventoryItem) -> Boolean)? = null
 }
 
 /** One card's view data: which filter it represents and its count. */
@@ -156,25 +166,43 @@ private fun DashboardCard(
 }
 
 /**
- * Placeholder card data for the mini dashboard. Replace with real,
- * data-driven counts when the backing data lands (future task).
+ * Stand-in counts for cards whose filter has no [PantryDashboardFilter.predicate]
+ * yet. Wired filters compute real counts from the inventory instead; drop a
+ * filter's entry here once its predicate lands.
  */
-internal fun placeholderDashboardCards(): List<PantryDashboardCard> = listOf(
-    PantryDashboardCard(PantryDashboardFilter.Expiring, count = 3),
-    PantryDashboardCard(PantryDashboardFilter.RunningLow, count = 5),
-    PantryDashboardCard(PantryDashboardFilter.Out, count = 2),
-    PantryDashboardCard(PantryDashboardFilter.Freezer, count = 8),
-    PantryDashboardCard(PantryDashboardFilter.Fridge, count = 12),
-    PantryDashboardCard(PantryDashboardFilter.Pantry, count = 24),
+private val placeholderCounts: Map<PantryDashboardFilter, Int> = mapOf(
+    PantryDashboardFilter.RunningLow to 5,
+    PantryDashboardFilter.Out to 2,
+    PantryDashboardFilter.Freezer to 8,
+    PantryDashboardFilter.Fridge to 12,
+    PantryDashboardFilter.Pantry to 24,
 )
+
+/**
+ * Builds the dashboard cards for [items]. A card whose filter is wired up shows
+ * the real count of matching items; the rest fall back to [placeholderCounts]
+ * until their predicates land.
+ */
+internal fun pantryDashboardCards(items: List<InventoryItem>): List<PantryDashboardCard> =
+    PantryDashboardFilter.entries.map { filter ->
+        val count = filter.predicate?.let { predicate -> items.count(predicate) }
+            ?: placeholderCounts[filter]
+            ?: 0
+        PantryDashboardCard(filter, count)
+    }
 
 @Preview(showBackground = true)
 @Composable
 private fun PantryDashboardPreview() {
     var selected by rememberSaveable { mutableStateOf(setOf(PantryDashboardFilter.Expiring)) }
+    val cards = remember {
+        PantryDashboardFilter.entries.mapIndexed { index, filter ->
+            PantryDashboardCard(filter, count = index + 2)
+        }
+    }
     ShoppingMadeBetterTheme {
         PantryDashboard(
-            cards = remember { placeholderDashboardCards() },
+            cards = cards,
             selected = selected,
             onToggle = { filter ->
                 selected = if (filter in selected) selected - filter else selected + filter
