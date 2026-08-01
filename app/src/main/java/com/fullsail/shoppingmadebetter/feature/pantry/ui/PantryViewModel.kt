@@ -186,13 +186,25 @@ class PantryViewModel @Inject constructor(
         viewModelScope.launch {
             val event = when (deleteInventoryItemUseCase.execute(item.id)) {
                 is DeleteInventoryItemUseCase.Output.Success -> {
-                    loadInventory()
+                    removeItemFromState(item.id)
                     PantryEvent.RemovedFromPantry(item.name)
                 }
 
                 is DeleteInventoryItemUseCase.Output.Failure -> PantryEvent.RemoveFailed(item.name)
             }
             _events.send(event)
+        }
+    }
+
+    /**
+     * Drops [itemId] from the current success list in place.
+     */
+    private fun removeItemFromState(itemId: String) {
+        val current = _uiState.value
+        if (current is PantryUiState.Success) {
+            _uiState.value = current.copy(
+                inventoryItems = current.inventoryItems.filterNot { it.id == itemId },
+            )
         }
     }
 }

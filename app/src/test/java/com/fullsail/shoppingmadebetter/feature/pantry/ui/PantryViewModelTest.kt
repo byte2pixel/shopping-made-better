@@ -334,6 +334,25 @@ class PantryViewModelTest {
     }
 
     @Test
+    fun `confirmRemove drops the item from the list in place without a loading flash`() = runTest {
+        val otherItem = sampleItem.copy(id = "i2", productId = "p2", name = "Bread")
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(sampleItem, otherItem))
+            ),
+            deleteInventory = FakeDeleteInventoryItemUseCase(DeleteInventoryItemUseCase.Output.Success),
+        )
+        viewModel.onRemoveClicked(sampleItem)
+
+        viewModel.confirmRemove()
+
+        // State stays Success (never flips to Loading) and only the removed item is gone.
+        val state = viewModel.uiState.value
+        assertTrue(state is PantryUiState.Success)
+        assertEquals(listOf(otherItem), (state as PantryUiState.Success).inventoryItems)
+    }
+
+    @Test
     fun `confirmRemove emits RemoveFailed when the delete fails`() = runTest {
         val deleteInventory = FakeDeleteInventoryItemUseCase(
             DeleteInventoryItemUseCase.Output.Failure(IOException("boom"))
