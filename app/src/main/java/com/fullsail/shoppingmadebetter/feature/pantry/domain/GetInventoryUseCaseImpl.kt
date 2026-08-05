@@ -32,7 +32,8 @@ class GetInventoryUseCaseImpl @Inject constructor(
         size = size,
         imageUrl = imageUrl,
         quantity = quantity,
-        expiresInDays = expiryDate?.let { today.daysUntil(it) }
+        expiresInDays = expiryDate?.let { today.daysUntil(it) },
+        location = PantryLocation.fromDbValue(location),
     )
 
     private companion object {

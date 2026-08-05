@@ -106,6 +106,21 @@ class GetInventoryItemUseCaseTest {
     }
 
     @Test
+    fun `execute maps the location string to a PantryLocation, unknown falling back to Pantry`() =
+        runTest {
+            val fridge = dto.copy(location = "fridge")
+            val item = (GetInventoryItemUseCaseImpl(FakePantryRepository(item = fridge), fixedClock)
+                .execute("i1") as GetInventoryItemUseCase.Output.Success).inventoryItem
+            assertEquals(PantryLocation.Fridge, item.location)
+
+            val unknown = dto.copy(location = "garage")
+            val fallback =
+                (GetInventoryItemUseCaseImpl(FakePantryRepository(item = unknown), fixedClock)
+                    .execute("i1") as GetInventoryItemUseCase.Output.Success).inventoryItem
+            assertEquals(PantryLocation.Pantry, fallback.location) // unrecognized -> Pantry
+        }
+
+    @Test
     fun `execute returns NotFound when the repository returns null`() = runTest {
         val useCase = GetInventoryItemUseCaseImpl(FakePantryRepository(item = null), fixedClock)
 
