@@ -87,4 +87,19 @@ class ShoppingListRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun renameList(listId: String, newName: String) {
+        postgrest.from("shopping_lists").update(
+            {
+                set("name",newName)
+            }
+        ){
+            filter{
+                eq("id", listId)
+            }
+        }
+    }
+
+
+
+
 }

@@ -12,5 +12,6 @@ interface ShoppingListRepository {
     suspend fun getItems(list: String) : List<ShoppingListItemsDto>
     suspend fun deleteItem(itemId : String)
     suspend fun removeList(listId : String)
+    suspend fun renameList(listId : String, newName : String)
 
 }

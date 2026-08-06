@@ -3,6 +3,8 @@ package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RemoveListUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameList
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameShoppingListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,6 +25,7 @@ sealed interface ShoppingTripsUiState {
 class ShoppingTripsViewModel @Inject constructor(
     private val getShoppingTripsUseCase: GetShoppingTripsUseCase,
     private val getRemoveListUseCase: RemoveListUseCase,
+    private val getRenameListUseCase: RenameShoppingListUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ShoppingTripsUiState>(ShoppingTripsUiState.Loading)
@@ -59,4 +62,24 @@ class ShoppingTripsViewModel @Inject constructor(
             }
         }
     }
+
+    fun renameList(rename : RenameList)
+    {
+        _uiState.value = ShoppingTripsUiState.Loading
+        viewModelScope.launch {
+            when (val out = getRenameListUseCase.execute(rename) ){
+                is RenameShoppingListUseCase.Output.Success ->
+                {
+                    load()
+
+                }
+
+                is RenameShoppingListUseCase.Output.Failure ->
+                {
+                    ShoppingTripsUiState.Error
+                }
+            }
+        }
+    }
+
 }
