@@ -34,6 +34,7 @@ fun MealsScreen(
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onFilterSelected = viewModel::onFilterSelected,
         onSelectMeal = viewModel::selectMealPlan,
+        onRetry = viewModel::loadMeals,
         modifier = modifier
     )
 }
@@ -44,9 +45,9 @@ private fun MealsContent(
     onSearchQueryChanged: (String) -> Unit,
     onFilterSelected: (String) -> Unit,
     onSelectMeal: (String) -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Root container without local Scaffold/TopAppBar
     Box(
         modifier = modifier.fillMaxSize()
     ) {
@@ -55,15 +56,15 @@ private fun MealsContent(
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
             is MealsUiState.Error -> {
-                Text(
-                    text = uiState.message,
-                    color = MaterialTheme.colorScheme.error,
+                // SCRUM-135: Error State UI
+                ErrorMealsState(
+                    message = uiState.message,
+                    onRetry = onRetry,
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
             is MealsUiState.Success -> {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Fixed Uniform Metrics Banner
                     MetricsBanner(
                         canMake = uiState.canMakeCount,
                         almostThere = uiState.almostThereCount,
@@ -71,7 +72,6 @@ private fun MealsContent(
                         recommended = uiState.recommendedCount
                     )
 
-                    // Local Search Bar (SCRUM-134)
                     OutlinedTextField(
                         value = uiState.searchQuery,
                         onValueChange = onSearchQueryChanged,
@@ -83,30 +83,104 @@ private fun MealsContent(
                         shape = RoundedCornerShape(12.dp)
                     )
 
-                    // Category Filter Pills
                     FilterChipsRow(
                         selectedFilter = uiState.selectedFilter,
                         onFilterSelected = onFilterSelected
                     )
 
-                    // Recipe List
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(bottom = 16.dp)
-                    ) {
-                        items(uiState.meals) { meal ->
-                            MealRecipeCard(
-                                meal = meal,
-                                isSelected = meal.id == uiState.selectedMealId,
-                                onDetailsClick = { onSelectMeal(meal.id) }
-                            )
+                    // SCRUM-135: Empty State UI handling
+                    if (uiState.meals.isEmpty()) {
+                        EmptyMealsState(
+                            searchQuery = uiState.searchQuery,
+                            onClearFilters = {
+                                onSearchQueryChanged("")
+                                onFilterSelected("All")
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            contentPadding = PaddingValues(bottom = 16.dp)
+                        ) {
+                            items(uiState.meals) { meal ->
+                                MealRecipeCard(
+                                    meal = meal,
+                                    isSelected = meal.id == uiState.selectedMealId,
+                                    onDetailsClick = { onSelectMeal(meal.id) }
+                                )
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun EmptyMealsState(
+    searchQuery: String,
+    onClearFilters: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = if (searchQuery.isNotEmpty()) "No meals found for \"$searchQuery\"" else "No meals available",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Try adjusting your search query or switching filters.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedButton(onClick = onClearFilters) {
+            Text("Clear Search & Filters")
+        }
+    }
+}
+
+@Composable
+private fun ErrorMealsState(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Something went wrong",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onRetry,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E5A44))
+        ) {
+            Text("Retry")
         }
     }
 }
@@ -223,7 +297,7 @@ private fun MealRecipeCard(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-                IconButton(onClick = { /* Options / Back */ }) {
+                IconButton(onClick = { /* Options */ }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_arrow_back),
                         contentDescription = "More"
@@ -280,7 +354,8 @@ private fun MealsScreenPreview() {
             ),
             onSearchQueryChanged = {},
             onFilterSelected = {},
-            onSelectMeal = {}
+            onSelectMeal = {},
+            onRetry = {}
         )
     }
 }
