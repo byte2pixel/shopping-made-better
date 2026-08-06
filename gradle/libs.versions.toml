@@ -16,6 +16,7 @@ supabase = "3.6.0"
 ktor = "3.5.1"
 kotlinxDatetime = "0.7.1"
 navigationCompose = "2.8.5"
+coil = "3.3.0"
 coroutinesTest = "1.10.2"
 ui = "1.11.4"
 foundation = "1.11.4"
@@ -46,6 +47,8 @@ supabase-postgrest = { group = "io.github.jan-tennert.supabase", name = "postgre
 supabase-auth = { group = "io.github.jan-tennert.supabase", name = "auth-kt" }
 ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
 kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinxDatetime" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
