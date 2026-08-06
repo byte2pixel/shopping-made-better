@@ -1,15 +1,11 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -18,7 +14,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -27,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.LabelChip
+import com.fullsail.shoppingmadebetter.core.ui.ProductImage
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import com.fullsail.shoppingmadebetter.ui.theme.expirySoonAccentDark
@@ -74,7 +70,7 @@ fun InventoryItemCard(
     Card(onClick = onClick, modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                ItemThumbnail()
+                ProductImage(imageUrl = item.imageUrl, contentDescription = item.name)
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -176,28 +172,6 @@ private fun ExpiryChip(bucket: ExpiryBucket, expiresInDays: Int, modifier: Modif
         contentDescription = description,
         modifier = modifier,
     )
-}
-
-/**
- * Leading placeholder for the item's image. Real product thumbnails are a
- * todo for now every card shows a generic pantry glyph.
- */
-@Composable
-private fun ItemThumbnail(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .size(56.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_pantry),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(28.dp),
-        )
-    }
 }
 
 private fun previewItem(expiresInDays: Int?) = InventoryItem(
