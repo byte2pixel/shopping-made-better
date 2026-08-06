@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,9 +10,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -19,6 +24,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import com.fullsail.shoppingmadebetter.navigation.Dest
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShoppingListsScreen(
     onItemComparison :(dest : Dest) -> Unit,
@@ -28,6 +34,47 @@ fun ShoppingListsScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    var showDialog by remember {mutableStateOf(false)}
+    var listForDeletion by remember {mutableStateOf<String?>(null)}
+
+    if (showDialog)
+    {
+        BasicAlertDialog(onDismissRequest = {}, Modifier.fillMaxWidth(), DialogProperties(),
+            {
+                Row(modifier = Modifier.fillMaxWidth().background( color = MaterialTheme.colorScheme.surface).padding(24.dp)) {
+
+                    Button(
+                        onClick = {
+                            showDialog = false
+
+                        }
+                    )
+                    {
+                        Text("Keep List")
+                    }
+                    OutlinedButton (
+                        onClick = {
+                            showDialog = false
+                            listForDeletion?.let {
+                                viewModel.removeList(
+                                    it
+                                )
+                            }
+
+
+                        }
+                    )
+                    {
+                        Text("Delete List")
+                    }
+
+                }
+            })
+    }
+
+
+
     DisposableEffect(lifecycleOwner)
     {
         val observer = LifecycleEventObserver { _, event ->
@@ -62,9 +109,10 @@ fun ShoppingListsScreen(
                             ) {
 
                                 items(state.trips, key = { it.shoppingListId }) { TripCard(it, onDelete =  {
-                                    viewModel.removeList(
-                                        it.shoppingListId
-                                    )
+
+                                    showDialog = true
+                                    listForDeletion = it.shoppingListId
+
                                 }, onItemComparison = onItemComparison)
                                 }
                             }
@@ -86,8 +134,11 @@ fun ShoppingListsScreen(
             }
 
         }
+
+
+
 @Composable
-private fun TripCard(trip: ShoppingTrip,onDelete: () -> Unit, onItemComparison :(dest : Dest) -> Unit)
+private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison :(dest : Dest) -> Unit)
 {
     OutlinedCard(
         onClick = {
