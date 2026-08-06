@@ -9,6 +9,7 @@ import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
+import coil3.util.DebugLogger
 import dagger.hilt.android.HiltAndroidApp
 
 /**
@@ -38,6 +39,7 @@ class ShoppingMadeBetterApplication : Application(), SingletonImageLoader.Factor
                     .build()
             }
             .crossfade(true)
+            .apply { if (BuildConfig.DEBUG) logger(DebugLogger()) }
             .build()
 
     private companion object {
