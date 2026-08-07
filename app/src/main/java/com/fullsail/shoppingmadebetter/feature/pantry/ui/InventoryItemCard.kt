@@ -1,5 +1,7 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,6 +26,7 @@ import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.LabelChip
 import com.fullsail.shoppingmadebetter.core.ui.ProductImage
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import com.fullsail.shoppingmadebetter.ui.theme.expirySoonAccentDark
 import com.fullsail.shoppingmadebetter.ui.theme.expirySoonAccentLight
@@ -120,10 +123,39 @@ private fun InventoryIndicators(item: InventoryItem, modifier: Modifier = Modifi
         verticalAlignment = Alignment.CenterVertically,
     ) {
         QuantityChip(quantity = item.quantity)
+        LocationChip(location = item.location)
         if (bucket != null) {
             ExpiryChip(bucket = bucket, expiresInDays = item.expiresInDays!!)
         }
     }
+}
+
+/** The drawable icon representing where an item is stored. */
+@DrawableRes
+internal fun PantryLocation.iconRes(): Int = when (this) {
+    PantryLocation.Freezer -> R.drawable.ic_freezer
+    PantryLocation.Fridge -> R.drawable.ic_fridge
+    PantryLocation.Pantry -> R.drawable.ic_pantry
+}
+
+/** The display name for a storage location, shared with the pantry dashboard. */
+@StringRes
+internal fun PantryLocation.labelRes(): Int = when (this) {
+    PantryLocation.Freezer -> R.string.pantry_dashboard_freezer
+    PantryLocation.Fridge -> R.string.pantry_dashboard_fridge
+    PantryLocation.Pantry -> R.string.pantry_dashboard_pantry
+}
+
+@Composable
+private fun LocationChip(location: PantryLocation, modifier: Modifier = Modifier) {
+    val label = stringResource(location.labelRes())
+    LabelChip(
+        label = label,
+        accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        iconRes = location.iconRes(),
+        contentDescription = stringResource(R.string.pantry_card_location_desc, label),
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -174,7 +206,10 @@ private fun ExpiryChip(bucket: ExpiryBucket, expiresInDays: Int, modifier: Modif
     )
 }
 
-private fun previewItem(expiresInDays: Int?) = InventoryItem(
+private fun previewItem(
+    expiresInDays: Int?,
+    location: PantryLocation = PantryLocation.Pantry,
+) = InventoryItem(
     id = "1",
     productId = "p1",
     name = "2% Milk",
@@ -184,6 +219,7 @@ private fun previewItem(expiresInDays: Int?) = InventoryItem(
     imageUrl = "",
     quantity = 2,
     expiresInDays = expiresInDays,
+    location = location,
 )
 
 @Preview(showBackground = true, name = "Soon (yellow)")
@@ -191,7 +227,7 @@ private fun previewItem(expiresInDays: Int?) = InventoryItem(
 private fun InventoryItemCardPreview() {
     ShoppingMadeBetterTheme {
         InventoryItemCard(
-            item = previewItem(expiresInDays = 4),
+            item = previewItem(expiresInDays = 4, location = PantryLocation.Fridge),
             onClick = {},
             onAddToList = {},
             onRemove = {},
@@ -205,7 +241,7 @@ private fun InventoryItemCardPreview() {
 private fun InventoryItemCardExpiredPreview() {
     ShoppingMadeBetterTheme {
         InventoryItemCard(
-            item = previewItem(expiresInDays = -2),
+            item = previewItem(expiresInDays = -2, location = PantryLocation.Freezer),
             onClick = {},
             onAddToList = {},
             onRemove = {},
