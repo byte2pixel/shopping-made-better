@@ -34,6 +34,7 @@ fun MealsScreen(
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onFilterSelected = viewModel::onFilterSelected,
         onSelectMeal = viewModel::selectMealPlan,
+        onRetry = viewModel::loadMeals,
         modifier = modifier
     )
 }
@@ -44,6 +45,7 @@ private fun MealsContent(
     onSearchQueryChanged: (String) -> Unit,
     onFilterSelected: (String) -> Unit,
     onSelectMeal: (String) -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Root container without local Scaffold/TopAppBar
@@ -107,6 +109,70 @@ private fun MealsContent(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun EmptyMealsState(
+    searchQuery: String,
+    onClearFilters: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = if (searchQuery.isNotEmpty()) "No meals found for \"$searchQuery\"" else "No meals available",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Try adjusting your search query or switching filters.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedButton(onClick = onClearFilters) {
+            Text("Clear Search & Filters")
+        }
+    }
+}
+
+@Composable
+private fun ErrorMealsState(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Something went wrong",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onRetry,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E5A44))
+        ) {
+            Text("Retry")
         }
     }
 }
@@ -288,7 +354,8 @@ private fun MealsScreenPreview() {
             ),
             onSearchQueryChanged = {},
             onFilterSelected = {},
-            onSelectMeal = {}
+            onSelectMeal = {},
+            onRetry = {}
         )
     }
 }
