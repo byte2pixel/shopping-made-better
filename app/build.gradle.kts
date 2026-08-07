@@ -72,6 +72,13 @@ android {
     buildToolsVersion = "37.0.0"
 }
 
+kotlin {
+    compilerOptions {
+        // Opt in project-wide so date/time code doesn't need per-usage @OptIn.
+        optIn.add("kotlin.time.ExperimentalTime")
+    }
+}
+
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
@@ -89,10 +96,13 @@ dependencies {
     implementation(libs.androidx.ui)
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.auth)
+    implementation(libs.kotlinx.datetime)
     implementation(libs.ktor.client.okhttp)
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
     ksp(libs.hilt.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

@@ -34,6 +34,9 @@ fun ShoppingListItemsScreen(
     ) {
 
     val uiState by viewModel.uiState.collectAsState()
+
+
+
     Box() {
         viewModel.getItems(listId)
         when (val state = uiState) {

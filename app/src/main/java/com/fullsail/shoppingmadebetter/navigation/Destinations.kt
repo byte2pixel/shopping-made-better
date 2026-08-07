@@ -12,6 +12,13 @@ import kotlinx.serialization.Serializable
  * Navigation Compose APIs (`composable<Dest.Cart> { }`, `navController.navigate(Dest.Cart)`).
  */
 sealed interface Dest {
+    /**
+     * The cold-start gate: shown while the cached session is being restored, before
+     * the app knows whether to route to [Login] or into the tabs. Never returned to.
+     */
+    @Serializable
+    data object Splash : Dest
+
     @Serializable
     data object Login : Dest
 

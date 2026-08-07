@@ -12,6 +12,9 @@
     <string name="nav_back">Back</string>
     <string name="nav_menu">Menu</string>
 
+    <!-- Navigation drawer menu -->
+    <string name="menu_logout">Log out</string>
+
     <!-- Authentication (sign in / sign up) -->
     <string name="auth_sign_in">Sign In</string>
     <string name="auth_sign_up">Sign Up</string>
@@ -59,6 +62,35 @@
     <string name="pantry_detail_expiration">Expiration</string>
     <string name="pantry_detail_coming_soon">Coming soon</string>
     <string name="pantry_detail_not_found">Item not found</string>
+    <!-- Expiration status shown against the item's remaining shelf life -->
+    <string name="pantry_detail_expires_unknown">No expiration date</string>
+    <string name="pantry_detail_expired">Expired</string>
+    <string name="pantry_detail_expires_today">Expires today</string>
+    <plurals name="pantry_detail_expires_in_days">
+        <item quantity="one">%1$d day left</item>
+        <item quantity="other">%1$d days left</item>
+    </plurals>
+
+    <!-- Pantry inventory card chip indicators - quantity -->
+    <string name="pantry_card_quantity">Qty %1$d</string>
+    <plurals name="pantry_card_quantity_desc">
+        <item quantity="one">%1$d in stock</item>
+        <item quantity="other">%1$d in stock</item>
+    </plurals>
+
+    <!-- Pantry inventory card chip indicators - expire -->
+    <string name="pantry_expiry_expired">Expired</string>
+    <string name="pantry_expiry_today">Today</string>
+    <string name="pantry_expiry_in_days_short">%1$dd</string>
+
+    <!-- Pantry: remove an item from the pantry -->
+    <string name="pantry_remove_from_pantry">Remove from pantry</string>
+    <string name="pantry_remove_confirm_title">Remove item?</string>
+    <string name="pantry_remove_confirm_message">Remove \"%1$s\" from your pantry? This can\'t be undone.</string>
+    <string name="pantry_remove_confirm_action">Remove</string>
+    <string name="pantry_remove_cancel">Cancel</string>
+    <string name="pantry_removed">Removed %1$s from pantry</string>
+    <string name="pantry_remove_failed">Couldn\'t remove %1$s</string>
 
     <!-- Pantry: add an item to a shopping list -->
     <string name="pantry_add_to_list">Add to shopping list</string>
@@ -67,6 +99,9 @@
     <string name="add_to_list_error">Couldn\'t load your shopping lists</string>
     <string name="added_to_list">Added %1$s to %2$s</string>
     <string name="add_to_list_failed">Couldn\'t add %1$s</string>
+    <string name="add_to_list_undo">Undo</string>
+    <string name="removed_from_list">Removed %1$s</string>
+    <string name="undo_failed">Couldn\'t remove %1$s</string>
     <plurals name="add_to_list_item_count">
         <item quantity="one">%1$d item</item>
         <item quantity="other">%1$d items</item>

@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.data
 
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -11,5 +12,7 @@ data class InventoryItemDto(
     val description: String,
     val size: String,
     val quantity: Int,
-    val imageUrl: String
+    val imageUrl: String,
+    val expiryDate: LocalDate?,
+    val location: String = "pantry",
 )

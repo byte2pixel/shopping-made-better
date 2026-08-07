@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,17 +13,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -35,7 +38,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -52,6 +54,34 @@ private val filterSetSaver = listSaver<Set<PantryDashboardFilter>, String>(
     restore = { names -> names.map { PantryDashboardFilter.valueOf(it) }.toSet() },
 )
 
+/**
+ * Items with a known expiration date fewer than this many days out — including
+ * already-expired ones — count as "expiring soon". Hard-coded for now; a future
+ * task may let the user configure it (e.g. by long-pressing the dashboard card).
+ */
+internal const val EXPIRING_SOON_DAYS = 5
+
+/**
+ * Narrows [items] to those matching every active, wired-up dashboard filter in
+ * [filters]. Filters without a [PantryDashboardFilter.predicate] yet are ignored;
+ * when no active filter has a predicate, [items] is returned unchanged. Multiple
+ * wired filters compose as an intersection — an item must match them all.
+ */
+internal fun applyPantryFilters(
+    items: List<InventoryItem>,
+    filters: Set<PantryDashboardFilter>,
+): List<InventoryItem> {
+    val predicates = filters.mapNotNull { it.predicate }
+    return if (predicates.isEmpty()) {
+        items
+    } else {
+        items.filter { item -> predicates.all { predicate -> predicate(item) } }
+    }
+}
+
+internal fun InventoryItem.isExpiringSoon(): Boolean =
+    expiresInDays != null && expiresInDays < EXPIRING_SOON_DAYS
+
 @Composable
 fun PantryScreen(
     onItemClick: (String) -> Unit,
@@ -60,21 +90,46 @@ fun PantryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val sheetState by viewModel.addToListSheet.collectAsState()
+    val removeConfirm by viewModel.removeConfirm.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val resources = LocalResources.current
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
-            val message = when (event) {
-                is PantryEvent.ItemAdded -> resources.getString(
-                    R.string.added_to_list, event.itemName, event.listName
+            when (event) {
+                is PantryEvent.ItemAdded -> {
+                    val result = snackbarHostState.showSnackbar(
+                        message = resources.getString(
+                            R.string.added_to_list, event.itemName, event.listName
+                        ),
+                        actionLabel = resources.getString(R.string.add_to_list_undo),
+                        duration = SnackbarDuration.Short,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        viewModel.undoAdd(event.insertedItemId, event.itemName)
+                    }
+                }
+
+                is PantryEvent.AddFailed -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.add_to_list_failed, event.itemName)
                 )
 
-                is PantryEvent.AddFailed -> resources.getString(
-                    R.string.add_to_list_failed, event.itemName
+                is PantryEvent.ItemRemoved -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.removed_from_list, event.itemName)
+                )
+
+                is PantryEvent.UndoFailed -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.undo_failed, event.itemName)
+                )
+
+                is PantryEvent.RemovedFromPantry -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.pantry_removed, event.itemName)
+                )
+
+                is PantryEvent.RemoveFailed -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.pantry_remove_failed, event.itemName)
                 )
             }
-            snackbarHostState.showSnackbar(message)
         }
     }
 
@@ -84,6 +139,7 @@ fun PantryScreen(
             onRetry = viewModel::loadInventory,
             onItemClick = onItemClick,
             onAddToListClick = viewModel::onAddToListClicked,
+            onRemoveClick = viewModel::onRemoveClicked,
         )
         SnackbarHost(
             hostState = snackbarHostState,
@@ -98,6 +154,14 @@ fun PantryScreen(
             onListChosen = viewModel::onListChosen,
         )
     }
+
+    removeConfirm?.let { item ->
+        RemoveFromPantryDialog(
+            itemName = item.name,
+            onConfirm = viewModel::confirmRemove,
+            onDismiss = viewModel::dismissRemove,
+        )
+    }
 }
 
 @Composable
@@ -106,6 +170,7 @@ private fun PantryContent(
     onRetry: () -> Unit,
     onItemClick: (String) -> Unit,
     onAddToListClick: (InventoryItem) -> Unit,
+    onRemoveClick: (InventoryItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -128,9 +193,15 @@ private fun PantryContent(
             }
 
             is PantryUiState.Success -> {
-                val dashboardCards = remember { placeholderDashboardCards() }
+                val dashboardCards = remember(uiState.inventoryItems) {
+                    pantryDashboardCards(uiState.inventoryItems)
+                }
                 var selectedFilters by rememberSaveable(stateSaver = filterSetSaver) {
                     mutableStateOf(emptySet<PantryDashboardFilter>())
+                }
+
+                val visibleItems = remember(uiState.inventoryItems, selectedFilters) {
+                    applyPantryFilters(uiState.inventoryItems, selectedFilters)
                 }
 
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -146,14 +217,18 @@ private fun PantryContent(
                         },
                     )
                     HorizontalDivider()
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(uiState.inventoryItems, key = { it.id }) { inventoryItem ->
-                            InventoryItemRow(
-                                inventoryItem = inventoryItem,
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(visibleItems, key = { it.id }) { inventoryItem ->
+                            InventoryItemCard(
+                                item = inventoryItem,
                                 onClick = { onItemClick(inventoryItem.id) },
                                 onAddToList = { onAddToListClick(inventoryItem) },
+                                onRemove = { onRemoveClick(inventoryItem) },
                             )
-                            HorizontalDivider()
                         }
                     }
                 }
@@ -163,36 +238,26 @@ private fun PantryContent(
 }
 
 @Composable
-private fun InventoryItemRow(
-    inventoryItem: InventoryItem,
-    onClick: () -> Unit,
-    onAddToList: () -> Unit,
+private fun RemoveFromPantryDialog(
+    itemName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(text = inventoryItem.name, style = MaterialTheme.typography.titleMedium)
-            Text(text = inventoryItem.brand, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                text = "${inventoryItem.quantity} ${inventoryItem.size}",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-        IconButton(onClick = onAddToList) {
-            Icon(
-                painter = painterResource(R.drawable.ic_shopping_cart),
-                contentDescription = stringResource(R.string.pantry_add_to_list),
-            )
-        }
-    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(R.string.pantry_remove_confirm_title)) },
+        text = { Text(text = stringResource(R.string.pantry_remove_confirm_message, itemName)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(text = stringResource(R.string.pantry_remove_confirm_action))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.pantry_remove_cancel))
+            }
+        },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

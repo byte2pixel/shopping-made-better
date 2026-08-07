@@ -269,7 +269,15 @@ private fun MealsScreenPreview() {
         MealsContent(
             uiState = MealsUiState.Success(
                 meals = listOf(
-                    Meal("1", "Chicken Alfredo", "95% Match", 4, "$34.19", "Recommended")
+                    Meal(
+                        id = "1",
+                        title = "Chicken Alfredo",
+                        matchPercentage = "95% Match",
+                        itemCount = 4,
+                        totalPrice = "$34.19",
+                        category = "Recommended",
+                        ingredients = emptyList()
+                    )
                 ),
                 selectedFilter = "All",
                 searchQuery = "",
