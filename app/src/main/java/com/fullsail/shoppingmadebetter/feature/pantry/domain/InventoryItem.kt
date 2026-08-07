@@ -1,5 +1,7 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.domain
 
+import kotlinx.datetime.LocalDate
+
 data class InventoryItem(
     val id: String,
     val productId: String,
@@ -8,5 +10,7 @@ data class InventoryItem(
     val description: String,
     val size: String,
     val imageUrl: String,
-    val quantity: Int
+    val quantity: Int,
+    val expiresInDays: Int?,
+    val location: PantryLocation = PantryLocation.Pantry,
 )

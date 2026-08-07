@@ -4,23 +4,43 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -44,6 +64,7 @@ import com.fullsail.shoppingmadebetter.ui.screens.HistoryScreen
 import com.fullsail.shoppingmadebetter.ui.screens.MealsScreen
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingScreen
 import com.fullsail.shoppingmadebetter.feature.profile.ui.ChangePasswordScreen
 import com.fullsail.shoppingmadebetter.feature.profile.ui.ProfileScreen
@@ -77,6 +98,7 @@ fun ShoppingMadeBetterApp(
     val navController = rememberNavController()
     val currentTab by navigationViewModel.currentTab.collectAsState()
     val showAppChrome by navigationViewModel.showAppChrome.collectAsState()
+    val screenTitle by navigationViewModel.screenTitle.collectAsState()
 
     // Apply one-shot navigation commands from the ViewModel to the NavController.
     LaunchedEffect(navController, navigationViewModel) {
@@ -92,8 +114,17 @@ fun ShoppingMadeBetterApp(
                 }
 
                 NavEvent.EnterApp -> navController.navigate(Dest.ShoppingLists) {
-                    // Drop the login gate so system-back exits the app instead of returning to it.
-                    popUpTo(Dest.Login) { inclusive = true }
+                    // Drop the splash/login gate so system-back exits the app instead of returning to it.
+                    // popUpTo(Splash) clears both the splash (auto-login) and any login screen above it.
+                    popUpTo(Dest.Splash) { inclusive = true }
+                    launchSingleTop = true
+                }
+
+                NavEvent.ToLogin -> navController.navigate(Dest.Login) {
+                    // Clear the whole back stack so system-back from login exits the app.
+                    // Fires both from the splash gate (cold start) and from the tab stack
+                    // (logout), so pop the graph root rather than a specific destination.
+                    popUpTo(navController.graph.id) { inclusive = true }
                     launchSingleTop = true
                 }
 
@@ -109,7 +140,8 @@ fun ShoppingMadeBetterApp(
                 destination.hasRoute(tab.route::class)
             }
             val showChrome =
-                !destination.hasRoute(Dest.Login::class) &&
+                !destination.hasRoute(Dest.Splash::class) &&
+                        !destination.hasRoute(Dest.Login::class) &&
                         !destination.hasRoute(Dest.SignUp::class) &&
                         !destination.hasRoute(Dest.Onboarding::class) &&
                         !destination.hasRoute(Dest.Profile::class) &&
@@ -129,14 +161,33 @@ fun ShoppingMadeBetterApp(
     // Top-level tabs show the menu button; any deeper (non-tab) screen shows a back arrow.
     val canNavigateBack = currentTab == null
 
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        // Reachable via the top-bar menu on tab screens; no swipe-to-open elsewhere.
+        gesturesEnabled = drawerState.isOpen || currentTab != null,
+        drawerContent = {
+            AppDrawer(
+                onLogout = {
+                    scope.launch { drawerState.close() }
+                    navigationViewModel.logout()
+                },
+            )
+        },
+    ) {
     Scaffold(
         topBar = {
             if (showAppChrome) {
                 AppTopBar(
-                    title = currentTab?.let { stringResource(it.label) }
+                    // A screen-supplied title wins (e.g. the pantry item's name); otherwise
+                    // fall back to the tab label, then the app name on a titleless non-tab screen.
+                    title = screenTitle
+                        ?: currentTab?.let { stringResource(it.label) }
                         ?: stringResource(R.string.app_name),
                     canNavigateBack = canNavigateBack,
-                    onMenuClick = { /* TODO: open navigation drawer (future ticket) */ },
+                    onMenuClick = { scope.launch { drawerState.open() } },
                     onBackClick = navigationViewModel::navigateUp,
                 )
             }
@@ -152,9 +203,11 @@ fun ShoppingMadeBetterApp(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Dest.Login,
+            startDestination = Dest.Splash,
             modifier = Modifier.padding(innerPadding),
         ) {
+
+            composable<Dest.Splash> { SplashScreen() }
 
             composable<Dest.ShoppingLists> {
                 ShoppingListsScreen(onItemComparison = {
@@ -237,13 +290,67 @@ fun ShoppingMadeBetterApp(
                 PantryScreen(onItemClick = { id -> navController.navigate(Dest.PantryItemDetail(id)) })
             }
             composable<Dest.PantryItemDetail> { entry ->
-                PantryItemDetailScreen(itemId = entry.toRoute<Dest.PantryItemDetail>().id)
+                PantryItemDetailScreen(
+                    itemId = entry.toRoute<Dest.PantryItemDetail>().id,
+                    onTitleChange = navigationViewModel::setScreenTitle,
+                )
             }
             composable<Dest.History> { HistoryScreen() }
             composable<Dest.Meals> { MealsScreen() }
             // Dev-only example wired to the Supabase store use case (SCRUM-79).
             composable<Dest.Stores> { StoresScreen() }
         }
+    }
+    }
+}
+
+/**
+ * The app's navigation drawer, opened from the top-bar menu on tab screens. The
+ * upper area is a placeholder for future menu items (change password, onboarding
+ * preferences, ...); [onLogout] at the bottom signs the user out for now.
+ */
+@Composable
+private fun AppDrawer(onLogout: () -> Unit) {
+    ModalDrawerSheet {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+        ) {
+            // Placeholder top section for future menu items; the weight pushes logout down.
+            Spacer(modifier = Modifier.weight(1f))
+            Button(
+                onClick = onLogout,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.menu_logout))
+            }
+        }
+    }
+}
+
+/**
+ * The cold-start gate shown while the cached Supabase session is being restored.
+ * Once [NavigationViewModel] resolves the session it routes away from here, so this
+ * is only ever visible for the brief initializing window. Mirrors the login screen's
+ * green backdrop and logo for a seamless hand-off into either destination.
+ */
+@Composable
+private fun SplashScreen() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.app_logo),
+            contentDescription = stringResource(R.string.auth_logo_desc),
+            modifier = Modifier.size(200.dp),
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        CircularProgressIndicator()
     }
 }
 
@@ -256,7 +363,7 @@ private fun AppTopBar(
     onBackClick: () -> Unit,
 ) {
     TopAppBar(
-        title = { Text(title) },
+        title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         navigationIcon = {
             if (canNavigateBack) {
                 IconButton(onClick = onBackClick) {

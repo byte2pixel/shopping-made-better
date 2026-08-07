@@ -1,6 +1,8 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem
 
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.InsertItemResultDto
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ProductSearchDto
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListItemsDto
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingTripDto
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.StoreProductPricingDto
@@ -16,6 +18,7 @@ class InsertItemUseCaseTest {
 
     private class FakeRepo(
         private val error: Throwable? = null,
+        private val insertedId: String = "new-item-1",
     ) : ShoppingListRepository {
         var added: InsertItem? = null
         override suspend fun getTrips(): List<ShoppingTripDto> {
@@ -30,12 +33,25 @@ class InsertItemUseCaseTest {
             TODO("Not yet implemented")
         }
 
-        override suspend fun addItem(item: InsertItem) {
+        override suspend fun addItem(item: InsertItem): InsertItemResultDto {
             error?.let { throw it }
             added = item
+            return InsertItemResultDto(insertedId)
         }
 
         override suspend fun addList(list: ShoppingList) {
+            TODO("Not yet implemented")
+        }
+
+        override suspend fun getItems(list: String): List<ShoppingListItemsDto> {
+            TODO("Not yet implemented")
+        }
+
+        override suspend fun deleteItem(itemId: String) {
+            TODO("Not yet implemented")
+        }
+
+        override suspend fun removeList(listId: String) {
             TODO("Not yet implemented")
         }
     }
@@ -50,12 +66,13 @@ class InsertItemUseCaseTest {
     )
 
     @Test
-    fun `returns Success and forwards the item on a clean insert`() = runTest {
-        val repo = FakeRepo()
+    fun `returns Success with the inserted id and forwards the item on a clean insert`() = runTest {
+        val repo = FakeRepo(insertedId = "sli-42")
 
         val out = InsertItemUseCaseImpl(repo).execute(sampleItem)
 
         assertTrue(out is InsertItemUseCase.Output.Success)
+        assertEquals("sli-42", (out as InsertItemUseCase.Output.Success).insertedItemId)
         assertEquals(sampleItem, repo.added)
     }
 

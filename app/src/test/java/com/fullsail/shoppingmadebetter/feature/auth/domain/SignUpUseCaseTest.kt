@@ -1,6 +1,8 @@
 package com.fullsail.shoppingmadebetter.feature.auth.domain
 
 import com.fullsail.shoppingmadebetter.feature.auth.data.AuthRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
@@ -16,12 +18,14 @@ class SignUpUseCaseTest {
 
     /** Fake repository: records the last call, or throws [error] if set. */
     private class FakeAuthRepository(private val error: Throwable? = null) : AuthRepository {
+        override val authState: StateFlow<AuthState> = MutableStateFlow(AuthState.Initializing)
         var lastSignUpEmail: String? = null
         override suspend fun signUp(email: String, password: String) {
             lastSignUpEmail = email
             error?.let { throw it }
         }
         override suspend fun signIn(email: String, password: String) = Unit
+        override suspend fun signOut() = Unit
     }
 
     @Test

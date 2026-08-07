@@ -2,10 +2,12 @@ package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
 
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,6 +38,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
@@ -215,9 +218,6 @@ fun ShoppingListItemComparisonScreen(
 
         when (val state = uiState) {
 
-            ItemComparisonUIState.Loading ->
-                CircularProgressIndicator()
-
             ItemComparisonUIState.Error ->
                 Text("Search suggestions couldn't be loaded")
             is ItemComparisonUIState.SearchSuccess -> {
@@ -263,6 +263,7 @@ fun ShoppingListItemComparisonScreen(
         ) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 filteredResults.forEach { result ->
+                    Row(Modifier.border(width = 1.dp , color = Color.Black)) {
                     ListItem(
                         headlineContent = { Text(result) },
                         modifier = Modifier
@@ -274,6 +275,8 @@ fun ShoppingListItemComparisonScreen(
                             }
                             .fillMaxWidth()
                     )
+
+                }
                 }
             }
         }

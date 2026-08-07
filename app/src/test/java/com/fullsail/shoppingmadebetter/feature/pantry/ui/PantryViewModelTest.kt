@@ -1,7 +1,9 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
@@ -51,11 +53,33 @@ class PantryViewModelTest {
 
     /** Fake insert use case: records the item it received and returns [output]. */
     private class FakeInsertItemUseCase(
-        var output: InsertItemUseCase.Output = InsertItemUseCase.Output.Success,
+        var output: InsertItemUseCase.Output = InsertItemUseCase.Output.Success("sli-1"),
     ) : InsertItemUseCase {
         var lastItem: InsertItem? = null
         override suspend fun execute(input: InsertItem): InsertItemUseCase.Output {
             lastItem = input
+            return output
+        }
+    }
+
+    /** Fake delete use case: records the id it received and returns [output]. */
+    private class FakeDeleteItemsUseCase(
+        var output: DeleteItemsUseCase.Output = DeleteItemsUseCase.Output.Success,
+    ) : DeleteItemsUseCase {
+        var lastId: String? = null
+        override suspend fun execute(input: String): DeleteItemsUseCase.Output {
+            lastId = input
+            return output
+        }
+    }
+
+    /** Fake pantry-delete use case: records the id it received and returns [output]. */
+    private class FakeDeleteInventoryItemUseCase(
+        var output: DeleteInventoryItemUseCase.Output = DeleteInventoryItemUseCase.Output.Success,
+    ) : DeleteInventoryItemUseCase {
+        var lastId: String? = null
+        override suspend fun execute(input: String): DeleteInventoryItemUseCase.Output {
+            lastId = input
             return output
         }
     }
@@ -69,6 +93,7 @@ class PantryViewModelTest {
         size = "1 gal",
         imageUrl = "http://img/milk.png",
         quantity = 2,
+        expiresInDays = null,
     )
 
     private val sampleTrip = ShoppingTrip(
@@ -84,7 +109,9 @@ class PantryViewModelTest {
         inventory: FakeGetInventoryUseCase = FakeGetInventoryUseCase(),
         trips: FakeGetShoppingTripsUseCase = FakeGetShoppingTripsUseCase(),
         insert: FakeInsertItemUseCase = FakeInsertItemUseCase(),
-    ) = PantryViewModel(inventory, trips, insert)
+        delete: FakeDeleteItemsUseCase = FakeDeleteItemsUseCase(),
+        deleteInventory: FakeDeleteInventoryItemUseCase = FakeDeleteInventoryItemUseCase(),
+    ) = PantryViewModel(inventory, trips, insert, delete, deleteInventory)
 
     @Test
     fun `initial load exposes Success with the inventory items`() = runTest {
@@ -216,7 +243,7 @@ class PantryViewModelTest {
 
     @Test
     fun `onListChosen inserts the item and emits ItemAdded on success`() = runTest {
-        val insert = FakeInsertItemUseCase(InsertItemUseCase.Output.Success)
+        val insert = FakeInsertItemUseCase(InsertItemUseCase.Output.Success("sli-9"))
         val viewModel = buildViewModel(
             trips = FakeGetShoppingTripsUseCase(
                 GetShoppingTripsUseCase.Output.Success(listOf(sampleTrip))
@@ -235,12 +262,119 @@ class PantryViewModelTest {
         assertEquals("p1", inserted.productId)
         assertEquals(1, inserted.quantity)
         assertTrue(inserted.addInventory)
-        // A success event is surfaced.
+        // A success event is surfaced, with the new item id so undo can use it.
         val event = viewModel.events.first()
         assertTrue(event is PantryEvent.ItemAdded)
         event as PantryEvent.ItemAdded
         assertEquals("Milk", event.itemName)
         assertEquals("Weekly", event.listName)
+        assertEquals("sli-9", event.insertedItemId)
+    }
+
+    @Test
+    fun `undoAdd deletes the inserted item and emits ItemRemoved on success`() = runTest {
+        val delete = FakeDeleteItemsUseCase(DeleteItemsUseCase.Output.Success)
+        val viewModel = buildViewModel(delete = delete)
+
+        viewModel.undoAdd(insertedItemId = "sli-9", itemName = "Milk")
+
+        assertEquals("sli-9", delete.lastId)
+        val event = viewModel.events.first()
+        assertTrue(event is PantryEvent.ItemRemoved)
+        assertEquals("Milk", (event as PantryEvent.ItemRemoved).itemName)
+    }
+
+    @Test
+    fun `undoAdd emits UndoFailed when the delete fails`() = runTest {
+        val delete = FakeDeleteItemsUseCase(DeleteItemsUseCase.Output.Failure(IOException("boom")))
+        val viewModel = buildViewModel(delete = delete)
+
+        viewModel.undoAdd(insertedItemId = "sli-9", itemName = "Milk")
+
+        val event = viewModel.events.first()
+        assertTrue(event is PantryEvent.UndoFailed)
+        assertEquals("Milk", (event as PantryEvent.UndoFailed).itemName)
+    }
+
+    @Test
+    fun `onRemoveClicked opens the confirmation dialog for the item`() = runTest {
+        val viewModel = buildViewModel()
+
+        viewModel.onRemoveClicked(sampleItem)
+
+        assertEquals(sampleItem, viewModel.removeConfirm.value)
+    }
+
+    @Test
+    fun `dismissRemove closes the dialog without deleting`() = runTest {
+        val deleteInventory = FakeDeleteInventoryItemUseCase()
+        val viewModel = buildViewModel(deleteInventory = deleteInventory)
+        viewModel.onRemoveClicked(sampleItem)
+
+        viewModel.dismissRemove()
+
+        assertNull(viewModel.removeConfirm.value)
+        assertNull(deleteInventory.lastId)
+    }
+
+    @Test
+    fun `confirmRemove deletes the item and emits RemovedFromPantry on success`() = runTest {
+        val deleteInventory = FakeDeleteInventoryItemUseCase(DeleteInventoryItemUseCase.Output.Success)
+        val viewModel = buildViewModel(deleteInventory = deleteInventory)
+        viewModel.onRemoveClicked(sampleItem)
+
+        viewModel.confirmRemove()
+
+        // The dialog closes and exactly the chosen item's id is deleted.
+        assertNull(viewModel.removeConfirm.value)
+        assertEquals("i1", deleteInventory.lastId)
+        val event = viewModel.events.first()
+        assertTrue(event is PantryEvent.RemovedFromPantry)
+        assertEquals("Milk", (event as PantryEvent.RemovedFromPantry).itemName)
+    }
+
+    @Test
+    fun `confirmRemove drops the item from the list in place without a loading flash`() = runTest {
+        val otherItem = sampleItem.copy(id = "i2", productId = "p2", name = "Bread")
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(sampleItem, otherItem))
+            ),
+            deleteInventory = FakeDeleteInventoryItemUseCase(DeleteInventoryItemUseCase.Output.Success),
+        )
+        viewModel.onRemoveClicked(sampleItem)
+
+        viewModel.confirmRemove()
+
+        // State stays Success (never flips to Loading) and only the removed item is gone.
+        val state = viewModel.uiState.value
+        assertTrue(state is PantryUiState.Success)
+        assertEquals(listOf(otherItem), (state as PantryUiState.Success).inventoryItems)
+    }
+
+    @Test
+    fun `confirmRemove emits RemoveFailed when the delete fails`() = runTest {
+        val deleteInventory = FakeDeleteInventoryItemUseCase(
+            DeleteInventoryItemUseCase.Output.Failure(IOException("boom"))
+        )
+        val viewModel = buildViewModel(deleteInventory = deleteInventory)
+        viewModel.onRemoveClicked(sampleItem)
+
+        viewModel.confirmRemove()
+
+        val event = viewModel.events.first()
+        assertTrue(event is PantryEvent.RemoveFailed)
+        assertEquals("Milk", (event as PantryEvent.RemoveFailed).itemName)
+    }
+
+    @Test
+    fun `confirmRemove does nothing when no item is pending`() = runTest {
+        val deleteInventory = FakeDeleteInventoryItemUseCase()
+        val viewModel = buildViewModel(deleteInventory = deleteInventory)
+
+        viewModel.confirmRemove()
+
+        assertNull(deleteInventory.lastId)
     }
 
     @Test

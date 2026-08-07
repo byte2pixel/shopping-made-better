@@ -2,8 +2,10 @@ package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
@@ -39,8 +41,25 @@ sealed interface AddToListSheetState {
 
 /** One-shot outcomes surfaced to the user as a snackbar. */
 sealed interface PantryEvent {
-    data class ItemAdded(val itemName: String, val listName: String) : PantryEvent
+    data class ItemAdded(
+        val itemName: String,
+        val listName: String,
+        val insertedItemId: String,
+    ) : PantryEvent
+
     data class AddFailed(val itemName: String) : PantryEvent
+
+    /** The just-added item was removed via Undo. */
+    data class ItemRemoved(val itemName: String) : PantryEvent
+
+    /** Undo failed to remove the just-added item. */
+    data class UndoFailed(val itemName: String) : PantryEvent
+
+    /** An item was removed from the pantry (via the card's remove action). */
+    data class RemovedFromPantry(val itemName: String) : PantryEvent
+
+    /** Removing an item from the pantry failed. */
+    data class RemoveFailed(val itemName: String) : PantryEvent
 }
 
 @HiltViewModel
@@ -48,12 +67,17 @@ class PantryViewModel @Inject constructor(
     private val getInventoryUseCase: GetInventoryUseCase,
     private val getShoppingTripsUseCase: GetShoppingTripsUseCase,
     private val insertItemUseCase: InsertItemUseCase,
+    private val deleteItemsUseCase: DeleteItemsUseCase,
+    private val deleteInventoryItemUseCase: DeleteInventoryItemUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PantryUiState>(PantryUiState.Loading)
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
 
     private val _addToListSheet = MutableStateFlow<AddToListSheetState>(AddToListSheetState.Hidden)
     val addToListSheet: StateFlow<AddToListSheetState> = _addToListSheet.asStateFlow()
+
+    private val _removeConfirm = MutableStateFlow<InventoryItem?>(null)
+    val removeConfirm: StateFlow<InventoryItem?> = _removeConfirm.asStateFlow()
 
     private val _events = Channel<PantryEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -112,8 +136,9 @@ class PantryViewModel @Inject constructor(
             )
             val event = when (out) {
                 is InsertItemUseCase.Output.Success -> PantryEvent.ItemAdded(
-                    item.name,
-                    trip.listName
+                    itemName = item.name,
+                    listName = trip.listName,
+                    insertedItemId = out.insertedItemId,
                 )
 
                 is InsertItemUseCase.Output.Failure -> PantryEvent.AddFailed(item.name)
@@ -122,7 +147,64 @@ class PantryViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Undoes an add by removing the just-created shopping-list item [insertedItemId],
+     * then reports the outcome. [itemName] is only used to label the resulting snackbar.
+     */
+    fun undoAdd(insertedItemId: String, itemName: String) {
+        viewModelScope.launch {
+            val event = when (deleteItemsUseCase.execute(insertedItemId)) {
+                is DeleteItemsUseCase.Output.Success -> PantryEvent.ItemRemoved(itemName)
+                is DeleteItemsUseCase.Output.Failure -> PantryEvent.UndoFailed(itemName)
+            }
+            _events.send(event)
+        }
+    }
+
     fun dismissAddToListSheet() {
         _addToListSheet.value = AddToListSheetState.Hidden
+    }
+
+    fun onRemoveClicked(item: InventoryItem) {
+        _removeConfirm.value = item
+    }
+
+    fun dismissRemove() {
+        _removeConfirm.value = null
+    }
+
+    /**
+     * Confirms removal of the item currently in the dialog: deletes it, closes
+     * the dialog, refreshes the list, and reports the outcome via a snackbar.
+     */
+    // TODO: offer a "don't ask again" option once a user-preferences
+    //  store exists to persist it. There is no such infra yet, so the dialog
+    //  always shows for now.
+    fun confirmRemove() {
+        val item = _removeConfirm.value ?: return
+        _removeConfirm.value = null
+        viewModelScope.launch {
+            val event = when (deleteInventoryItemUseCase.execute(item.id)) {
+                is DeleteInventoryItemUseCase.Output.Success -> {
+                    removeItemFromState(item.id)
+                    PantryEvent.RemovedFromPantry(item.name)
+                }
+
+                is DeleteInventoryItemUseCase.Output.Failure -> PantryEvent.RemoveFailed(item.name)
+            }
+            _events.send(event)
+        }
+    }
+
+    /**
+     * Drops [itemId] from the current success list in place.
+     */
+    private fun removeItemFromState(itemId: String) {
+        val current = _uiState.value
+        if (current is PantryUiState.Success) {
+            _uiState.value = current.copy(
+                inventoryItems = current.inventoryItems.filterNot { it.id == itemId },
+            )
+        }
     }
 }
