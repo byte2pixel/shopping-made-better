@@ -78,6 +78,9 @@
         <item quantity="other">%1$d in stock</item>
     </plurals>
 
+    <!-- Pantry inventory card chip indicators - location -->
+    <string name="pantry_card_location_desc">Stored in %1$s</string>
+
     <!-- Pantry inventory card chip indicators - expire -->
     <string name="pantry_expiry_expired">Expired</string>
     <string name="pantry_expiry_today">Today</string>
