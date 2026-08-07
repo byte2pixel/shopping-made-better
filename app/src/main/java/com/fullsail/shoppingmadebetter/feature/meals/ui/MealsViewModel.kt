@@ -18,7 +18,7 @@ sealed interface MealsUiState {
     data class Success(
         val meals: List<Meal>,
         val selectedFilter: String,
-        val searchQuery: String = "", // Added search query field
+        val searchQuery: String = "",
         val canMakeCount: Int,
         val almostThereCount: Int,
         val expiringCount: Int,

@@ -48,6 +48,7 @@ private fun MealsContent(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Root container without local Scaffold/TopAppBar
     Box(
         modifier = modifier.fillMaxSize()
     ) {
@@ -56,15 +57,15 @@ private fun MealsContent(
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
             is MealsUiState.Error -> {
-                // SCRUM-135: Error State UI
-                ErrorMealsState(
-                    message = uiState.message,
-                    onRetry = onRetry,
+                Text(
+                    text = uiState.message,
+                    color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
             is MealsUiState.Success -> {
                 Column(modifier = Modifier.fillMaxSize()) {
+                    // Fixed Uniform Metrics Banner
                     MetricsBanner(
                         canMake = uiState.canMakeCount,
                         almostThere = uiState.almostThereCount,
@@ -72,6 +73,7 @@ private fun MealsContent(
                         recommended = uiState.recommendedCount
                     )
 
+                    // Local Search Bar (SCRUM-134)
                     OutlinedTextField(
                         value = uiState.searchQuery,
                         onValueChange = onSearchQueryChanged,
@@ -83,36 +85,26 @@ private fun MealsContent(
                         shape = RoundedCornerShape(12.dp)
                     )
 
+                    // Category Filter Pills
                     FilterChipsRow(
                         selectedFilter = uiState.selectedFilter,
                         onFilterSelected = onFilterSelected
                     )
 
-                    // SCRUM-135: Empty State UI handling
-                    if (uiState.meals.isEmpty()) {
-                        EmptyMealsState(
-                            searchQuery = uiState.searchQuery,
-                            onClearFilters = {
-                                onSearchQueryChanged("")
-                                onFilterSelected("All")
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                            contentPadding = PaddingValues(bottom = 16.dp)
-                        ) {
-                            items(uiState.meals) { meal ->
-                                MealRecipeCard(
-                                    meal = meal,
-                                    isSelected = meal.id == uiState.selectedMealId,
-                                    onDetailsClick = { onSelectMeal(meal.id) }
-                                )
-                            }
+                    // Recipe List
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(bottom = 16.dp)
+                    ) {
+                        items(uiState.meals) { meal ->
+                            MealRecipeCard(
+                                meal = meal,
+                                isSelected = meal.id == uiState.selectedMealId,
+                                onDetailsClick = { onSelectMeal(meal.id) }
+                            )
                         }
                     }
                 }
@@ -297,7 +289,7 @@ private fun MealRecipeCard(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-                IconButton(onClick = { /* Options */ }) {
+                IconButton(onClick = { /* Options / Back */ }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_arrow_back),
                         contentDescription = "More"
@@ -343,7 +335,15 @@ private fun MealsScreenPreview() {
         MealsContent(
             uiState = MealsUiState.Success(
                 meals = listOf(
-                    Meal("1", "Chicken Alfredo", "95% Match", 4, "$34.19", "Recommended")
+                    Meal(
+                        id = "1",
+                        title = "Chicken Alfredo",
+                        matchPercentage = "95% Match",
+                        itemCount = 4,
+                        totalPrice = "$34.19",
+                        category = "Recommended",
+                        ingredients = emptyList()
+                    )
                 ),
                 selectedFilter = "All",
                 searchQuery = "",
