@@ -11,4 +11,5 @@ data class MealDto(
     @SerialName("item_count") val itemCount: Int,
     @SerialName("total_price") val totalPrice: String,
     @SerialName("category") val category: String
+
 )
