@@ -31,63 +31,80 @@ fun MealsScreen(
 
     MealsContent(
         uiState = uiState,
+        onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onFilterSelected = viewModel::onFilterSelected,
         onSelectMeal = viewModel::selectMealPlan,
+        onRetry = viewModel::loadMeals,
         modifier = modifier
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MealsContent(
     uiState: MealsUiState,
+    onSearchQueryChanged: (String) -> Unit,
     onFilterSelected: (String) -> Unit,
     onSelectMeal: (String) -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Meals") },
-                navigationIcon = {
-                    IconButton(onClick = { /* Open drawer */ }) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_arrow_back),
-                            contentDescription = "Menu"
-                        )
-                    }
-                }
-            )
-        },
-        modifier = modifier
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            when (uiState) {
-                is MealsUiState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                is MealsUiState.Error -> Text(text = uiState.message, color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
-                is MealsUiState.Success -> {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        MetricsBanner(
-                            canMake = uiState.canMakeCount,
-                            almostThere = uiState.almostThereCount,
-                            expiring = uiState.expiringCount,
-                            recommended = uiState.recommendedCount
-                        )
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
+        when (uiState) {
+            is MealsUiState.Loading -> {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            }
+            is MealsUiState.Error -> {
+                // SCRUM-135: Error State UI
+                ErrorMealsState(
+                    message = uiState.message,
+                    onRetry = onRetry,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+            is MealsUiState.Success -> {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    MetricsBanner(
+                        canMake = uiState.canMakeCount,
+                        almostThere = uiState.almostThereCount,
+                        expiring = uiState.expiringCount,
+                        recommended = uiState.recommendedCount
+                    )
 
-                        FilterChipsRow(
-                            selectedFilter = uiState.selectedFilter,
-                            onFilterSelected = onFilterSelected
-                        )
+                    OutlinedTextField(
+                        value = uiState.searchQuery,
+                        onValueChange = onSearchQueryChanged,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        placeholder = { Text("Search meals or ingredients...") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
 
+                    FilterChipsRow(
+                        selectedFilter = uiState.selectedFilter,
+                        onFilterSelected = onFilterSelected
+                    )
+
+                    // SCRUM-135: Empty State UI handling
+                    if (uiState.meals.isEmpty()) {
+                        EmptyMealsState(
+                            searchQuery = uiState.searchQuery,
+                            onClearFilters = {
+                                onSearchQueryChanged("")
+                                onFilterSelected("All")
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(horizontal = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            contentPadding = PaddingValues(bottom = 16.dp)
                         ) {
                             items(uiState.meals) { meal ->
                                 MealRecipeCard(
@@ -100,6 +117,70 @@ private fun MealsContent(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun EmptyMealsState(
+    searchQuery: String,
+    onClearFilters: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = if (searchQuery.isNotEmpty()) "No meals found for \"$searchQuery\"" else "No meals available",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Try adjusting your search query or switching filters.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedButton(onClick = onClearFilters) {
+            Text("Clear Search & Filters")
+        }
+    }
+}
+
+@Composable
+private fun ErrorMealsState(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Something went wrong",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onRetry,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E5A44))
+        ) {
+            Text("Retry")
         }
     }
 }
@@ -118,29 +199,47 @@ private fun MetricsBanner(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 8.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            MetricCard("Can Make", canMake)
-            MetricCard("Almost There", almostThere)
-            MetricCard("Expiring", expiring)
-            MetricCard("Recommended", recommended)
+            MetricCard("Can Make", canMake, modifier = Modifier.weight(1f))
+            MetricCard("Almost There", almostThere, modifier = Modifier.weight(1f))
+            MetricCard("Expiring", expiring, modifier = Modifier.weight(1f))
+            MetricCard("Recommended", recommended, modifier = Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun MetricCard(label: String, count: Int) {
+private fun MetricCard(
+    label: String,
+    count: Int,
+    modifier: Modifier = Modifier
+) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Color(0xFF3E6B54)),
-        modifier = Modifier.width(80.dp)
+        modifier = modifier.height(68.dp)
     ) {
         Column(
-            modifier = Modifier.padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.White)
-            Text(text = count.toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White,
+                maxLines = 1
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
         }
     }
 }
@@ -152,7 +251,7 @@ private fun FilterChipsRow(
 ) {
     val filters = listOf("All", "Can Make", "Expiring", "Almost There", "Recommended")
     LazyRow(
-        modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp),
+        modifier = Modifier.padding(vertical = 4.dp, horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(filters) { filter ->
@@ -183,14 +282,26 @@ private fun MealRecipeCard(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(text = meal.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(text = meal.matchPercentage, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = meal.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = meal.matchPercentage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
                 IconButton(onClick = { /* Options */ }) {
-                    Icon(painter = painterResource(R.drawable.ic_arrow_back), contentDescription = "More")
+                    Icon(
+                        painter = painterResource(R.drawable.ic_arrow_back),
+                        contentDescription = "More"
+                    )
                 }
             }
 
@@ -235,13 +346,16 @@ private fun MealsScreenPreview() {
                     Meal("1", "Chicken Alfredo", "95% Match", 4, "$34.19", "Recommended")
                 ),
                 selectedFilter = "All",
+                searchQuery = "",
                 canMakeCount = 12,
                 almostThereCount = 3,
                 expiringCount = 5,
                 recommendedCount = 5
             ),
+            onSearchQueryChanged = {},
             onFilterSelected = {},
-            onSelectMeal = {}
+            onSelectMeal = {},
+            onRetry = {}
         )
     }
 }

@@ -18,6 +18,7 @@ sealed interface MealsUiState {
     data class Success(
         val meals: List<Meal>,
         val selectedFilter: String,
+        val searchQuery: String = "", // Added search query field
         val canMakeCount: Int,
         val almostThereCount: Int,
         val expiringCount: Int,
@@ -67,6 +68,7 @@ class MealsViewModel @Inject constructor(
                 _uiState.value = MealsUiState.Success(
                     meals = allMeals,
                     selectedFilter = "All",
+                    searchQuery = "",
                     canMakeCount = 12,
                     almostThereCount = 3,
                     expiringCount = 5,
@@ -78,17 +80,35 @@ class MealsViewModel @Inject constructor(
         }
     }
 
+    fun onSearchQueryChanged(query: String) {
+        val currentState = _uiState.value
+        if (currentState is MealsUiState.Success) {
+            applyFilters(currentState.selectedFilter, query)
+        }
+    }
+
     fun onFilterSelected(filter: String) {
         val currentState = _uiState.value
         if (currentState is MealsUiState.Success) {
-            val filteredList = if (filter == "All") {
-                allMeals
-            } else {
-                allMeals.filter { it.category.equals(filter, ignoreCase = true) }
+            applyFilters(filter, currentState.searchQuery)
+        }
+    }
+
+    private fun applyFilters(filter: String, query: String) {
+        val currentState = _uiState.value
+        if (currentState is MealsUiState.Success) {
+            val filteredList = allMeals.filter { meal ->
+                val matchesCategory = if (filter == "All") true else meal.category.equals(filter, ignoreCase = true)
+                val matchesSearch = query.isEmpty() ||
+                        meal.title.contains(query, ignoreCase = true) ||
+                        meal.ingredients.any { it.name.contains(query, ignoreCase = true) }
+                matchesCategory && matchesSearch
             }
+
             _uiState.value = currentState.copy(
                 meals = filteredList,
-                selectedFilter = filter
+                selectedFilter = filter,
+                searchQuery = query
             )
         }
     }
