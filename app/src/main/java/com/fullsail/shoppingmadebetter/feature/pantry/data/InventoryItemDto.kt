@@ -13,5 +13,6 @@ data class InventoryItemDto(
     val size: String,
     val quantity: Int,
     val imageUrl: String,
-    val expiryDate: LocalDate?
+    val expiryDate: LocalDate?,
+    val location: String = "pantry",
 )

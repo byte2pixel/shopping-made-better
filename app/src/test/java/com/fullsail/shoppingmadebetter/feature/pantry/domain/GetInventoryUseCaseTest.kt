@@ -120,6 +120,25 @@ class GetInventoryUseCaseTest {
     }
 
     @Test
+    fun `execute maps the location string to a PantryLocation, unknown falling back to Pantry`() =
+        runTest {
+            val dtos = listOf(
+                dto("freezer", null).copy(location = "freezer"),
+                dto("fridge", null).copy(location = "fridge"),
+                dto("pantry", null).copy(location = "pantry"),
+                dto("unknown", null).copy(location = "garage"),
+            )
+            val useCase = GetInventoryUseCaseImpl(FakePantryRepository(items = dtos), fixedClock)
+
+            val items = (useCase.execute(Unit) as GetInventoryUseCase.Output.Success).inventoryItems
+
+            assertEquals(PantryLocation.Freezer, items[0].location)
+            assertEquals(PantryLocation.Fridge, items[1].location)
+            assertEquals(PantryLocation.Pantry, items[2].location)
+            assertEquals(PantryLocation.Pantry, items[3].location) // unrecognized -> Pantry
+        }
+
+    @Test
     fun `execute returns an empty list when the repository has no items`() = runTest {
         val useCase = GetInventoryUseCaseImpl(FakePantryRepository(items = emptyList()), fixedClock)
 
