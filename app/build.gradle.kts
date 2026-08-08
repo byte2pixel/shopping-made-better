@@ -103,6 +103,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation(libs.androidx.datastore.preferences)
     ksp(libs.hilt.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

@@ -1,5 +1,7 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.di
 
+import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryPreferencesRepository
+import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryPreferencesRepositoryImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryRepositoryImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryRepository
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
@@ -8,6 +10,10 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryItemUse
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryItemUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCaseImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -20,6 +26,11 @@ abstract class PantryModule {
     @Binds @Singleton
     abstract fun bindPantryRepository(impl: PantryRepositoryImpl): PantryRepository
 
+    @Binds @Singleton
+    abstract fun bindPantryPreferencesRepository(
+        impl: PantryPreferencesRepositoryImpl,
+    ): PantryPreferencesRepository
+
     @Binds
     abstract fun bindGetInventoryUseCase(impl: GetInventoryUseCaseImpl): GetInventoryUseCase
 
@@ -28,4 +39,14 @@ abstract class PantryModule {
 
     @Binds
     abstract fun bindDeleteInventoryItemUseCase(impl: DeleteInventoryItemUseCaseImpl): DeleteInventoryItemUseCase
+
+    @Binds
+    abstract fun bindGetSkipRemoveConfirmationUseCase(
+        impl: GetSkipRemoveConfirmationUseCaseImpl,
+    ): GetSkipRemoveConfirmationUseCase
+
+    @Binds
+    abstract fun bindSetSkipRemoveConfirmationUseCase(
+        impl: SetSkipRemoveConfirmationUseCaseImpl,
+    ): SetSkipRemoveConfirmationUseCase
 }
