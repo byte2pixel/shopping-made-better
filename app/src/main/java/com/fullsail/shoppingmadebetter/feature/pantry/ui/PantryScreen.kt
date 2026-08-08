@@ -132,6 +132,10 @@ fun PantryScreen(
                 is PantryEvent.RemoveFailed -> snackbarHostState.showSnackbar(
                     resources.getString(R.string.pantry_remove_failed, event.itemName)
                 )
+
+                is PantryEvent.UpdateFailed -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.pantry_update_failed, event.itemName)
+                )
             }
         }
     }
@@ -143,6 +147,7 @@ fun PantryScreen(
             onItemClick = onItemClick,
             onAddToListClick = viewModel::onAddToListClicked,
             onRemoveClick = viewModel::onRemoveClicked,
+            onQuantityChange = viewModel::onQuantityChanged,
         )
         SnackbarHost(
             hostState = snackbarHostState,
@@ -174,6 +179,7 @@ private fun PantryContent(
     onItemClick: (String) -> Unit,
     onAddToListClick: (InventoryItem) -> Unit,
     onRemoveClick: (InventoryItem) -> Unit,
+    onQuantityChange: (InventoryItem, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -231,6 +237,9 @@ private fun PantryContent(
                                 onClick = { onItemClick(inventoryItem.id) },
                                 onAddToList = { onAddToListClick(inventoryItem) },
                                 onRemove = { onRemoveClick(inventoryItem) },
+                                onQuantityChange = { newQty ->
+                                    onQuantityChange(inventoryItem, newQty)
+                                },
                             )
                         }
                     }

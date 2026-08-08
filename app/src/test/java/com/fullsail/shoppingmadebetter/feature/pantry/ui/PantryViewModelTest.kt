@@ -5,6 +5,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
@@ -101,6 +103,17 @@ class PantryViewModelTest {
         }
     }
 
+    /** Fake quantity-update use case: records its input and returns a settable [output]. */
+    private class FakeUpdateInventoryQuantityUseCase(
+        var output: UpdateInventoryQuantityUseCase.Output = UpdateInventoryQuantityUseCase.Output.Success,
+    ) : UpdateInventoryQuantityUseCase {
+        var lastInput: UpdateInventoryQuantity? = null
+        override suspend fun execute(input: UpdateInventoryQuantity): UpdateInventoryQuantityUseCase.Output {
+            lastInput = input
+            return output
+        }
+    }
+
     private val sampleItem = InventoryItem(
         id = "i1",
         productId = "p1",
@@ -130,7 +143,10 @@ class PantryViewModelTest {
         deleteInventory: FakeDeleteInventoryItemUseCase = FakeDeleteInventoryItemUseCase(),
         getSkip: FakeGetSkipRemoveConfirmationUseCase = FakeGetSkipRemoveConfirmationUseCase(),
         setSkip: FakeSetSkipRemoveConfirmationUseCase = FakeSetSkipRemoveConfirmationUseCase(),
-    ) = PantryViewModel(inventory, trips, insert, delete, deleteInventory, getSkip, setSkip)
+        updateQuantity: FakeUpdateInventoryQuantityUseCase = FakeUpdateInventoryQuantityUseCase(),
+    ) = PantryViewModel(
+        inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, updateQuantity,
+    )
 
     @Test
     fun `initial load exposes Success with the inventory items`() = runTest {
@@ -464,6 +480,61 @@ class PantryViewModelTest {
 
         assertNull(insert.lastItem)
         assertEquals(AddToListSheetState.Hidden, viewModel.addToListSheet.value)
+    }
+
+    @Test
+    fun `onQuantityChanged updates the item in place and persists the new quantity`() = runTest {
+        val update = FakeUpdateInventoryQuantityUseCase()
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(sampleItem))
+            ),
+            updateQuantity = update,
+        )
+
+        viewModel.onQuantityChanged(sampleItem, newQuantity = 5)
+
+        // The list reflects the new quantity immediately and the id/value are persisted.
+        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        assertEquals(5, items.single().quantity)
+        assertEquals(UpdateInventoryQuantity(id = "i1", quantity = 5), update.lastInput)
+    }
+
+    @Test
+    fun `onQuantityChanged reverts and emits UpdateFailed when the save fails`() = runTest {
+        val update = FakeUpdateInventoryQuantityUseCase(
+            UpdateInventoryQuantityUseCase.Output.Failure(IOException("boom"))
+        )
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(sampleItem))
+            ),
+            updateQuantity = update,
+        )
+
+        viewModel.onQuantityChanged(sampleItem, newQuantity = 5)
+
+        // The optimistic change is rolled back to the original quantity.
+        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        assertEquals(sampleItem.quantity, items.single().quantity)
+        val event = viewModel.events.first()
+        assertTrue(event is PantryEvent.UpdateFailed)
+        assertEquals("Milk", (event as PantryEvent.UpdateFailed).itemName)
+    }
+
+    @Test
+    fun `onQuantityChanged does nothing when the quantity is unchanged`() = runTest {
+        val update = FakeUpdateInventoryQuantityUseCase()
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(sampleItem))
+            ),
+            updateQuantity = update,
+        )
+
+        viewModel.onQuantityChanged(sampleItem, newQuantity = sampleItem.quantity)
+
+        assertNull(update.lastInput)
     }
 
     @Test
