@@ -21,4 +21,14 @@ enum class PantryLocation {
             else -> Pantry
         }
     }
+
+    /**
+     * The raw database string for this location, matching the `location` CHECK
+     * constraint on `inventory_items`. Inverse of [fromDbValue].
+     */
+    fun toDbValue(): String = when (this) {
+        Freezer -> "freezer"
+        Fridge -> "fridge"
+        Pantry -> "pantry"
+    }
 }

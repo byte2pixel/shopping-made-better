@@ -6,7 +6,10 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocation
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
@@ -79,6 +82,7 @@ class PantryViewModel @Inject constructor(
     private val getSkipRemoveConfirmationUseCase: GetSkipRemoveConfirmationUseCase,
     private val setSkipRemoveConfirmationUseCase: SetSkipRemoveConfirmationUseCase,
     private val updateInventoryQuantityUseCase: UpdateInventoryQuantityUseCase,
+    private val updateInventoryLocationUseCase: UpdateInventoryLocationUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PantryUiState>(PantryUiState.Loading)
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
@@ -224,7 +228,7 @@ class PantryViewModel @Inject constructor(
 
     /**
      * Optimistically sets [item]'s quantity to [newQuantity] in the list, persists it,
-     * and reverts with a snackbar if the save fails. No op when the value is unchanged.
+     * and reverts with a snackbar if the save fails. No-op when the value is unchanged.
      */
     fun onQuantityChanged(item: InventoryItem, newQuantity: Int) {
         if (newQuantity == item.quantity) return
@@ -234,6 +238,24 @@ class PantryViewModel @Inject constructor(
                 UpdateInventoryQuantity(item.id, newQuantity),
             )
             if (out is UpdateInventoryQuantityUseCase.Output.Failure) {
+                updateItemInState(item.id) { item }
+                _events.send(PantryEvent.UpdateFailed(item.name))
+            }
+        }
+    }
+
+    /**
+     * Optimistically sets [item]'s storage location to [newLocation] in the list, persists
+     * it, and reverts with a snackbar if the save fails. No-op when the value is unchanged.
+     */
+    fun onLocationChanged(item: InventoryItem, newLocation: PantryLocation) {
+        if (newLocation == item.location) return
+        updateItemInState(item.id) { it.copy(location = newLocation) }
+        viewModelScope.launch {
+            val out = updateInventoryLocationUseCase.execute(
+                UpdateInventoryLocation(item.id, newLocation),
+            )
+            if (out is UpdateInventoryLocationUseCase.Output.Failure) {
                 updateItemInState(item.id) { item }
                 _events.send(PantryEvent.UpdateFailed(item.name))
             }

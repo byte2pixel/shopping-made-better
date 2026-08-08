@@ -4,7 +4,10 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocation
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
@@ -114,6 +117,17 @@ class PantryViewModelTest {
         }
     }
 
+    /** Fake location-update use case: records its input and returns a settable [output]. */
+    private class FakeUpdateInventoryLocationUseCase(
+        var output: UpdateInventoryLocationUseCase.Output = UpdateInventoryLocationUseCase.Output.Success,
+    ) : UpdateInventoryLocationUseCase {
+        var lastInput: UpdateInventoryLocation? = null
+        override suspend fun execute(input: UpdateInventoryLocation): UpdateInventoryLocationUseCase.Output {
+            lastInput = input
+            return output
+        }
+    }
+
     private val sampleItem = InventoryItem(
         id = "i1",
         productId = "p1",
@@ -144,8 +158,10 @@ class PantryViewModelTest {
         getSkip: FakeGetSkipRemoveConfirmationUseCase = FakeGetSkipRemoveConfirmationUseCase(),
         setSkip: FakeSetSkipRemoveConfirmationUseCase = FakeSetSkipRemoveConfirmationUseCase(),
         updateQuantity: FakeUpdateInventoryQuantityUseCase = FakeUpdateInventoryQuantityUseCase(),
+        updateLocation: FakeUpdateInventoryLocationUseCase = FakeUpdateInventoryLocationUseCase(),
     ) = PantryViewModel(
         inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, updateQuantity,
+        updateLocation,
     )
 
     @Test
@@ -533,6 +549,65 @@ class PantryViewModelTest {
         )
 
         viewModel.onQuantityChanged(sampleItem, newQuantity = sampleItem.quantity)
+
+        assertNull(update.lastInput)
+    }
+
+    @Test
+    fun `onLocationChanged updates the item in place and persists the new location`() = runTest {
+        val update = FakeUpdateInventoryLocationUseCase()
+        val fridgeItem = sampleItem.copy(location = PantryLocation.Fridge)
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(fridgeItem))
+            ),
+            updateLocation = update,
+        )
+
+        viewModel.onLocationChanged(fridgeItem, newLocation = PantryLocation.Freezer)
+
+        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        assertEquals(PantryLocation.Freezer, items.single().location)
+        assertEquals(
+            UpdateInventoryLocation(id = "i1", location = PantryLocation.Freezer),
+            update.lastInput,
+        )
+    }
+
+    @Test
+    fun `onLocationChanged reverts and emits UpdateFailed when the save fails`() = runTest {
+        val update = FakeUpdateInventoryLocationUseCase(
+            UpdateInventoryLocationUseCase.Output.Failure(IOException("boom"))
+        )
+        val fridgeItem = sampleItem.copy(location = PantryLocation.Fridge)
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(fridgeItem))
+            ),
+            updateLocation = update,
+        )
+
+        viewModel.onLocationChanged(fridgeItem, newLocation = PantryLocation.Freezer)
+
+        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        assertEquals(PantryLocation.Fridge, items.single().location)
+        val event = viewModel.events.first()
+        assertTrue(event is PantryEvent.UpdateFailed)
+        assertEquals("Milk", (event as PantryEvent.UpdateFailed).itemName)
+    }
+
+    @Test
+    fun `onLocationChanged does nothing when the location is unchanged`() = runTest {
+        val update = FakeUpdateInventoryLocationUseCase()
+        val fridgeItem = sampleItem.copy(location = PantryLocation.Fridge)
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(fridgeItem))
+            ),
+            updateLocation = update,
+        )
+
+        viewModel.onLocationChanged(fridgeItem, newLocation = PantryLocation.Fridge)
 
         assertNull(update.lastInput)
     }
