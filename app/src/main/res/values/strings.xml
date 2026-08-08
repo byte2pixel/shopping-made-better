@@ -92,6 +92,7 @@
     <string name="pantry_remove_confirm_message">Remove \"%1$s\" from your pantry? This can\'t be undone.</string>
     <string name="pantry_remove_confirm_action">Remove</string>
     <string name="pantry_remove_cancel">Cancel</string>
+    <string name="pantry_remove_dont_ask_again">Don\'t ask again</string>
     <string name="pantry_removed">Removed %1$s from pantry</string>
     <string name="pantry_remove_failed">Couldn\'t remove %1$s</string>
 

@@ -54,6 +54,10 @@ class InsertItemUseCaseTest {
         override suspend fun removeList(listId: String) {
             TODO("Not yet implemented")
         }
+
+        override suspend fun renameList(listId: String, newName: String) {
+            TODO("Not yet implemented")
+        }
     }
 
     private val sampleItem = InsertItem(

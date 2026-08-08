@@ -2,7 +2,9 @@ package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
@@ -84,6 +86,21 @@ class PantryViewModelTest {
         }
     }
 
+    /** Fake skip-confirmation read: returns a settable [value]. */
+    private class FakeGetSkipRemoveConfirmationUseCase(
+        var value: Boolean = false,
+    ) : GetSkipRemoveConfirmationUseCase {
+        override suspend fun execute(input: Unit): Boolean = value
+    }
+
+    /** Fake skip-confirmation write: records the last value it persisted. */
+    private class FakeSetSkipRemoveConfirmationUseCase : SetSkipRemoveConfirmationUseCase {
+        var lastValue: Boolean? = null
+        override suspend fun execute(input: Boolean) {
+            lastValue = input
+        }
+    }
+
     private val sampleItem = InventoryItem(
         id = "i1",
         productId = "p1",
@@ -111,7 +128,9 @@ class PantryViewModelTest {
         insert: FakeInsertItemUseCase = FakeInsertItemUseCase(),
         delete: FakeDeleteItemsUseCase = FakeDeleteItemsUseCase(),
         deleteInventory: FakeDeleteInventoryItemUseCase = FakeDeleteInventoryItemUseCase(),
-    ) = PantryViewModel(inventory, trips, insert, delete, deleteInventory)
+        getSkip: FakeGetSkipRemoveConfirmationUseCase = FakeGetSkipRemoveConfirmationUseCase(),
+        setSkip: FakeSetSkipRemoveConfirmationUseCase = FakeSetSkipRemoveConfirmationUseCase(),
+    ) = PantryViewModel(inventory, trips, insert, delete, deleteInventory, getSkip, setSkip)
 
     @Test
     fun `initial load exposes Success with the inventory items`() = runTest {
@@ -323,7 +342,7 @@ class PantryViewModelTest {
         val viewModel = buildViewModel(deleteInventory = deleteInventory)
         viewModel.onRemoveClicked(sampleItem)
 
-        viewModel.confirmRemove()
+        viewModel.confirmRemove(dontAskAgain = false)
 
         // The dialog closes and exactly the chosen item's id is deleted.
         assertNull(viewModel.removeConfirm.value)
@@ -344,7 +363,7 @@ class PantryViewModelTest {
         )
         viewModel.onRemoveClicked(sampleItem)
 
-        viewModel.confirmRemove()
+        viewModel.confirmRemove(dontAskAgain = false)
 
         // State stays Success (never flips to Loading) and only the removed item is gone.
         val state = viewModel.uiState.value
@@ -360,7 +379,7 @@ class PantryViewModelTest {
         val viewModel = buildViewModel(deleteInventory = deleteInventory)
         viewModel.onRemoveClicked(sampleItem)
 
-        viewModel.confirmRemove()
+        viewModel.confirmRemove(dontAskAgain = false)
 
         val event = viewModel.events.first()
         assertTrue(event is PantryEvent.RemoveFailed)
@@ -372,9 +391,50 @@ class PantryViewModelTest {
         val deleteInventory = FakeDeleteInventoryItemUseCase()
         val viewModel = buildViewModel(deleteInventory = deleteInventory)
 
-        viewModel.confirmRemove()
+        viewModel.confirmRemove(dontAskAgain = false)
 
         assertNull(deleteInventory.lastId)
+    }
+
+    @Test
+    fun `onRemoveClicked removes directly without a dialog when skip is set`() = runTest {
+        val deleteInventory = FakeDeleteInventoryItemUseCase()
+        val viewModel = buildViewModel(
+            deleteInventory = deleteInventory,
+            getSkip = FakeGetSkipRemoveConfirmationUseCase(value = true),
+        )
+
+        viewModel.onRemoveClicked(sampleItem)
+
+        // No dialog is shown; the item is deleted directly and removal is reported.
+        assertNull(viewModel.removeConfirm.value)
+        assertEquals("i1", deleteInventory.lastId)
+        assertTrue(viewModel.events.first() is PantryEvent.RemovedFromPantry)
+    }
+
+    @Test
+    fun `confirmRemove persists the skip preference when dontAskAgain is set`() = runTest {
+        val deleteInventory = FakeDeleteInventoryItemUseCase()
+        val setSkip = FakeSetSkipRemoveConfirmationUseCase()
+        val viewModel = buildViewModel(deleteInventory = deleteInventory, setSkip = setSkip)
+        viewModel.onRemoveClicked(sampleItem)
+
+        viewModel.confirmRemove(dontAskAgain = true)
+
+        // The choice is persisted and the item is still deleted.
+        assertEquals(true, setSkip.lastValue)
+        assertEquals("i1", deleteInventory.lastId)
+    }
+
+    @Test
+    fun `confirmRemove does not persist the skip preference when dontAskAgain is unset`() = runTest {
+        val setSkip = FakeSetSkipRemoveConfirmationUseCase()
+        val viewModel = buildViewModel(setSkip = setSkip)
+        viewModel.onRemoveClicked(sampleItem)
+
+        viewModel.confirmRemove(dontAskAgain = false)
+
+        assertNull(setSkip.lastValue)
     }
 
     @Test

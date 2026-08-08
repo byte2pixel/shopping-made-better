@@ -9,7 +9,9 @@ import androidx.compose.ui.test.performClick
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
@@ -64,6 +66,19 @@ class PantryScreenTest {
         override suspend fun execute(input: String): DeleteInventoryItemUseCase.Output {
             lastId = input
             return output
+        }
+    }
+
+    private class FakeGetSkipRemoveConfirmationUseCase(
+        var value: Boolean = false,
+    ) : GetSkipRemoveConfirmationUseCase {
+        override suspend fun execute(input: Unit): Boolean = value
+    }
+
+    private class FakeSetSkipRemoveConfirmationUseCase : SetSkipRemoveConfirmationUseCase {
+        var lastValue: Boolean? = null
+        override suspend fun execute(input: Boolean) {
+            lastValue = input
         }
     }
 
@@ -127,9 +142,12 @@ class PantryScreenTest {
         insert: InsertItemUseCase = FakeInsertItemUseCase(),
         delete: DeleteItemsUseCase = FakeDeleteItemsUseCase(),
         deleteInventory: DeleteInventoryItemUseCase = FakeDeleteInventoryItemUseCase(),
+        getSkip: GetSkipRemoveConfirmationUseCase = FakeGetSkipRemoveConfirmationUseCase(),
+        setSkip: SetSkipRemoveConfirmationUseCase = FakeSetSkipRemoveConfirmationUseCase(),
         onItemClick: (String) -> Unit = {},
     ) {
-        val viewModel = PantryViewModel(inventory, trips, insert, delete, deleteInventory)
+        val viewModel =
+            PantryViewModel(inventory, trips, insert, delete, deleteInventory, getSkip, setSkip)
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
                 PantryScreen(onItemClick = onItemClick, viewModel = viewModel)
@@ -257,6 +275,53 @@ class PantryScreenTest {
             .assertDoesNotExist()
         composeTestRule.onNodeWithText("2% Milk").assertIsDisplayed()
         assertEquals(null, deleteInventory.lastId)
+    }
+
+    @Test
+    fun checkingDontAskAgainDeletesAndPersistsThePreference() {
+        val deleteInventory = FakeDeleteInventoryItemUseCase()
+        val setSkip = FakeSetSkipRemoveConfirmationUseCase()
+        setScreen(deleteInventory = deleteInventory, setSkip = setSkip)
+
+        // Open the dialog and toggle the "Don't ask again" checkbox.
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_remove_from_pantry))
+            .performClick()
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_remove_dont_ask_again))
+            .performClick()
+
+        // Confirming deletes the item and persists the suppression choice.
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_remove_confirm_action))
+            .performClick()
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_removed, "2% Milk"))
+            .assertIsDisplayed()
+        assertEquals("i1", deleteInventory.lastId)
+        assertEquals(true, setSkip.lastValue)
+    }
+
+    @Test
+    fun removeSkipsTheDialogWhenThePreferenceIsSet() {
+        val deleteInventory = FakeDeleteInventoryItemUseCase()
+        setScreen(
+            deleteInventory = deleteInventory,
+            getSkip = FakeGetSkipRemoveConfirmationUseCase(value = true),
+        )
+
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_remove_from_pantry))
+            .performClick()
+
+        // No confirmation dialog appears; the item is removed directly.
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_remove_confirm_title))
+            .assertDoesNotExist()
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_removed, "2% Milk"))
+            .assertIsDisplayed()
+        assertEquals("i1", deleteInventory.lastId)
     }
 
     @Test

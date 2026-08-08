@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
@@ -69,6 +71,8 @@ class PantryViewModel @Inject constructor(
     private val insertItemUseCase: InsertItemUseCase,
     private val deleteItemsUseCase: DeleteItemsUseCase,
     private val deleteInventoryItemUseCase: DeleteInventoryItemUseCase,
+    private val getSkipRemoveConfirmationUseCase: GetSkipRemoveConfirmationUseCase,
+    private val setSkipRemoveConfirmationUseCase: SetSkipRemoveConfirmationUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PantryUiState>(PantryUiState.Loading)
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
@@ -165,8 +169,17 @@ class PantryViewModel @Inject constructor(
         _addToListSheet.value = AddToListSheetState.Hidden
     }
 
+    /**
+     * Shows the confirmation dialog unless the user previously chose "don't ask again".
+     */
     fun onRemoveClicked(item: InventoryItem) {
-        _removeConfirm.value = item
+        viewModelScope.launch {
+            if (getSkipRemoveConfirmationUseCase.execute(Unit)) {
+                deleteItem(item)
+            } else {
+                _removeConfirm.value = item
+            }
+        }
     }
 
     fun dismissRemove() {
@@ -174,26 +187,33 @@ class PantryViewModel @Inject constructor(
     }
 
     /**
-     * Confirms removal of the item currently in the dialog: deletes it, closes
-     * the dialog, refreshes the list, and reports the outcome via a snackbar.
+     * Confirms removal of the item currently in the dialog: closes the dialog,
+     * persists the "don't ask again" choice when [dontAskAgain] is set, then
+     * deletes the item and reports the outcome via a snackbar.
      */
-    // TODO: offer a "don't ask again" option once a user-preferences
-    //  store exists to persist it. There is no such infra yet, so the dialog
-    //  always shows for now.
-    fun confirmRemove() {
+    fun confirmRemove(dontAskAgain: Boolean) {
         val item = _removeConfirm.value ?: return
         _removeConfirm.value = null
         viewModelScope.launch {
-            val event = when (deleteInventoryItemUseCase.execute(item.id)) {
-                is DeleteInventoryItemUseCase.Output.Success -> {
-                    removeItemFromState(item.id)
-                    PantryEvent.RemovedFromPantry(item.name)
-                }
-
-                is DeleteInventoryItemUseCase.Output.Failure -> PantryEvent.RemoveFailed(item.name)
-            }
-            _events.send(event)
+            if (dontAskAgain) setSkipRemoveConfirmationUseCase.execute(true)
+            deleteItem(item)
         }
+    }
+
+    /**
+     * Deletes [item] from the pantry, drops it from the current list on success,
+     * and reports the outcome via a snackbar event.
+     */
+    private suspend fun deleteItem(item: InventoryItem) {
+        val event = when (deleteInventoryItemUseCase.execute(item.id)) {
+            is DeleteInventoryItemUseCase.Output.Success -> {
+                removeItemFromState(item.id)
+                PantryEvent.RemovedFromPantry(item.name)
+            }
+
+            is DeleteInventoryItemUseCase.Output.Failure -> PantryEvent.RemoveFailed(item.name)
+        }
+        _events.send(event)
     }
 
     /**

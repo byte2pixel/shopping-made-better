@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -40,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -240,15 +243,36 @@ private fun PantryContent(
 @Composable
 private fun RemoveFromPantryDialog(
     itemName: String,
-    onConfirm: () -> Unit,
+    onConfirm: (dontAskAgain: Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    var dontAskAgain by rememberSaveable { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.pantry_remove_confirm_title)) },
-        text = { Text(text = stringResource(R.string.pantry_remove_confirm_message, itemName)) },
+        text = {
+            Column {
+                Text(text = stringResource(R.string.pantry_remove_confirm_message, itemName))
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .toggleable(
+                            value = dontAskAgain,
+                            role = Role.Checkbox,
+                            onValueChange = { dontAskAgain = it },
+                        ),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Click handled by the Row's toggleable for one accessible target.
+                    Checkbox(checked = dontAskAgain, onCheckedChange = null)
+                    Text(text = stringResource(R.string.pantry_remove_dont_ask_again))
+                }
+            }
+        },
         confirmButton = {
-            TextButton(onClick = onConfirm) {
+            TextButton(onClick = { onConfirm(dontAskAgain) }) {
                 Text(text = stringResource(R.string.pantry_remove_confirm_action))
             }
         },
