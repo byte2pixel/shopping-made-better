@@ -48,7 +48,6 @@ private fun MealsContent(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Root container without local Scaffold/TopAppBar
     Box(
         modifier = modifier.fillMaxSize()
     ) {
@@ -57,15 +56,15 @@ private fun MealsContent(
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
             is MealsUiState.Error -> {
-                Text(
-                    text = uiState.message,
-                    color = MaterialTheme.colorScheme.error,
+                ErrorMealsState(
+                    message = uiState.message,
+                    onRetry = onRetry,
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
             is MealsUiState.Success -> {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Fixed Uniform Metrics Banner
+
                     MetricsBanner(
                         canMake = uiState.canMakeCount,
                         almostThere = uiState.almostThereCount,
@@ -73,7 +72,6 @@ private fun MealsContent(
                         recommended = uiState.recommendedCount
                     )
 
-                    // Local Search Bar (SCRUM-134)
                     OutlinedTextField(
                         value = uiState.searchQuery,
                         onValueChange = onSearchQueryChanged,
@@ -85,26 +83,40 @@ private fun MealsContent(
                         shape = RoundedCornerShape(12.dp)
                     )
 
-                    // Category Filter Pills
                     FilterChipsRow(
                         selectedFilter = uiState.selectedFilter,
-                        onFilterSelected = onFilterSelected
+                        onFilterSelected = onFilterSelected,
+                        allCount = uiState.meals.size,
+                        canMakeCount = uiState.canMakeCount,
+                        expiringCount = uiState.expiringCount,
+                        almostThereCount = uiState.almostThereCount,
+                        recommendedCount = uiState.recommendedCount
                     )
 
-                    // Recipe List
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(bottom = 16.dp)
-                    ) {
-                        items(uiState.meals) { meal ->
-                            MealRecipeCard(
-                                meal = meal,
-                                isSelected = meal.id == uiState.selectedMealId,
-                                onDetailsClick = { onSelectMeal(meal.id) }
-                            )
+                    if (uiState.meals.isEmpty()) {
+                        EmptyMealsState(
+                            searchQuery = uiState.searchQuery,
+                            onClearFilters = {
+                                onSearchQueryChanged("")
+                                onFilterSelected("All")
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            contentPadding = PaddingValues(bottom = 16.dp)
+                        ) {
+                            items(uiState.meals) { meal ->
+                                MealRecipeCard(
+                                    meal = meal,
+                                    isSelected = meal.id == uiState.selectedMealId,
+                                    onDetailsClick = { onSelectMeal(meal.id) }
+                                )
+                            }
                         }
                     }
                 }
@@ -239,18 +251,35 @@ private fun MetricCard(
 @Composable
 private fun FilterChipsRow(
     selectedFilter: String,
-    onFilterSelected: (String) -> Unit
+    onFilterSelected: (String) -> Unit,
+    allCount: Int,
+    canMakeCount: Int,
+    expiringCount: Int,
+    almostThereCount: Int,
+    recommendedCount: Int
 ) {
     val filters = listOf("All", "Can Make", "Expiring", "Almost There", "Recommended")
     LazyRow(
-        modifier = Modifier.padding(vertical = 4.dp, horizontal = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(filters) { filter ->
+            val count = when (filter) {
+                "All" -> allCount
+                "Can Make" -> canMakeCount
+                "Expiring" -> expiringCount
+                "Almost There" -> almostThereCount
+                "Recommended" -> recommendedCount
+                else -> 0
+            }
+
             FilterChip(
                 selected = filter == selectedFilter,
                 onClick = { onFilterSelected(filter) },
-                label = { Text(filter) }
+                label = { Text("$filter ($count)") }
             )
         }
     }
@@ -289,7 +318,7 @@ private fun MealRecipeCard(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-                IconButton(onClick = { /* Options / Back */ }) {
+                IconButton(onClick = { /* Options */ }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_arrow_back),
                         contentDescription = "More"
@@ -335,15 +364,9 @@ private fun MealsScreenPreview() {
         MealsContent(
             uiState = MealsUiState.Success(
                 meals = listOf(
-                    Meal(
-                        id = "1",
-                        title = "Chicken Alfredo",
-                        matchPercentage = "95% Match",
-                        itemCount = 4,
-                        totalPrice = "$34.19",
-                        category = "Recommended",
-                        ingredients = emptyList()
-                    )
+                    Meal("1", "Chicken Alfredo", "95% Match", 4, "$34.19", "Recommended"),
+                    Meal("2", "Veggie Stir Fry", "88% Match", 3, "$12.50", "Can Make"),
+                    Meal("3", "Tomato Soup", "80% Match", 2, "$8.99", "Expiring")
                 ),
                 selectedFilter = "All",
                 searchQuery = "",
