@@ -6,6 +6,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfir
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiry
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
@@ -128,6 +130,17 @@ class PantryViewModelTest {
         }
     }
 
+    /** Fake expiry-update use case: records its input and returns a settable [output]. */
+    private class FakeUpdateInventoryExpiryUseCase(
+        var output: UpdateInventoryExpiryUseCase.Output = UpdateInventoryExpiryUseCase.Output.Success,
+    ) : UpdateInventoryExpiryUseCase {
+        var lastInput: UpdateInventoryExpiry? = null
+        override suspend fun execute(input: UpdateInventoryExpiry): UpdateInventoryExpiryUseCase.Output {
+            lastInput = input
+            return output
+        }
+    }
+
     private val sampleItem = InventoryItem(
         id = "i1",
         productId = "p1",
@@ -159,9 +172,10 @@ class PantryViewModelTest {
         setSkip: FakeSetSkipRemoveConfirmationUseCase = FakeSetSkipRemoveConfirmationUseCase(),
         updateQuantity: FakeUpdateInventoryQuantityUseCase = FakeUpdateInventoryQuantityUseCase(),
         updateLocation: FakeUpdateInventoryLocationUseCase = FakeUpdateInventoryLocationUseCase(),
+        updateExpiry: FakeUpdateInventoryExpiryUseCase = FakeUpdateInventoryExpiryUseCase(),
     ) = PantryViewModel(
         inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, updateQuantity,
-        updateLocation,
+        updateLocation, updateExpiry,
     )
 
     @Test
@@ -608,6 +622,62 @@ class PantryViewModelTest {
         )
 
         viewModel.onLocationChanged(fridgeItem, newLocation = PantryLocation.Fridge)
+
+        assertNull(update.lastInput)
+    }
+
+    @Test
+    fun `onExpiryChanged updates the item in place and persists the new day offset`() = runTest {
+        val update = FakeUpdateInventoryExpiryUseCase()
+        val soonItem = sampleItem.copy(expiresInDays = 4)
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(soonItem))
+            ),
+            updateExpiry = update,
+        )
+
+        viewModel.onExpiryChanged(soonItem, newExpiresInDays = 7)
+
+        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        assertEquals(7, items.single().expiresInDays)
+        assertEquals(UpdateInventoryExpiry(id = "i1", expiresInDays = 7), update.lastInput)
+    }
+
+    @Test
+    fun `onExpiryChanged reverts and emits UpdateFailed when the save fails`() = runTest {
+        val update = FakeUpdateInventoryExpiryUseCase(
+            UpdateInventoryExpiryUseCase.Output.Failure(IOException("boom"))
+        )
+        val soonItem = sampleItem.copy(expiresInDays = 4)
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(soonItem))
+            ),
+            updateExpiry = update,
+        )
+
+        viewModel.onExpiryChanged(soonItem, newExpiresInDays = 7)
+
+        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        assertEquals(4, items.single().expiresInDays)
+        val event = viewModel.events.first()
+        assertTrue(event is PantryEvent.UpdateFailed)
+        assertEquals("Milk", (event as PantryEvent.UpdateFailed).itemName)
+    }
+
+    @Test
+    fun `onExpiryChanged does nothing when the day offset is unchanged`() = runTest {
+        val update = FakeUpdateInventoryExpiryUseCase()
+        val soonItem = sampleItem.copy(expiresInDays = 4)
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(soonItem))
+            ),
+            updateExpiry = update,
+        )
+
+        viewModel.onExpiryChanged(soonItem, newExpiresInDays = 4)
 
         assertNull(update.lastInput)
     }

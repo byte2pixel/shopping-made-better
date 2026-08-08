@@ -17,6 +17,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -73,6 +74,7 @@ internal fun expiryBucket(expiresInDays: Int?): ExpiryBucket? = when {
  * @param onRemove requests removal of this item from the pantry.
  * @param onQuantityChange requests persisting a new on-hand quantity for this item.
  * @param onLocationChange requests persisting a new storage location for this item.
+ * @param onExpiryChange requests persisting a new shelf life (days from today) for this item.
  */
 @Composable
 fun InventoryItemCard(
@@ -82,6 +84,7 @@ fun InventoryItemCard(
     onRemove: () -> Unit,
     onQuantityChange: (Int) -> Unit,
     onLocationChange: (PantryLocation) -> Unit,
+    onExpiryChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(onClick = onClick, modifier = modifier.fillMaxWidth()) {
@@ -123,6 +126,7 @@ fun InventoryItemCard(
                 item = item,
                 onQuantityChange = onQuantityChange,
                 onLocationChange = onLocationChange,
+                onExpiryChange = onExpiryChange,
                 modifier = Modifier.padding(top = 8.dp),
             )
         }
@@ -138,6 +142,7 @@ private fun InventoryIndicators(
     item: InventoryItem,
     onQuantityChange: (Int) -> Unit,
     onLocationChange: (PantryLocation) -> Unit,
+    onExpiryChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val bucket = expiryBucket(item.expiresInDays)
@@ -149,7 +154,11 @@ private fun InventoryIndicators(
         QuantityChip(quantity = item.quantity, onQuantityChange = onQuantityChange)
         LocationChip(location = item.location, onLocationChange = onLocationChange)
         if (bucket != null) {
-            ExpiryChip(bucket = bucket, expiresInDays = item.expiresInDays!!)
+            ExpiryChip(
+                bucket = bucket,
+                expiresInDays = item.expiresInDays!!,
+                onExpiryChange = onExpiryChange,
+            )
         }
     }
 }
@@ -285,8 +294,21 @@ private fun QuantityChip(
 /** Quantity can't be lowered below this from the chip; use the remove action instead. */
 private const val MIN_QUANTITY = 1
 
+/** Days added by each expiry quick-add button, in the order shown. */
+private val expiryQuickAddDays = listOf(1, 3, 7)
+
+/**
+ * The expiry chip. Tapping it opens an anchored popup with a day [Stepper] plus quick-add
+ * buttons; the new shelf life (days from today) is committed via [onExpiryChange] when the
+ * popup closes (nothing is sent when unchanged). Decrement floors at "today" (0 days).
+ */
 @Composable
-private fun ExpiryChip(bucket: ExpiryBucket, expiresInDays: Int, modifier: Modifier = Modifier) {
+private fun ExpiryChip(
+    bucket: ExpiryBucket,
+    expiresInDays: Int,
+    onExpiryChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val dark = isSystemInDarkTheme()
     val accent: Color = when (bucket) {
         ExpiryBucket.Expired -> MaterialTheme.colorScheme.error
@@ -309,13 +331,64 @@ private fun ExpiryChip(bucket: ExpiryBucket, expiresInDays: Int, modifier: Modif
         )
     }
 
-    LabelChip(
-        label = label,
-        accentColor = accent,
-        iconRes = R.drawable.ic_expiring,
-        contentDescription = description,
-        modifier = modifier,
-    )
+    var expanded by remember { mutableStateOf(false) }
+    var draft by remember { mutableIntStateOf(expiresInDays) }
+
+    Box(modifier = modifier) {
+        LabelChip(
+            label = label,
+            accentColor = accent,
+            iconRes = R.drawable.ic_expiring,
+            contentDescription = description,
+            onClick = {
+                draft = expiresInDays
+                expanded = true
+            },
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = {
+                expanded = false
+                onExpiryChange(draft)
+            },
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.pantry_expiry_edit_label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Stepper(
+                    valueLabel = expiryDraftLabel(draft),
+                    onDecrement = { if (draft > 0) draft-- },
+                    onIncrement = { draft++ },
+                    decrementContentDescription = stringResource(R.string.pantry_expiry_days_decrease),
+                    incrementContentDescription = stringResource(R.string.pantry_expiry_days_increase),
+                    decrementEnabled = draft > 0,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    expiryQuickAddDays.forEach { days ->
+                        TextButton(onClick = { draft += days }) {
+                            Text(text = stringResource(R.string.pantry_expiry_add_days, days))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** The stepper's value label for [days] until expiry: "Today" at 0, otherwise a day count. */
+@Composable
+private fun expiryDraftLabel(days: Int): String = if (days == 0) {
+    stringResource(R.string.pantry_expiry_today)
+} else {
+    pluralStringResource(R.plurals.pantry_expiry_days, days, days)
 }
 
 private fun previewItem(
@@ -345,6 +418,7 @@ private fun InventoryItemCardPreview() {
             onRemove = {},
             onQuantityChange = {},
             onLocationChange = {},
+            onExpiryChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }
@@ -361,6 +435,7 @@ private fun InventoryItemCardExpiredPreview() {
             onRemove = {},
             onQuantityChange = {},
             onLocationChange = {},
+            onExpiryChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }
@@ -377,6 +452,7 @@ private fun InventoryItemCardNoChipPreview() {
             onRemove = {},
             onQuantityChange = {},
             onLocationChange = {},
+            onExpiryChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }

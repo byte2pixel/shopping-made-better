@@ -91,6 +91,16 @@
     <string name="pantry_expiry_today">Today</string>
     <string name="pantry_expiry_in_days_short">%1$dd</string>
 
+    <!-- Pantry inventory card chip quick action - expire -->
+    <string name="pantry_expiry_edit_label">Expires</string>
+    <string name="pantry_expiry_days_decrease">Fewer days</string>
+    <string name="pantry_expiry_days_increase">More days</string>
+    <string name="pantry_expiry_add_days">+%1$dd</string>
+    <plurals name="pantry_expiry_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+
     <!-- Pantry: remove an item from the pantry -->
     <string name="pantry_remove_from_pantry">Remove from pantry</string>
     <string name="pantry_remove_confirm_title">Remove item?</string>

@@ -40,6 +40,8 @@ class GetInventoryUseCaseTest {
         override suspend fun updateQuantity(id: String, quantity: Int) = Unit
 
         override suspend fun updateLocation(id: String, location: String) = Unit
+
+        override suspend fun updateExpiry(id: String, expiresAt: LocalDate) = Unit
     }
 
     private val fixedClock = object : Clock {

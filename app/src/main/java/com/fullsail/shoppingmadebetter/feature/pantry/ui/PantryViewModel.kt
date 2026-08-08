@@ -8,6 +8,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfir
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiry
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
@@ -83,6 +85,7 @@ class PantryViewModel @Inject constructor(
     private val setSkipRemoveConfirmationUseCase: SetSkipRemoveConfirmationUseCase,
     private val updateInventoryQuantityUseCase: UpdateInventoryQuantityUseCase,
     private val updateInventoryLocationUseCase: UpdateInventoryLocationUseCase,
+    private val updateInventoryExpiryUseCase: UpdateInventoryExpiryUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PantryUiState>(PantryUiState.Loading)
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
@@ -256,6 +259,24 @@ class PantryViewModel @Inject constructor(
                 UpdateInventoryLocation(item.id, newLocation),
             )
             if (out is UpdateInventoryLocationUseCase.Output.Failure) {
+                updateItemInState(item.id) { item }
+                _events.send(PantryEvent.UpdateFailed(item.name))
+            }
+        }
+    }
+
+    /**
+     * Optimistically sets [item]'s shelf life to [newExpiresInDays] (days from today) in the
+     * list, persists it, and reverts with a snackbar if the save fails. No-ops when unchanged.
+     */
+    fun onExpiryChanged(item: InventoryItem, newExpiresInDays: Int) {
+        if (newExpiresInDays == item.expiresInDays) return
+        updateItemInState(item.id) { it.copy(expiresInDays = newExpiresInDays) }
+        viewModelScope.launch {
+            val out = updateInventoryExpiryUseCase.execute(
+                UpdateInventoryExpiry(item.id, newExpiresInDays),
+            )
+            if (out is UpdateInventoryExpiryUseCase.Output.Failure) {
                 updateItemInState(item.id) { item }
                 _events.send(PantryEvent.UpdateFailed(item.name))
             }
