@@ -65,14 +65,19 @@ class MealsViewModel @Inject constructor(
                     )
                 }
 
+                val canMake = allMeals.count { it.category.equals("Can Make", ignoreCase = true) }
+                val almostThere = allMeals.count { it.category.equals("Almost There", ignoreCase = true) }
+                val expiring = allMeals.count { it.category.equals("Expiring", ignoreCase = true) }
+                val recommended = allMeals.count { it.category.equals("Recommended", ignoreCase = true) }
+
                 _uiState.value = MealsUiState.Success(
                     meals = allMeals,
                     selectedFilter = "All",
                     searchQuery = "",
-                    canMakeCount = 12,
-                    almostThereCount = 3,
-                    expiringCount = 5,
-                    recommendedCount = 5
+                    canMakeCount = canMake,
+                    almostThereCount = almostThere,
+                    expiringCount = expiring,
+                    recommendedCount = recommended
                 )
             } catch (e: Exception) {
                 _uiState.value = MealsUiState.Error(e.localizedMessage ?: "Failed to load meals.")
@@ -110,6 +115,14 @@ class MealsViewModel @Inject constructor(
                 selectedFilter = filter,
                 searchQuery = query
             )
+        }
+    }
+
+    fun quickAddIngredient(ingredientId: String) {
+        val currentState = _uiState.value
+        if (currentState is MealsUiState.Success) {
+            viewModelScope.launch {
+            }
         }
     }
 
