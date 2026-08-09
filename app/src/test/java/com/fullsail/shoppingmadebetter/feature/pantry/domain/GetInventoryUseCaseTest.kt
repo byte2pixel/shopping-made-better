@@ -36,6 +36,12 @@ class GetInventoryUseCaseTest {
             error?.let { throw it } ?: items.firstOrNull { it.id == id }
 
         override suspend fun deleteInventoryItem(id: String) = Unit
+
+        override suspend fun updateQuantity(id: String, quantity: Int) = Unit
+
+        override suspend fun updateLocation(id: String, location: String) = Unit
+
+        override suspend fun updateExpiry(id: String, expiresAt: LocalDate) = Unit
     }
 
     private val fixedClock = object : Clock {
@@ -118,6 +124,25 @@ class GetInventoryUseCaseTest {
         assertEquals(-3, items[2].expiresInDays)  // overdue -> negative
         assertNull(items[3].expiresInDays)        // no date -> null
     }
+
+    @Test
+    fun `execute maps the location string to a PantryLocation, unknown falling back to Pantry`() =
+        runTest {
+            val dtos = listOf(
+                dto("freezer", null).copy(location = "freezer"),
+                dto("fridge", null).copy(location = "fridge"),
+                dto("pantry", null).copy(location = "pantry"),
+                dto("unknown", null).copy(location = "garage"),
+            )
+            val useCase = GetInventoryUseCaseImpl(FakePantryRepository(items = dtos), fixedClock)
+
+            val items = (useCase.execute(Unit) as GetInventoryUseCase.Output.Success).inventoryItems
+
+            assertEquals(PantryLocation.Freezer, items[0].location)
+            assertEquals(PantryLocation.Fridge, items[1].location)
+            assertEquals(PantryLocation.Pantry, items[2].location)
+            assertEquals(PantryLocation.Pantry, items[3].location) // unrecognized -> Pantry
+        }
 
     @Test
     fun `execute returns an empty list when the repository has no items`() = runTest {

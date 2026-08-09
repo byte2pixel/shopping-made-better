@@ -1,6 +1,7 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
-import androidx.compose.foundation.background
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,17 +9,23 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -27,7 +34,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.LabelChip
+import com.fullsail.shoppingmadebetter.core.ui.ProductImage
+import com.fullsail.shoppingmadebetter.core.ui.Stepper
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import com.fullsail.shoppingmadebetter.ui.theme.expirySoonAccentDark
 import com.fullsail.shoppingmadebetter.ui.theme.expirySoonAccentLight
@@ -62,6 +72,9 @@ internal fun expiryBucket(expiresInDays: Int?): ExpiryBucket? = when {
  * @param onClick opens the item's detail screen.
  * @param onAddToList opens the "add to shopping list" flow for this item.
  * @param onRemove requests removal of this item from the pantry.
+ * @param onQuantityChange requests persisting a new on-hand quantity for this item.
+ * @param onLocationChange requests persisting a new storage location for this item.
+ * @param onExpiryChange requests persisting a new shelf life (days from today) for this item.
  */
 @Composable
 fun InventoryItemCard(
@@ -69,12 +82,15 @@ fun InventoryItemCard(
     onClick: () -> Unit,
     onAddToList: () -> Unit,
     onRemove: () -> Unit,
+    onQuantityChange: (Int) -> Unit,
+    onLocationChange: (PantryLocation) -> Unit,
+    onExpiryChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(onClick = onClick, modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                ItemThumbnail()
+                ProductImage(imageUrl = item.imageUrl, contentDescription = item.name)
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -106,7 +122,13 @@ fun InventoryItemCard(
                     )
                 }
             }
-            InventoryIndicators(item = item, modifier = Modifier.padding(top = 8.dp))
+            InventoryIndicators(
+                item = item,
+                onQuantityChange = onQuantityChange,
+                onLocationChange = onLocationChange,
+                onExpiryChange = onExpiryChange,
+                modifier = Modifier.padding(top = 8.dp),
+            )
         }
     }
 }
@@ -116,37 +138,177 @@ fun InventoryItemCard(
  * on hand, and how much shelf life is left. Expandable for other info.
  */
 @Composable
-private fun InventoryIndicators(item: InventoryItem, modifier: Modifier = Modifier) {
+private fun InventoryIndicators(
+    item: InventoryItem,
+    onQuantityChange: (Int) -> Unit,
+    onLocationChange: (PantryLocation) -> Unit,
+    onExpiryChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val bucket = expiryBucket(item.expiresInDays)
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        QuantityChip(quantity = item.quantity)
+        QuantityChip(quantity = item.quantity, onQuantityChange = onQuantityChange)
+        LocationChip(location = item.location, onLocationChange = onLocationChange)
         if (bucket != null) {
-            ExpiryChip(bucket = bucket, expiresInDays = item.expiresInDays!!)
+            ExpiryChip(
+                bucket = bucket,
+                expiresInDays = item.expiresInDays!!,
+                onExpiryChange = onExpiryChange,
+            )
         }
     }
 }
 
-@Composable
-private fun QuantityChip(quantity: Int, modifier: Modifier = Modifier) {
-    LabelChip(
-        label = stringResource(R.string.pantry_card_quantity, quantity),
-        accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        iconRes = R.drawable.ic_add_circle,
-        contentDescription = pluralStringResource(
-            R.plurals.pantry_card_quantity_desc,
-            quantity,
-            quantity,
-        ),
-        modifier = modifier,
-    )
+/** The drawable icon representing where an item is stored. */
+@DrawableRes
+internal fun PantryLocation.iconRes(): Int = when (this) {
+    PantryLocation.Freezer -> R.drawable.ic_freezer
+    PantryLocation.Fridge -> R.drawable.ic_fridge
+    PantryLocation.Pantry -> R.drawable.ic_pantry
 }
 
+/** The display name for a storage location, shared with the pantry dashboard. */
+@StringRes
+internal fun PantryLocation.labelRes(): Int = when (this) {
+    PantryLocation.Freezer -> R.string.pantry_dashboard_freezer
+    PantryLocation.Fridge -> R.string.pantry_dashboard_fridge
+    PantryLocation.Pantry -> R.string.pantry_dashboard_pantry
+}
+
+/** The three storage locations, in the order they're offered in the location picker. */
+private val locationChoices = listOf(
+    PantryLocation.Pantry,
+    PantryLocation.Fridge,
+    PantryLocation.Freezer,
+)
+
+/**
+ * The location chip. Tapping it opens an anchored popup listing the storage locations.
+ * Picking one commits it via [onLocationChange] (nothing is sent when it's unchanged).
+ */
 @Composable
-private fun ExpiryChip(bucket: ExpiryBucket, expiresInDays: Int, modifier: Modifier = Modifier) {
+private fun LocationChip(
+    location: PantryLocation,
+    onLocationChange: (PantryLocation) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val label = stringResource(location.labelRes())
+
+    Box(modifier = modifier) {
+        LabelChip(
+            label = label,
+            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            iconRes = location.iconRes(),
+            contentDescription = stringResource(R.string.pantry_card_location_desc, label),
+            onClick = { expanded = true },
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            locationChoices.forEach { choice ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(choice.labelRes())) },
+                    leadingIcon = {
+                        Icon(painter = painterResource(choice.iconRes()), contentDescription = null)
+                    },
+                    trailingIcon = {
+                        RadioButton(selected = choice == location, onClick = null)
+                    },
+                    onClick = {
+                        expanded = false
+                        onLocationChange(choice)
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The quantity chip. Tapping it opens an anchored popup with a [Stepper]; the new
+ * value is committed via [onQuantityChange] when the popup closes (nothing is sent
+ * when the value is unchanged). Quantity is floored at 1 — removing the item is the
+ * job of the card's separate remove action.
+ */
+@Composable
+private fun QuantityChip(
+    quantity: Int,
+    onQuantityChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var draft by remember { mutableIntStateOf(quantity) }
+
+    Box(modifier = modifier) {
+        LabelChip(
+            label = stringResource(R.string.pantry_card_quantity, quantity),
+            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            iconRes = R.drawable.ic_add,
+            contentDescription = pluralStringResource(
+                R.plurals.pantry_card_quantity_desc,
+                quantity,
+                quantity,
+            ),
+            onClick = {
+                draft = quantity
+                expanded = true
+            },
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = {
+                expanded = false
+                onQuantityChange(draft)
+            },
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(R.string.pantry_quantity_edit_label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Stepper(
+                    valueLabel = draft.toString(),
+                    onDecrement = { if (draft > MIN_QUANTITY) draft-- },
+                    onIncrement = { draft++ },
+                    decrementContentDescription = stringResource(R.string.pantry_quantity_decrease),
+                    incrementContentDescription = stringResource(R.string.pantry_quantity_increase),
+                    decrementEnabled = draft > MIN_QUANTITY,
+                )
+            }
+        }
+    }
+}
+
+/** Quantity can't be lowered below this from the chip; use the remove action instead. */
+private const val MIN_QUANTITY = 1
+
+/** Days added by each expiry quick-add button, in the order shown. */
+private val expiryQuickAddDays = listOf(1, 3, 7)
+
+/**
+ * The expiry chip. Tapping it opens an anchored popup with a day [Stepper] plus quick-add
+ * buttons; the new shelf life (days from today) is committed via [onExpiryChange] when the
+ * popup closes (nothing is sent when unchanged). Decrement floors at "today" (0 days).
+ */
+@Composable
+private fun ExpiryChip(
+    bucket: ExpiryBucket,
+    expiresInDays: Int,
+    onExpiryChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val dark = isSystemInDarkTheme()
     val accent: Color = when (bucket) {
         ExpiryBucket.Expired -> MaterialTheme.colorScheme.error
@@ -169,38 +331,70 @@ private fun ExpiryChip(bucket: ExpiryBucket, expiresInDays: Int, modifier: Modif
         )
     }
 
-    LabelChip(
-        label = label,
-        accentColor = accent,
-        iconRes = R.drawable.ic_expiring,
-        contentDescription = description,
-        modifier = modifier,
-    )
-}
+    var expanded by remember { mutableStateOf(false) }
+    var draft by remember { mutableIntStateOf(expiresInDays) }
 
-/**
- * Leading placeholder for the item's image. Real product thumbnails are a
- * todo for now every card shows a generic pantry glyph.
- */
-@Composable
-private fun ItemThumbnail(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .size(56.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_pantry),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(28.dp),
+    Box(modifier = modifier) {
+        LabelChip(
+            label = label,
+            accentColor = accent,
+            iconRes = R.drawable.ic_expiring,
+            contentDescription = description,
+            onClick = {
+                draft = expiresInDays
+                expanded = true
+            },
         )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = {
+                expanded = false
+                onExpiryChange(draft)
+            },
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.pantry_expiry_edit_label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Stepper(
+                    valueLabel = expiryDraftLabel(draft),
+                    onDecrement = { if (draft > 0) draft-- },
+                    onIncrement = { draft++ },
+                    decrementContentDescription = stringResource(R.string.pantry_expiry_days_decrease),
+                    incrementContentDescription = stringResource(R.string.pantry_expiry_days_increase),
+                    decrementEnabled = draft > 0,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    expiryQuickAddDays.forEach { days ->
+                        TextButton(onClick = { draft += days }) {
+                            Text(text = stringResource(R.string.pantry_expiry_add_days, days))
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
-private fun previewItem(expiresInDays: Int?) = InventoryItem(
+/** The stepper's value label for [days] until expiry: "Today" at 0, otherwise a day count. */
+@Composable
+private fun expiryDraftLabel(days: Int): String = if (days == 0) {
+    stringResource(R.string.pantry_expiry_today)
+} else {
+    pluralStringResource(R.plurals.pantry_expiry_days, days, days)
+}
+
+private fun previewItem(
+    expiresInDays: Int?,
+    location: PantryLocation = PantryLocation.Pantry,
+) = InventoryItem(
     id = "1",
     productId = "p1",
     name = "2% Milk",
@@ -210,6 +404,7 @@ private fun previewItem(expiresInDays: Int?) = InventoryItem(
     imageUrl = "",
     quantity = 2,
     expiresInDays = expiresInDays,
+    location = location,
 )
 
 @Preview(showBackground = true, name = "Soon (yellow)")
@@ -217,10 +412,13 @@ private fun previewItem(expiresInDays: Int?) = InventoryItem(
 private fun InventoryItemCardPreview() {
     ShoppingMadeBetterTheme {
         InventoryItemCard(
-            item = previewItem(expiresInDays = 4),
+            item = previewItem(expiresInDays = 4, location = PantryLocation.Fridge),
             onClick = {},
             onAddToList = {},
             onRemove = {},
+            onQuantityChange = {},
+            onLocationChange = {},
+            onExpiryChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }
@@ -231,10 +429,13 @@ private fun InventoryItemCardPreview() {
 private fun InventoryItemCardExpiredPreview() {
     ShoppingMadeBetterTheme {
         InventoryItemCard(
-            item = previewItem(expiresInDays = -2),
+            item = previewItem(expiresInDays = -2, location = PantryLocation.Freezer),
             onClick = {},
             onAddToList = {},
             onRemove = {},
+            onQuantityChange = {},
+            onLocationChange = {},
+            onExpiryChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }
@@ -249,6 +450,9 @@ private fun InventoryItemCardNoChipPreview() {
             onClick = {},
             onAddToList = {},
             onRemove = {},
+            onQuantityChange = {},
+            onLocationChange = {},
+            onExpiryChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }

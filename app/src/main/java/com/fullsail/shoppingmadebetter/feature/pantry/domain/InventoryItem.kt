@@ -12,4 +12,5 @@ data class InventoryItem(
     val imageUrl: String,
     val quantity: Int,
     val expiresInDays: Int?,
+    val location: PantryLocation = PantryLocation.Pantry,
 )

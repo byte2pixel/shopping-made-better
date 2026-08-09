@@ -3,6 +3,7 @@ package com.fullsail.shoppingmadebetter.feature.pantry.data
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.LocalDate
 import javax.inject.Inject
 
 class PantryRepositoryImpl @Inject constructor(
@@ -20,6 +21,27 @@ class PantryRepositoryImpl @Inject constructor(
 
     override suspend fun deleteInventoryItem(id: String) = withContext(Dispatchers.IO) {
         postgrest.from("inventory_items").delete { filter { eq("id", id) } }
+        Unit
+    }
+
+    override suspend fun updateQuantity(id: String, quantity: Int) = withContext(Dispatchers.IO) {
+        postgrest.from("inventory_items").update({ set("quantity", quantity) }) {
+            filter { eq("id", id) }
+        }
+        Unit
+    }
+
+    override suspend fun updateLocation(id: String, location: String) = withContext(Dispatchers.IO) {
+        postgrest.from("inventory_items").update({ set("location", location) }) {
+            filter { eq("id", id) }
+        }
+        Unit
+    }
+
+    override suspend fun updateExpiry(id: String, expiresAt: LocalDate) = withContext(Dispatchers.IO) {
+        postgrest.from("inventory_items").update({ set("expires_at", expiresAt) }) {
+            filter { eq("id", id) }
+        }
         Unit
     }
 }

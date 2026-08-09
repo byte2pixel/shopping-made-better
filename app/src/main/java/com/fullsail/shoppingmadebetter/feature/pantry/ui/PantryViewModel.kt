@@ -4,7 +4,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiry
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocation
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
@@ -60,6 +69,9 @@ sealed interface PantryEvent {
 
     /** Removing an item from the pantry failed. */
     data class RemoveFailed(val itemName: String) : PantryEvent
+
+    /** A quick-action edit to an item (quantity/location/expiry) failed to save. */
+    data class UpdateFailed(val itemName: String) : PantryEvent
 }
 
 @HiltViewModel
@@ -69,6 +81,11 @@ class PantryViewModel @Inject constructor(
     private val insertItemUseCase: InsertItemUseCase,
     private val deleteItemsUseCase: DeleteItemsUseCase,
     private val deleteInventoryItemUseCase: DeleteInventoryItemUseCase,
+    private val getSkipRemoveConfirmationUseCase: GetSkipRemoveConfirmationUseCase,
+    private val setSkipRemoveConfirmationUseCase: SetSkipRemoveConfirmationUseCase,
+    private val updateInventoryQuantityUseCase: UpdateInventoryQuantityUseCase,
+    private val updateInventoryLocationUseCase: UpdateInventoryLocationUseCase,
+    private val updateInventoryExpiryUseCase: UpdateInventoryExpiryUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PantryUiState>(PantryUiState.Loading)
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
@@ -165,8 +182,17 @@ class PantryViewModel @Inject constructor(
         _addToListSheet.value = AddToListSheetState.Hidden
     }
 
+    /**
+     * Shows the confirmation dialog unless the user previously chose "don't ask again".
+     */
     fun onRemoveClicked(item: InventoryItem) {
-        _removeConfirm.value = item
+        viewModelScope.launch {
+            if (getSkipRemoveConfirmationUseCase.execute(Unit)) {
+                deleteItem(item)
+            } else {
+                _removeConfirm.value = item
+            }
+        }
     }
 
     fun dismissRemove() {
@@ -174,25 +200,86 @@ class PantryViewModel @Inject constructor(
     }
 
     /**
-     * Confirms removal of the item currently in the dialog: deletes it, closes
-     * the dialog, refreshes the list, and reports the outcome via a snackbar.
+     * Confirms removal of the item currently in the dialog: closes the dialog,
+     * persists the "don't ask again" choice when [dontAskAgain] is set, then
+     * deletes the item and reports the outcome via a snackbar.
      */
-    // TODO: offer a "don't ask again" option once a user-preferences
-    //  store exists to persist it. There is no such infra yet, so the dialog
-    //  always shows for now.
-    fun confirmRemove() {
+    fun confirmRemove(dontAskAgain: Boolean) {
         val item = _removeConfirm.value ?: return
         _removeConfirm.value = null
         viewModelScope.launch {
-            val event = when (deleteInventoryItemUseCase.execute(item.id)) {
-                is DeleteInventoryItemUseCase.Output.Success -> {
-                    removeItemFromState(item.id)
-                    PantryEvent.RemovedFromPantry(item.name)
-                }
+            if (dontAskAgain) setSkipRemoveConfirmationUseCase.execute(true)
+            deleteItem(item)
+        }
+    }
 
-                is DeleteInventoryItemUseCase.Output.Failure -> PantryEvent.RemoveFailed(item.name)
+    /**
+     * Deletes [item] from the pantry, drops it from the current list on success,
+     * and reports the outcome via a snackbar event.
+     */
+    private suspend fun deleteItem(item: InventoryItem) {
+        val event = when (deleteInventoryItemUseCase.execute(item.id)) {
+            is DeleteInventoryItemUseCase.Output.Success -> {
+                removeItemFromState(item.id)
+                PantryEvent.RemovedFromPantry(item.name)
             }
-            _events.send(event)
+
+            is DeleteInventoryItemUseCase.Output.Failure -> PantryEvent.RemoveFailed(item.name)
+        }
+        _events.send(event)
+    }
+
+    /**
+     * Optimistically sets [item]'s quantity to [newQuantity] in the list, persists it,
+     * and reverts with a snackbar if the save fails. No-op when the value is unchanged.
+     */
+    fun onQuantityChanged(item: InventoryItem, newQuantity: Int) {
+        if (newQuantity == item.quantity) return
+        updateItemInState(item.id) { it.copy(quantity = newQuantity) }
+        viewModelScope.launch {
+            val out = updateInventoryQuantityUseCase.execute(
+                UpdateInventoryQuantity(item.id, newQuantity),
+            )
+            if (out is UpdateInventoryQuantityUseCase.Output.Failure) {
+                updateItemInState(item.id) { item }
+                _events.send(PantryEvent.UpdateFailed(item.name))
+            }
+        }
+    }
+
+    /**
+     * Optimistically sets [item]'s storage location to [newLocation] in the list, persists
+     * it, and reverts with a snackbar if the save fails. No-op when the value is unchanged.
+     */
+    fun onLocationChanged(item: InventoryItem, newLocation: PantryLocation) {
+        if (newLocation == item.location) return
+        updateItemInState(item.id) { it.copy(location = newLocation) }
+        viewModelScope.launch {
+            val out = updateInventoryLocationUseCase.execute(
+                UpdateInventoryLocation(item.id, newLocation),
+            )
+            if (out is UpdateInventoryLocationUseCase.Output.Failure) {
+                updateItemInState(item.id) { item }
+                _events.send(PantryEvent.UpdateFailed(item.name))
+            }
+        }
+    }
+
+    /**
+     * Optimistically sets [item]'s shelf life to [newExpiresInDays] (days from today) in the
+     * list, persists it, and reverts with a snackbar if the save fails. No-ops when unchanged.
+     */
+    fun onExpiryChanged(item: InventoryItem, newExpiresInDays: Int) {
+        if (newExpiresInDays == item.expiresInDays) return
+        updateItemInState(item.id) { it.copy(expiresInDays = newExpiresInDays) }
+        viewModelScope.launch {
+            val out = updateInventoryExpiryUseCase.execute(
+                UpdateInventoryExpiry(item.id, newExpiresInDays),
+            )
+            if (out is UpdateInventoryExpiryUseCase.Output.Failure) {
+                updateItemInState(item.id) { item }
+                _events.send(PantryEvent.UpdateFailed(item.name))
+            }
         }
     }
 
@@ -204,6 +291,21 @@ class PantryViewModel @Inject constructor(
         if (current is PantryUiState.Success) {
             _uiState.value = current.copy(
                 inventoryItems = current.inventoryItems.filterNot { it.id == itemId },
+            )
+        }
+    }
+
+    /**
+     * Replaces the item [itemId] in the current success list with [transform] applied to
+     * it, leaving every other item untouched. No-ops unless the state is [PantryUiState.Success].
+     */
+    private fun updateItemInState(itemId: String, transform: (InventoryItem) -> InventoryItem) {
+        val current = _uiState.value
+        if (current is PantryUiState.Success) {
+            _uiState.value = current.copy(
+                inventoryItems = current.inventoryItems.map { item ->
+                    if (item.id == itemId) transform(item) else item
+                },
             )
         }
     }

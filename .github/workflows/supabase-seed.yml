@@ -1,0 +1,50 @@
+name: Seed Supabase (one-time)
+
+# Loads the product catalog into the cloud project.
+#
+# This is a MANUAL workflow:
+# the catalog inserts in seed.sql use random store/pricing UUIDs and have no
+# ON CONFLICT clause.
+# Run it once only after the first migration deploy. To reseed, wipe the catalog tables first.
+#
+# dummy_account.sql (demo user + mock pantry) is idempotent and is loaded after
+# seed.sql -- matching the local [db.seed] sql_paths order in config.toml.
+on:
+  workflow_dispatch:
+    inputs:
+      include_demo:
+        description: "Also load demo account (dummy_account.sql)"
+        type: boolean
+        default: true
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+
+      # seed.sql is gitignored/generated -- rebuild it from the committed CSV.
+      - name: Regenerate seed.sql from CSV
+        run: python scripts/generate_seed.py
+
+      # psql is preinstalled on ubuntu-latest. SUPABASE_DB_URL must be the
+      # Session Pooler connection string (IPv4) -- runners can't reach the
+      # IPv6-only direct connection.
+      - name: Apply catalog seed
+        env:
+          PGURL: ${{ secrets.SUPABASE_DB_URL }}
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/seed.sql
+
+      - name: Apply demo account
+        if: ${{ inputs.include_demo }}
+        env:
+          PGURL: ${{ secrets.SUPABASE_DB_URL }}
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/dummy_account.sql

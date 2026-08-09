@@ -78,10 +78,28 @@
         <item quantity="other">%1$d in stock</item>
     </plurals>
 
+    <!-- Pantry inventory card chip quick action - quantity -->
+    <string name="pantry_quantity_edit_label">Quantity</string>
+    <string name="pantry_quantity_decrease">Decrease quantity</string>
+    <string name="pantry_quantity_increase">Increase quantity</string>
+
+    <!-- Pantry inventory card chip indicators - location -->
+    <string name="pantry_card_location_desc">Stored in %1$s</string>
+
     <!-- Pantry inventory card chip indicators - expire -->
     <string name="pantry_expiry_expired">Expired</string>
     <string name="pantry_expiry_today">Today</string>
     <string name="pantry_expiry_in_days_short">%1$dd</string>
+
+    <!-- Pantry inventory card chip quick action - expire -->
+    <string name="pantry_expiry_edit_label">Expires</string>
+    <string name="pantry_expiry_days_decrease">Fewer days</string>
+    <string name="pantry_expiry_days_increase">More days</string>
+    <string name="pantry_expiry_add_days">+%1$dd</string>
+    <plurals name="pantry_expiry_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
 
     <!-- Pantry: remove an item from the pantry -->
     <string name="pantry_remove_from_pantry">Remove from pantry</string>
@@ -89,8 +107,10 @@
     <string name="pantry_remove_confirm_message">Remove \"%1$s\" from your pantry? This can\'t be undone.</string>
     <string name="pantry_remove_confirm_action">Remove</string>
     <string name="pantry_remove_cancel">Cancel</string>
+    <string name="pantry_remove_dont_ask_again">Don\'t ask again</string>
     <string name="pantry_removed">Removed %1$s from pantry</string>
     <string name="pantry_remove_failed">Couldn\'t remove %1$s</string>
+    <string name="pantry_update_failed">Couldn\'t update %1$s</string>
 
     <!-- Pantry: add an item to a shopping list -->
     <string name="pantry_add_to_list">Add to shopping list</string>

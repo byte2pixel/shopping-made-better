@@ -4,6 +4,7 @@ import com.fullsail.shoppingmadebetter.feature.pantry.data.InventoryItemDto
 import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryRepository
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
@@ -39,6 +40,12 @@ class GetInventoryItemUseCaseTest {
         }
 
         override suspend fun deleteInventoryItem(id: String) = Unit
+
+        override suspend fun updateQuantity(id: String, quantity: Int) = Unit
+
+        override suspend fun updateLocation(id: String, location: String) = Unit
+
+        override suspend fun updateExpiry(id: String, expiresAt: LocalDate) = Unit
     }
 
     private val fixedClock = object : Clock {
@@ -104,6 +111,21 @@ class GetInventoryItemUseCaseTest {
                 .execute("i1") as GetInventoryItemUseCase.Output.Success).inventoryItem.expiresInDays,
         )
     }
+
+    @Test
+    fun `execute maps the location string to a PantryLocation, unknown falling back to Pantry`() =
+        runTest {
+            val fridge = dto.copy(location = "fridge")
+            val item = (GetInventoryItemUseCaseImpl(FakePantryRepository(item = fridge), fixedClock)
+                .execute("i1") as GetInventoryItemUseCase.Output.Success).inventoryItem
+            assertEquals(PantryLocation.Fridge, item.location)
+
+            val unknown = dto.copy(location = "garage")
+            val fallback =
+                (GetInventoryItemUseCaseImpl(FakePantryRepository(item = unknown), fixedClock)
+                    .execute("i1") as GetInventoryItemUseCase.Output.Success).inventoryItem
+            assertEquals(PantryLocation.Pantry, fallback.location) // unrecognized -> Pantry
+        }
 
     @Test
     fun `execute returns NotFound when the repository returns null`() = runTest {
