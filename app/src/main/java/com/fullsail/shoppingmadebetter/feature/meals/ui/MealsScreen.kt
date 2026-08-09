@@ -34,7 +34,8 @@ fun MealsScreen(
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onFilterSelected = viewModel::onFilterSelected,
         onSelectMeal = viewModel::selectMealPlan,
-        onQuickAddIngredient = viewModel::quickAddIngredient, // SCRUM-137 wiring
+        // Updated to pass both ID and Name
+        onQuickAddIngredient = { id, name -> viewModel.quickAddIngredient(id, name) },
         onRetry = viewModel::loadMeals,
         modifier = modifier
     )
@@ -46,7 +47,8 @@ private fun MealsContent(
     onSearchQueryChanged: (String) -> Unit,
     onFilterSelected: (String) -> Unit,
     onSelectMeal: (String) -> Unit,
-    onQuickAddIngredient: (String) -> Unit, // SCRUM-137 wiring
+    // Updated signature here
+    onQuickAddIngredient: (String, String) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -117,7 +119,7 @@ private fun MealsContent(
                                     meal = meal,
                                     isSelected = meal.id == uiState.selectedMealId,
                                     onDetailsClick = { onSelectMeal(meal.id) },
-                                    onQuickAddIngredient = onQuickAddIngredient // SCRUM-137 wiring
+                                    onQuickAddIngredient = onQuickAddIngredient
                                 )
                             }
                         }
@@ -128,6 +130,7 @@ private fun MealsContent(
     }
 }
 
+// ... [EmptyMealsState, ErrorMealsState, MetricsBanner, MetricCard, FilterChipsRow remain unchanged] ...
 @Composable
 private fun EmptyMealsState(
     searchQuery: String,
@@ -293,7 +296,8 @@ private fun MealRecipeCard(
     meal: Meal,
     isSelected: Boolean,
     onDetailsClick: () -> Unit,
-    onQuickAddIngredient: (String) -> Unit // SCRUM-137 wiring
+    // Updated signature here
+    onQuickAddIngredient: (String, String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -365,7 +369,8 @@ private fun MealRecipeCard(
                             style = MaterialTheme.typography.bodyMedium
                         )
                         OutlinedButton(
-                            onClick = { onQuickAddIngredient(ingredient.id) },
+                            // We now pass both the ID and the Name!
+                            onClick = { onQuickAddIngredient(ingredient.id, ingredient.name) },
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp)
                         ) {
                             Text("+ Add")
@@ -415,7 +420,7 @@ private fun MealsScreenPreview() {
             onSearchQueryChanged = {},
             onFilterSelected = {},
             onSelectMeal = {},
-            onQuickAddIngredient = {},
+            onQuickAddIngredient = { _, _ -> },
             onRetry = {}
         )
     }
