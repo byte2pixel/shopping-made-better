@@ -34,6 +34,7 @@ fun MealsScreen(
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onFilterSelected = viewModel::onFilterSelected,
         onSelectMeal = viewModel::selectMealPlan,
+        onQuickAddIngredient = viewModel::quickAddIngredient, // SCRUM-137 wiring
         onRetry = viewModel::loadMeals,
         modifier = modifier
     )
@@ -45,6 +46,7 @@ private fun MealsContent(
     onSearchQueryChanged: (String) -> Unit,
     onFilterSelected: (String) -> Unit,
     onSelectMeal: (String) -> Unit,
+    onQuickAddIngredient: (String) -> Unit, // SCRUM-137 wiring
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -114,7 +116,8 @@ private fun MealsContent(
                                 MealRecipeCard(
                                     meal = meal,
                                     isSelected = meal.id == uiState.selectedMealId,
-                                    onDetailsClick = { onSelectMeal(meal.id) }
+                                    onDetailsClick = { onSelectMeal(meal.id) },
+                                    onQuickAddIngredient = onQuickAddIngredient // SCRUM-137 wiring
                                 )
                             }
                         }
@@ -289,7 +292,8 @@ private fun FilterChipsRow(
 private fun MealRecipeCard(
     meal: Meal,
     isSelected: Boolean,
-    onDetailsClick: () -> Unit
+    onDetailsClick: () -> Unit,
+    onQuickAddIngredient: (String) -> Unit // SCRUM-137 wiring
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -337,6 +341,39 @@ private fun MealRecipeCard(
                 Text(text = "Recipe Image", color = Color.DarkGray)
             }
 
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Divider()
+                Text(
+                    text = "Ingredients:",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+
+                meal.ingredients.forEach { ingredient ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${ingredient.name} (${ingredient.quantity})",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        OutlinedButton(
+                            onClick = { onQuickAddIngredient(ingredient.id) },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp)
+                        ) {
+                            Text("+ Add")
+                        }
+                    }
+                }
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
@@ -378,6 +415,7 @@ private fun MealsScreenPreview() {
             onSearchQueryChanged = {},
             onFilterSelected = {},
             onSelectMeal = {},
+            onQuickAddIngredient = {},
             onRetry = {}
         )
     }
