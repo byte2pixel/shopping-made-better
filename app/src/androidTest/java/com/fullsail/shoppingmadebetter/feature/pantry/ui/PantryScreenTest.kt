@@ -12,6 +12,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiry
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
@@ -106,6 +108,16 @@ class PantryScreenTest {
         }
     }
 
+    private class FakeUpdateInventoryExpiryUseCase(
+        var output: UpdateInventoryExpiryUseCase.Output = UpdateInventoryExpiryUseCase.Output.Success,
+    ) : UpdateInventoryExpiryUseCase {
+        var lastInput: UpdateInventoryExpiry? = null
+        override suspend fun execute(input: UpdateInventoryExpiry): UpdateInventoryExpiryUseCase.Output {
+            lastInput = input
+            return output
+        }
+    }
+
     private val milk = InventoryItem(
         id = "i1",
         productId = "p1",
@@ -170,11 +182,12 @@ class PantryScreenTest {
         setSkip: SetSkipRemoveConfirmationUseCase = FakeSetSkipRemoveConfirmationUseCase(),
         updateQuantity: UpdateInventoryQuantityUseCase = FakeUpdateInventoryQuantityUseCase(),
         updateLocation: UpdateInventoryLocationUseCase = FakeUpdateInventoryLocationUseCase(),
+        updateExpiry: UpdateInventoryExpiryUseCase = FakeUpdateInventoryExpiryUseCase(),
         onItemClick: (String) -> Unit = {},
     ) {
         val viewModel = PantryViewModel(
             inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, updateQuantity,
-            updateLocation,
+            updateLocation, updateExpiry,
         )
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {

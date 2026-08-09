@@ -4,6 +4,7 @@ import com.fullsail.shoppingmadebetter.feature.pantry.data.InventoryItemDto
 import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryRepository
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
@@ -43,6 +44,8 @@ class GetInventoryItemUseCaseTest {
         override suspend fun updateQuantity(id: String, quantity: Int) = Unit
 
         override suspend fun updateLocation(id: String, location: String) = Unit
+
+        override suspend fun updateExpiry(id: String, expiresAt: LocalDate) = Unit
     }
 
     private val fixedClock = object : Clock {
