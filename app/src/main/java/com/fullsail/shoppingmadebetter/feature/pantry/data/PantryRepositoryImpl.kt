@@ -22,4 +22,11 @@ class PantryRepositoryImpl @Inject constructor(
         postgrest.from("inventory_items").delete { filter { eq("id", id) } }
         Unit
     }
+
+    override suspend fun updateQuantity(id: String, quantity: Int) = withContext(Dispatchers.IO) {
+        postgrest.from("inventory_items").update({ set("quantity", quantity) }) {
+            filter { eq("id", id) }
+        }
+        Unit
+    }
 }

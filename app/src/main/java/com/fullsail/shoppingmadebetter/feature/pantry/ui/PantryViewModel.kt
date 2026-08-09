@@ -7,6 +7,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
@@ -62,6 +64,9 @@ sealed interface PantryEvent {
 
     /** Removing an item from the pantry failed. */
     data class RemoveFailed(val itemName: String) : PantryEvent
+
+    /** A quick-action edit to an item (quantity/location/expiry) failed to save. */
+    data class UpdateFailed(val itemName: String) : PantryEvent
 }
 
 @HiltViewModel
@@ -73,6 +78,7 @@ class PantryViewModel @Inject constructor(
     private val deleteInventoryItemUseCase: DeleteInventoryItemUseCase,
     private val getSkipRemoveConfirmationUseCase: GetSkipRemoveConfirmationUseCase,
     private val setSkipRemoveConfirmationUseCase: SetSkipRemoveConfirmationUseCase,
+    private val updateInventoryQuantityUseCase: UpdateInventoryQuantityUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PantryUiState>(PantryUiState.Loading)
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
@@ -217,6 +223,24 @@ class PantryViewModel @Inject constructor(
     }
 
     /**
+     * Optimistically sets [item]'s quantity to [newQuantity] in the list, persists it,
+     * and reverts with a snackbar if the save fails. No op when the value is unchanged.
+     */
+    fun onQuantityChanged(item: InventoryItem, newQuantity: Int) {
+        if (newQuantity == item.quantity) return
+        updateItemInState(item.id) { it.copy(quantity = newQuantity) }
+        viewModelScope.launch {
+            val out = updateInventoryQuantityUseCase.execute(
+                UpdateInventoryQuantity(item.id, newQuantity),
+            )
+            if (out is UpdateInventoryQuantityUseCase.Output.Failure) {
+                updateItemInState(item.id) { item }
+                _events.send(PantryEvent.UpdateFailed(item.name))
+            }
+        }
+    }
+
+    /**
      * Drops [itemId] from the current success list in place.
      */
     private fun removeItemFromState(itemId: String) {
@@ -224,6 +248,21 @@ class PantryViewModel @Inject constructor(
         if (current is PantryUiState.Success) {
             _uiState.value = current.copy(
                 inventoryItems = current.inventoryItems.filterNot { it.id == itemId },
+            )
+        }
+    }
+
+    /**
+     * Replaces the item [itemId] in the current success list with [transform] applied to
+     * it, leaving every other item untouched. No-ops unless the state is [PantryUiState.Success].
+     */
+    private fun updateItemInState(itemId: String, transform: (InventoryItem) -> InventoryItem) {
+        val current = _uiState.value
+        if (current is PantryUiState.Success) {
+            _uiState.value = current.copy(
+                inventoryItems = current.inventoryItems.map { item ->
+                    if (item.id == itemId) transform(item) else item
+                },
             )
         }
     }

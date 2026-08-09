@@ -4,16 +4,23 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -25,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.LabelChip
 import com.fullsail.shoppingmadebetter.core.ui.ProductImage
+import com.fullsail.shoppingmadebetter.core.ui.Stepper
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
@@ -61,6 +69,7 @@ internal fun expiryBucket(expiresInDays: Int?): ExpiryBucket? = when {
  * @param onClick opens the item's detail screen.
  * @param onAddToList opens the "add to shopping list" flow for this item.
  * @param onRemove requests removal of this item from the pantry.
+ * @param onQuantityChange requests persisting a new on-hand quantity for this item.
  */
 @Composable
 fun InventoryItemCard(
@@ -68,6 +77,7 @@ fun InventoryItemCard(
     onClick: () -> Unit,
     onAddToList: () -> Unit,
     onRemove: () -> Unit,
+    onQuantityChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(onClick = onClick, modifier = modifier.fillMaxWidth()) {
@@ -105,7 +115,11 @@ fun InventoryItemCard(
                     )
                 }
             }
-            InventoryIndicators(item = item, modifier = Modifier.padding(top = 8.dp))
+            InventoryIndicators(
+                item = item,
+                onQuantityChange = onQuantityChange,
+                modifier = Modifier.padding(top = 8.dp),
+            )
         }
     }
 }
@@ -115,14 +129,18 @@ fun InventoryItemCard(
  * on hand, and how much shelf life is left. Expandable for other info.
  */
 @Composable
-private fun InventoryIndicators(item: InventoryItem, modifier: Modifier = Modifier) {
+private fun InventoryIndicators(
+    item: InventoryItem,
+    onQuantityChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val bucket = expiryBucket(item.expiresInDays)
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        QuantityChip(quantity = item.quantity)
+        QuantityChip(quantity = item.quantity, onQuantityChange = onQuantityChange)
         LocationChip(location = item.location)
         if (bucket != null) {
             ExpiryChip(bucket = bucket, expiresInDays = item.expiresInDays!!)
@@ -158,20 +176,68 @@ private fun LocationChip(location: PantryLocation, modifier: Modifier = Modifier
     )
 }
 
+/**
+ * The quantity chip. Tapping it opens an anchored popup with a [Stepper]; the new
+ * value is committed via [onQuantityChange] when the popup closes (nothing is sent
+ * when the value is unchanged). Quantity is floored at 1 — removing the item is the
+ * job of the card's separate remove action.
+ */
 @Composable
-private fun QuantityChip(quantity: Int, modifier: Modifier = Modifier) {
-    LabelChip(
-        label = stringResource(R.string.pantry_card_quantity, quantity),
-        accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        iconRes = R.drawable.ic_add_circle,
-        contentDescription = pluralStringResource(
-            R.plurals.pantry_card_quantity_desc,
-            quantity,
-            quantity,
-        ),
-        modifier = modifier,
-    )
+private fun QuantityChip(
+    quantity: Int,
+    onQuantityChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var draft by remember { mutableIntStateOf(quantity) }
+
+    Box(modifier = modifier) {
+        LabelChip(
+            label = stringResource(R.string.pantry_card_quantity, quantity),
+            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            iconRes = R.drawable.ic_add,
+            contentDescription = pluralStringResource(
+                R.plurals.pantry_card_quantity_desc,
+                quantity,
+                quantity,
+            ),
+            onClick = {
+                draft = quantity
+                expanded = true
+            },
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = {
+                expanded = false
+                onQuantityChange(draft)
+            },
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(R.string.pantry_quantity_edit_label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Stepper(
+                    valueLabel = draft.toString(),
+                    onDecrement = { if (draft > MIN_QUANTITY) draft-- },
+                    onIncrement = { draft++ },
+                    decrementContentDescription = stringResource(R.string.pantry_quantity_decrease),
+                    incrementContentDescription = stringResource(R.string.pantry_quantity_increase),
+                    decrementEnabled = draft > MIN_QUANTITY,
+                )
+            }
+        }
+    }
 }
+
+/** Quantity can't be lowered below this from the chip; use the remove action instead. */
+private const val MIN_QUANTITY = 1
 
 @Composable
 private fun ExpiryChip(bucket: ExpiryBucket, expiresInDays: Int, modifier: Modifier = Modifier) {
@@ -231,6 +297,7 @@ private fun InventoryItemCardPreview() {
             onClick = {},
             onAddToList = {},
             onRemove = {},
+            onQuantityChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }
@@ -245,6 +312,7 @@ private fun InventoryItemCardExpiredPreview() {
             onClick = {},
             onAddToList = {},
             onRemove = {},
+            onQuantityChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }
@@ -259,6 +327,7 @@ private fun InventoryItemCardNoChipPreview() {
             onClick = {},
             onAddToList = {},
             onRemove = {},
+            onQuantityChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }
