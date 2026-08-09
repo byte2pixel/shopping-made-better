@@ -1,0 +1,41 @@
+name: Deploy Supabase Migrations
+
+# Apply supabase/migrations/ to the cloud project whenever a GitHub Release
+# is published.
+# `supabase db push` is idempotent:
+# it only applies migrations not yet recorded in the remote history table.
+# Re-running is safe.
+#
+# This handles schema/views/RLS only -- product data is loaded once by
+# the separate supabase-seed.yml workflow.
+on:
+  release:
+    types: [published]
+  workflow_dispatch: # allow manual re-run from the Actions tab
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link to cloud project
+        run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+
+      # Reads SUPABASE_DB_PASSWORD from the env for a non-interactive push.
+      # Fallback if this hits an IPv6/connection error on the runner: replace
+      # with `supabase db push --db-url "${{ secrets.SUPABASE_DB_URL }}"` and
+      # drop the link step above (the Session Pooler URL is IPv4-compatible).
+      - name: Push migrations
+        run: supabase db push
