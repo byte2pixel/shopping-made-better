@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.storeProductPricing.StoreProductPricing
 
 
@@ -111,15 +112,16 @@ fun ShoppingListItemComparisonScreen(
     {
         val storeList  by viewModel.shoppingLists.collectAsState()
         var showDialog by remember {mutableStateOf(false)}
+        var pickList by remember {mutableStateOf(false)}
         var listName by remember {mutableStateOf("")}
-
+        var list : ShoppingTrip? = null
         fun onAddClicked()
         {
-            val list = storeList.firstOrNull { it.storeId == product.storeId }
+           // val list = storeList.firstOrNull { it.storeId == product.storeId }
             if (list != null)
             {
                 showDialog = false
-                viewModel.addItem(InsertItem(list.shoppingListId, product.productId, 1, "", false, true))
+                viewModel.addItem(InsertItem(list!!.shoppingListId, product.productId, 1, "", false, true))
                 onItemComparison()
             }
             else {
@@ -129,6 +131,47 @@ fun ShoppingListItemComparisonScreen(
 
         }
 
+        fun onAddNewListClicked()
+        {
+                showDialog = true
+        }
+
+        if (pickList)
+        {
+            BasicAlertDialog(onDismissRequest = {}, Modifier.fillMaxWidth(), DialogProperties(),
+                {
+                    Column(modifier = Modifier.fillMaxWidth().background( color = MaterialTheme.colorScheme.surface).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        val lists by viewModel.shoppingLists.collectAsState()
+                        for (s in lists)
+                        {
+                            if (s.storeId == product.storeId)
+                            {
+                            Button(onClick = {
+                                list = storeList.firstOrNull {it.shoppingListId  == s.shoppingListId }
+                                onAddClicked()
+                            }
+                            )
+                            {
+                                Text(s.listName + " " + s.storeName)
+                            }
+
+                        }
+                        }
+                        Button(onClick = {
+                        onAddNewListClicked()
+                        pickList = false
+                    })
+                    {
+                       Text("Create new list")
+                    }
+
+
+                    }
+                })
+
+
+
+        }
 
         if (showDialog)
         {
@@ -151,10 +194,6 @@ fun ShoppingListItemComparisonScreen(
 
                     }
             })
-
-
-
-
 
         }
 
@@ -183,17 +222,28 @@ fun ShoppingListItemComparisonScreen(
                     product.price + " - x miles away",
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                Row(
+                Modifier.align(Alignment.End)
+                ){
+                    Button(
+                        onClick =
+                            {
+                               pickList = true
+                            },
+                    )
+                    {
+                        Text("Add")
+                    }
 
-                Button(
-                    onClick =
-                        {
-                            onAddClicked()
-
-                        },
-                    Modifier.align(Alignment.End)
-                )
-                {
-                    Text("Add")
+                    Button(
+                        onClick =
+                            {
+                                onAddNewListClicked()
+                            },
+                    )
+                    {
+                        Text("Add in New List")
+                    }
                 }
             }
         }

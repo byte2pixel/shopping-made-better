@@ -9,8 +9,7 @@ class ShoppingListUseCaseImpl  @Inject constructor(
 ) : ShoppingListUseCase {
       override suspend fun execute(input: ShoppingList): ShoppingListUseCase.Output {
           return try {
-            repository.addList(input)
-            ShoppingListUseCase.Output.Success
+            ShoppingListUseCase.Output.Success(repository.addList(input))
 
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add item to shopping list: ${e.message}", e)

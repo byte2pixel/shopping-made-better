@@ -5,7 +5,7 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListDt
 
 interface ShoppingListUseCase: UseCase<ShoppingList, ShoppingListUseCase.Output> {
     sealed interface Output {
-        data object Success : Output
+        data class Success(val list : ShoppingList) : Output
         data class Failure(val error: Throwable) : Output
     }
 }
