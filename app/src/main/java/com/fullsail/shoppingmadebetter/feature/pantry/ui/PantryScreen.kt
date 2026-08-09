@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
@@ -148,6 +149,7 @@ fun PantryScreen(
             onAddToListClick = viewModel::onAddToListClicked,
             onRemoveClick = viewModel::onRemoveClicked,
             onQuantityChange = viewModel::onQuantityChanged,
+            onLocationChange = viewModel::onLocationChanged,
         )
         SnackbarHost(
             hostState = snackbarHostState,
@@ -180,6 +182,7 @@ private fun PantryContent(
     onAddToListClick: (InventoryItem) -> Unit,
     onRemoveClick: (InventoryItem) -> Unit,
     onQuantityChange: (InventoryItem, Int) -> Unit,
+    onLocationChange: (InventoryItem, PantryLocation) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -239,6 +242,9 @@ private fun PantryContent(
                                 onRemove = { onRemoveClick(inventoryItem) },
                                 onQuantityChange = { newQty ->
                                     onQuantityChange(inventoryItem, newQty)
+                                },
+                                onLocationChange = { newLocation ->
+                                    onLocationChange(inventoryItem, newLocation)
                                 },
                             )
                         }

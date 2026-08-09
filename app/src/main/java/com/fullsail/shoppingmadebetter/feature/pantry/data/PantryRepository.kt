@@ -10,4 +10,10 @@ interface PantryRepository {
 
     /** Sets the [quantity] on inventory row [id]. RLS scopes the update to the current user. */
     suspend fun updateQuantity(id: String, quantity: Int)
+
+    /**
+     * Sets the [location] on inventory row [id] (raw db value: 'pantry'|'fridge'|'freezer').
+     * RLS scopes the update to the current user.
+     */
+    suspend fun updateLocation(id: String, location: String)
 }

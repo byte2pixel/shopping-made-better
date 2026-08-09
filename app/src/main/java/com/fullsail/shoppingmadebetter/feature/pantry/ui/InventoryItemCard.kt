@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -70,6 +72,7 @@ internal fun expiryBucket(expiresInDays: Int?): ExpiryBucket? = when {
  * @param onAddToList opens the "add to shopping list" flow for this item.
  * @param onRemove requests removal of this item from the pantry.
  * @param onQuantityChange requests persisting a new on-hand quantity for this item.
+ * @param onLocationChange requests persisting a new storage location for this item.
  */
 @Composable
 fun InventoryItemCard(
@@ -78,6 +81,7 @@ fun InventoryItemCard(
     onAddToList: () -> Unit,
     onRemove: () -> Unit,
     onQuantityChange: (Int) -> Unit,
+    onLocationChange: (PantryLocation) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(onClick = onClick, modifier = modifier.fillMaxWidth()) {
@@ -118,6 +122,7 @@ fun InventoryItemCard(
             InventoryIndicators(
                 item = item,
                 onQuantityChange = onQuantityChange,
+                onLocationChange = onLocationChange,
                 modifier = Modifier.padding(top = 8.dp),
             )
         }
@@ -132,6 +137,7 @@ fun InventoryItemCard(
 private fun InventoryIndicators(
     item: InventoryItem,
     onQuantityChange: (Int) -> Unit,
+    onLocationChange: (PantryLocation) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val bucket = expiryBucket(item.expiresInDays)
@@ -141,7 +147,7 @@ private fun InventoryIndicators(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         QuantityChip(quantity = item.quantity, onQuantityChange = onQuantityChange)
-        LocationChip(location = item.location)
+        LocationChip(location = item.location, onLocationChange = onLocationChange)
         if (bucket != null) {
             ExpiryChip(bucket = bucket, expiresInDays = item.expiresInDays!!)
         }
@@ -164,16 +170,56 @@ internal fun PantryLocation.labelRes(): Int = when (this) {
     PantryLocation.Pantry -> R.string.pantry_dashboard_pantry
 }
 
+/** The three storage locations, in the order they're offered in the location picker. */
+private val locationChoices = listOf(
+    PantryLocation.Pantry,
+    PantryLocation.Fridge,
+    PantryLocation.Freezer,
+)
+
+/**
+ * The location chip. Tapping it opens an anchored popup listing the storage locations.
+ * Picking one commits it via [onLocationChange] (nothing is sent when it's unchanged).
+ */
 @Composable
-private fun LocationChip(location: PantryLocation, modifier: Modifier = Modifier) {
+private fun LocationChip(
+    location: PantryLocation,
+    onLocationChange: (PantryLocation) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
     val label = stringResource(location.labelRes())
-    LabelChip(
-        label = label,
-        accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        iconRes = location.iconRes(),
-        contentDescription = stringResource(R.string.pantry_card_location_desc, label),
-        modifier = modifier,
-    )
+
+    Box(modifier = modifier) {
+        LabelChip(
+            label = label,
+            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            iconRes = location.iconRes(),
+            contentDescription = stringResource(R.string.pantry_card_location_desc, label),
+            onClick = { expanded = true },
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            locationChoices.forEach { choice ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(choice.labelRes())) },
+                    leadingIcon = {
+                        Icon(painter = painterResource(choice.iconRes()), contentDescription = null)
+                    },
+                    trailingIcon = {
+                        RadioButton(selected = choice == location, onClick = null)
+                    },
+                    onClick = {
+                        expanded = false
+                        onLocationChange(choice)
+                    },
+                )
+            }
+        }
+    }
 }
 
 /**
@@ -298,6 +344,7 @@ private fun InventoryItemCardPreview() {
             onAddToList = {},
             onRemove = {},
             onQuantityChange = {},
+            onLocationChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }
@@ -313,6 +360,7 @@ private fun InventoryItemCardExpiredPreview() {
             onAddToList = {},
             onRemove = {},
             onQuantityChange = {},
+            onLocationChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }
@@ -328,6 +376,7 @@ private fun InventoryItemCardNoChipPreview() {
             onAddToList = {},
             onRemove = {},
             onQuantityChange = {},
+            onLocationChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }

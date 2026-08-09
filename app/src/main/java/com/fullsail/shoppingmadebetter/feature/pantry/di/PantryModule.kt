@@ -14,6 +14,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfir
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCaseImpl
 import dagger.Binds
@@ -56,4 +58,9 @@ abstract class PantryModule {
     abstract fun bindUpdateInventoryQuantityUseCase(
         impl: UpdateInventoryQuantityUseCaseImpl,
     ): UpdateInventoryQuantityUseCase
+
+    @Binds
+    abstract fun bindUpdateInventoryLocationUseCase(
+        impl: UpdateInventoryLocationUseCaseImpl,
+    ): UpdateInventoryLocationUseCase
 }
