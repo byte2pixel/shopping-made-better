@@ -69,12 +69,20 @@ class ItemComparisonViewmodel @Inject constructor(
     fun createListAddItem(product : StoreProductPricing, listName : String)
     {
         viewModelScope.launch {
+            when (val out = getShoppingListUseCase.execute(ShoppingList( null,product.storeId, listName, false)))
+            {
+                is ShoppingListUseCase.Output.Success ->{
+                    if (out.list.shoppingListId != null)
+                    {
+                        addItem(InsertItem(out.list.shoppingListId, product.productId, 1, "", false, true))
 
-            getShoppingListUseCase.execute(ShoppingList( product.storeId, listName, false))
-            getShoppingLists{
-            val list = shoppingLists.value.first { it.storeId == product.storeId}
-            addItem(InsertItem(list.shoppingListId, product.productId, 1, "", false, true))
+                    }
+
+                }
+                is ShoppingListUseCase.Output.Failure ->
+                    ItemComparisonUIState.Error
             }
+
         }
     }
 

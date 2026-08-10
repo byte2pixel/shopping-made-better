@@ -48,9 +48,18 @@ class ShoppingListRepositoryImpl @Inject constructor(
         return inserted
     }
 
-    override suspend fun addList(list: ShoppingList) {
-            postgrest.from("shopping_lists").insert(ShoppingListDto(
-             list.storeId, list.name, list.shared)){ select()}.decodeSingle<ShoppingListDto>()
+    override suspend fun addList(list: ShoppingList) : ShoppingList {
+           val response = postgrest.from("shopping_lists").insert(ShoppingListDto(
+             null,list.storeId, list.name, list.shared)){ select()}.decodeSingle<ShoppingListDto>()
+
+            return ShoppingList(
+                response.shoppingListId,
+                response.storeId,
+                response.name,
+                response.shared
+            )
+
+
          }
 
     override suspend fun getItems(list: String) : List<ShoppingListItemsDto> = withContext(Dispatchers.IO) {
