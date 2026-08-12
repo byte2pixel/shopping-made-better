@@ -104,14 +104,24 @@ class PantryViewModel @Inject constructor(
     }
 
     /**
-     * Loads the user's pantry inventory.
+     * Loads the user's pantry inventory. Safe to call as a background refresh: when
+     * items are already on screen it keeps them visible instead of flashing the
+     * spinner, and a failed refresh leaves the existing list in place. Only shows
+     * Loading/Error when there is nothing to display yet (e.g. the first load).
      */
     fun loadInventory() {
-        _uiState.value = PantryUiState.Loading
+        if (_uiState.value !is PantryUiState.Success) {
+            _uiState.value = PantryUiState.Loading
+        }
         viewModelScope.launch {
-            _uiState.value = when (val out = getInventoryUseCase.execute(Unit)) {
-                is GetInventoryUseCase.Output.Success -> PantryUiState.Success(out.inventoryItems)
-                is GetInventoryUseCase.Output.Failure -> PantryUiState.Error
+            when (val out = getInventoryUseCase.execute(Unit)) {
+                is GetInventoryUseCase.Output.Success ->
+                    _uiState.value = PantryUiState.Success(out.inventoryItems)
+
+                is GetInventoryUseCase.Output.Failure ->
+                    if (_uiState.value !is PantryUiState.Success) {
+                        _uiState.value = PantryUiState.Error
+                    }
             }
         }
     }

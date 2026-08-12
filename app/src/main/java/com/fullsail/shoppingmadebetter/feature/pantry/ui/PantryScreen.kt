@@ -98,6 +98,10 @@ fun PantryScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val resources = LocalResources.current
 
+    // Re-fetch on every entry so items purchased elsewhere — e.g. via
+    // "mark all as purchased" on a shopping list show up, when re-visiting pantry.
+    LaunchedEffect(Unit) { viewModel.loadInventory() }
+
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
