@@ -1,6 +1,5 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -46,65 +44,56 @@ fun ShoppingListsScreen(
     {
         var listName by remember {mutableStateOf("")}
 
-        BasicAlertDialog(onDismissRequest = {}, Modifier.fillMaxWidth(), DialogProperties(),
-            {
-                Column(modifier = Modifier.fillMaxWidth().background( color = MaterialTheme.colorScheme.surface).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(text = "Enter new list name:") },
+            text = {
+                OutlinedTextField(modifier = Modifier.fillMaxWidth(),value = listName, onValueChange = {listName = it},label= { Text("Enter list name") })
+                Spacer(modifier = Modifier.height(50.dp))
 
-                    OutlinedTextField(modifier = Modifier.fillMaxWidth(),value = listName, onValueChange = {listName = it},label= { Text("Enter list name") })
-                    Spacer(modifier = Modifier.height(50.dp))
-                    Button(enabled= listName.isNotBlank(),
-                        onClick = {
-                            showRenameDialog = false
-                            selectedList?.let {
-                                viewModel.renameList(
-                                    RenameList(it, listName)
-                                )
-                            }
-                        }
-                    )
-                    {
-                        Text("Ok")
+            },
+            confirmButton = {
+                TextButton(onClick = {  showRenameDialog = false
+                    selectedList?.let {
+                        viewModel.renameList(
+                            RenameList(it, listName)
+                        )
                     }
-
+                    }) {
+                    Text(text = "Ok")
                 }
-            })
+            },
+
+            )
     }
 
-    if (showDeleteDialog)
-    {
-        BasicAlertDialog(onDismissRequest = {}, Modifier.fillMaxWidth(), DialogProperties(),
-            {
-                Row(modifier = Modifier.fillMaxWidth().background( color = MaterialTheme.colorScheme.surface).padding(24.dp)) {
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(text = "DELETE selected list?") },
+            text = {
 
-                    Button(
-                        onClick = {
-                            showDeleteDialog = false
-
-                        }
-                    )
-                    {
-                        Text("Keep List")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    selectedList?.let {
+                        viewModel.removeList(
+                            it
+                        )
                     }
-                    OutlinedButton (
-                        onClick = {
-                            showDeleteDialog = false
-                            selectedList?.let {
-                                viewModel.removeList(
-                                    it
-                                )
-                            }
-
-
-                        }
-                    )
-                    {
-                        Text("Delete List")
-                    }
-
+                }) {
+                    Text(text = "Delete list")
                 }
-            })
-    }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                }) { Text("Keep list") }
+            }
 
+        )
+    }
 
 
     DisposableEffect(lifecycleOwner)
@@ -200,13 +189,14 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
                 modifier= Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End)
             {
-                OutlinedButton(onClick = {onDelete()})
+                IconButton(onClick = {onDelete()})
                 {
-                    Text("Delete")
+                    Icon(painterResource(id = R.drawable.ic_delete), contentDescription = "delete", Modifier.size(24.dp))
                 }
-                Button(onClick = {onItemComparison(Dest.ShoppingListItemsScreen(trip.shoppingListId))})
+                IconButton(onClick = {onItemComparison(Dest.ShoppingListItemsScreen(trip.shoppingListId))})
                 {
-                    Text("Details")
+                    Icon(painterResource(id = R.drawable.ic_shopping_lists), contentDescription = "details", Modifier.size(24.dp))
+
                 }
             }
         }
