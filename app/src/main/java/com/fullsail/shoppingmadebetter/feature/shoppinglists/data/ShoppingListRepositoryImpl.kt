@@ -6,6 +6,8 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.I
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import javax.inject.Inject
 
 class ShoppingListRepositoryImpl @Inject constructor(
@@ -108,7 +110,9 @@ class ShoppingListRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun completeShoppingTrip(listId: String) {
+        postgrest.rpc("complete_shopping_trip", buildJsonObject { put("p_list_id", listId) })
 
-
-
+        Log.d("CompleteTrip", "List: $listId marked purchased")
+    }
 }

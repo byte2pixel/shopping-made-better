@@ -126,4 +126,7 @@
         <item quantity="one">%1$d item</item>
         <item quantity="other">%1$d items</item>
     </plurals>
+
+    <!-- Shopping list detail: mark the whole list as purchased -->
+    <string name="mark_all_purchased">Mark all as purchased</string>
 </resources>

@@ -213,6 +213,29 @@ class PantryScreenTest {
     }
 
     @Test
+    fun theExpiryChipStaysForItemsThatExpireFarOut() {
+        setScreen(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(milk.copy(expiresInDays = 30)))
+            )
+        )
+
+        // Well past the "expiring soon" threshold, but the chip is still there and
+        // still opens the editor, so a mistyped date can be corrected.
+        composeTestRule
+            .onNodeWithContentDescription(
+                composeTestRule.activity.resources.getQuantityString(
+                    R.plurals.pantry_detail_expires_in_days, 30, 30,
+                )
+            )
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_expiry_edit_label))
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun tappingARowReportsTheItemId() {
         var clickedId: String? = null
         setScreen(onItemClick = { clickedId = it })
@@ -376,8 +399,9 @@ class PantryScreenTest {
         composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
         composeTestRule.onNodeWithText("Canned Beans").assertIsDisplayed()
 
-        // Turn the filter on: only the soon-to-expire item remains.
-        val expiringCard = expiringCardDescription(count = 3)
+        // Turn the filter on: only the soon-to-expire item remains. The card counts
+        // one item — the yogurt; the beans have no expiration date at all.
+        val expiringCard = expiringCardDescription(count = 1)
         composeTestRule.onNodeWithContentDescription(expiringCard).performClick()
         composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
         composeTestRule.onNodeWithText("Canned Beans").assertDoesNotExist()

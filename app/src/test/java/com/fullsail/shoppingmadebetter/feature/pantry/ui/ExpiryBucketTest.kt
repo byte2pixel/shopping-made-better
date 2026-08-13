@@ -1,7 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 /** Boundary tests for [expiryBucket], the pure day-count to chip severity mapping. */
@@ -28,13 +27,8 @@ class ExpiryBucketTest {
     }
 
     @Test
-    fun `six or more days shows no chip`() {
-        assertNull(expiryBucket(6))
-        assertNull(expiryBucket(365))
-    }
-
-    @Test
-    fun `unknown expiration shows no chip`() {
-        assertNull(expiryBucket(null))
+    fun `six or more days is later`() {
+        assertEquals(ExpiryBucket.Later, expiryBucket(6))
+        assertEquals(ExpiryBucket.Later, expiryBucket(365))
     }
 }

@@ -39,7 +39,7 @@ class InsertItemUseCaseTest {
             return InsertItemResultDto(insertedId)
         }
 
-        override suspend fun addList(list: ShoppingList) {
+        override suspend fun addList(list: ShoppingList): ShoppingList {
             TODO("Not yet implemented")
         }
 
@@ -56,6 +56,10 @@ class InsertItemUseCaseTest {
         }
 
         override suspend fun renameList(listId: String, newName: String) {
+            TODO("Not yet implemented")
+        }
+
+        override suspend fun completeShoppingTrip(listId: String) {
             TODO("Not yet implemented")
         }
     }
