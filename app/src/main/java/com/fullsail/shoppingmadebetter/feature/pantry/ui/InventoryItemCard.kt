@@ -48,23 +48,21 @@ import com.fullsail.shoppingmadebetter.ui.theme.expiryUrgentAccentLight
  * Severity of an item's remaining shelf life, used to color the expiry chip.
  * See [expiryBucket] for the day thresholds each bucket covers.
  */
-enum class ExpiryBucket { Expired, Urgent, Soon }
+enum class ExpiryBucket { Expired, Urgent, Soon, Later }
 
 /**
- * Maps days-until-expiry to a chip severity, or `null` when no expiry chip
- * should show. Mirrors [EXPIRING_SOON_DAYS]
+ * Maps days-until-expiry to a chip severity. Mirrors [EXPIRING_SOON_DAYS]
  *
- * - `<= 0`     -> [ExpiryBucket.Expired] (red)  — already past its date or due today
- * - `1..2`     -> [ExpiryBucket.Urgent] (orange)
- * - `3..5`     -> [ExpiryBucket.Soon] (yellow)
- * - `6+` / `null` -> `null` — no chip (plenty of time, or no known date)
+ * - `<= 0` -> [ExpiryBucket.Expired] (red)  — already past its date or due today
+ * - `1..2` -> [ExpiryBucket.Urgent] (orange)
+ * - `3..5` -> [ExpiryBucket.Soon] (yellow)
+ * - `6+`   -> [ExpiryBucket.Later] (grey) — plenty of time, but still adjustable
  */
-internal fun expiryBucket(expiresInDays: Int?): ExpiryBucket? = when {
-    expiresInDays == null -> null
+internal fun expiryBucket(expiresInDays: Int): ExpiryBucket = when {
     expiresInDays <= 0 -> ExpiryBucket.Expired
     expiresInDays <= 2 -> ExpiryBucket.Urgent
     expiresInDays <= EXPIRING_SOON_DAYS -> ExpiryBucket.Soon
-    else -> null
+    else -> ExpiryBucket.Later
 }
 
 /**
@@ -145,7 +143,6 @@ private fun InventoryIndicators(
     onExpiryChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val bucket = expiryBucket(item.expiresInDays)
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -153,10 +150,10 @@ private fun InventoryIndicators(
     ) {
         QuantityChip(quantity = item.quantity, onQuantityChange = onQuantityChange)
         LocationChip(location = item.location, onLocationChange = onLocationChange)
-        if (bucket != null) {
+        item.expiresInDays?.let { days ->
             ExpiryChip(
-                bucket = bucket,
-                expiresInDays = item.expiresInDays!!,
+                bucket = expiryBucket(days),
+                expiresInDays = days,
                 onExpiryChange = onExpiryChange,
             )
         }
@@ -314,6 +311,7 @@ private fun ExpiryChip(
         ExpiryBucket.Expired -> MaterialTheme.colorScheme.error
         ExpiryBucket.Urgent -> if (dark) expiryUrgentAccentDark else expiryUrgentAccentLight
         ExpiryBucket.Soon -> if (dark) expirySoonAccentDark else expirySoonAccentLight
+        ExpiryBucket.Later -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     val label = when {
@@ -441,7 +439,24 @@ private fun InventoryItemCardExpiredPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "No chip")
+@Preview(showBackground = true, name = "Later (grey)")
+@Composable
+private fun InventoryItemCardLaterPreview() {
+    ShoppingMadeBetterTheme {
+        InventoryItemCard(
+            item = previewItem(expiresInDays = 30, location = PantryLocation.Pantry),
+            onClick = {},
+            onAddToList = {},
+            onRemove = {},
+            onQuantityChange = {},
+            onLocationChange = {},
+            onExpiryChange = {},
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "No expiry date")
 @Composable
 private fun InventoryItemCardNoChipPreview() {
     ShoppingMadeBetterTheme {

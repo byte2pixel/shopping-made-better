@@ -39,9 +39,9 @@ class PantryDashboardCardsTest {
 
     @Test
     fun `expiring card shows the real count of expiring items`() {
-        // expired, today, and soon are within the threshold; boundary, later, and
-        // the unknown date are not.
-        assertEquals(3, cardCount(PantryDashboardFilter.Expiring, items))
+        // expired, today, soon, and the threshold day itself are all still colored
+        // chips; later and the unknown date are not.
+        assertEquals(4, cardCount(PantryDashboardFilter.Expiring, items))
     }
 
     @Test

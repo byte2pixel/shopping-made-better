@@ -59,7 +59,7 @@ private val filterSetSaver = listSaver<Set<PantryDashboardFilter>, String>(
 )
 
 /**
- * Items with a known expiration date fewer than this many days out — including
+ * Items with a known expiration date within this many days — including
  * already-expired ones — count as "expiring soon". Hard-coded for now; a future
  * task may let the user configure it (e.g. by long-pressing the dashboard card).
  */
@@ -83,8 +83,12 @@ internal fun applyPantryFilters(
     }
 }
 
+/**
+ * Whether this item's expiry chip reads as a warning — red, orange, or yellow
+ * rather than gray.
+ */
 internal fun InventoryItem.isExpiringSoon(): Boolean =
-    expiresInDays != null && expiresInDays < EXPIRING_SOON_DAYS
+    expiresInDays != null && expiryBucket(expiresInDays) != ExpiryBucket.Later
 
 @Composable
 fun PantryScreen(
