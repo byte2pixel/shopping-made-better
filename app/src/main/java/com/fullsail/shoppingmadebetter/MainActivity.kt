@@ -69,6 +69,10 @@ import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingScreen
 import com.fullsail.shoppingmadebetter.feature.profile.ui.ChangePasswordScreen
 import com.fullsail.shoppingmadebetter.feature.profile.ui.ProfileScreen
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListItemsScreen
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingUiState
+import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -234,7 +238,7 @@ fun ShoppingMadeBetterApp(
             composable<Dest.SignUp> {
                 SignUpScreen(
                     onSignedUp = {
-                        // Bypass Mel's auto-login event and force onboarding for new accounts
+
                         navController.navigate(Dest.Onboarding) {
                             popUpTo(Dest.Login) { inclusive = true }
                             launchSingleTop = true
@@ -250,18 +254,49 @@ fun ShoppingMadeBetterApp(
             }
 
             composable<Dest.Onboarding> {
-                OnboardingScreen(
-                    isSubmitting = false,
-                    selectedDiets = emptySet(),
-                    selectedCategories = emptySet(),
-                    selectedGoal = "",
-                    onDietToggled = { _ -> },
-                    onCategoryToggled = { _ -> },
-                    onGoalSelected = {},
-                    onSubmit = {
+                val onboardingViewModel: OnboardingViewModel = hiltViewModel()
+                val uiState by onboardingViewModel.uiState.collectAsState()
+
+                // 1. Hoist the selection state locally since the ViewModel doesn't hold it
+                val selectedDiets = remember { mutableStateOf(emptySet<String>()) }
+                val selectedCategories = remember { mutableStateOf(emptySet<String>()) }
+                val selectedGoal = remember { mutableStateOf("") }
+
+                // 2. Listen for the ViewModel to broadcast "Success" to trigger navigation
+                LaunchedEffect(uiState) {
+                    if (uiState is OnboardingUiState.Success) {
                         navController.navigate(Dest.ShoppingLists) {
                             popUpTo(Dest.Onboarding::class) { inclusive = true }
                         }
+                    }
+                }
+
+                OnboardingScreen(
+                    isSubmitting = uiState is OnboardingUiState.Submitting,
+                    selectedDiets = selectedDiets.value,
+                    selectedCategories = selectedCategories.value,
+                    selectedGoal = selectedGoal.value,
+
+                    // 3. Update our local state variables when chips are clicked
+                    onDietToggled = { diet ->
+                        val current = selectedDiets.value
+                        selectedDiets.value = if (current.contains(diet)) current - diet else current + diet
+                    },
+                    onCategoryToggled = { category ->
+                        val current = selectedCategories.value
+                        selectedCategories.value = if (current.contains(category)) current - category else current + category
+                    },
+                    onGoalSelected = { goal ->
+                        selectedGoal.value = goal
+                    },
+
+                    // 4. Pass our finalized local state into the ViewModel to save to Supabase
+                    onSubmit = {
+                        onboardingViewModel.submitFinalPreferences(
+                            dietary = selectedDiets.value.toList(),
+                            categories = selectedCategories.value.toList(),
+                            goal = selectedGoal.value
+                        )
                     },
                     onNavigateBack = {
                         navController.popBackStack()
