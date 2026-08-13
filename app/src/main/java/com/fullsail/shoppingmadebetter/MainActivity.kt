@@ -73,7 +73,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingUiState
 import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingViewModel
-
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.saveable.rememberSaveable
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -167,6 +169,7 @@ fun ShoppingMadeBetterApp(
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -182,6 +185,7 @@ fun ShoppingMadeBetterApp(
         },
     ) {
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             if (showAppChrome) {
                 AppTopBar(
@@ -257,17 +261,23 @@ fun ShoppingMadeBetterApp(
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel()
                 val uiState by onboardingViewModel.uiState.collectAsState()
 
-                // 1. Hoist the selection state locally since the ViewModel doesn't hold it
-                val selectedDiets = remember { mutableStateOf(emptySet<String>()) }
-                val selectedCategories = remember { mutableStateOf(emptySet<String>()) }
-                val selectedGoal = remember { mutableStateOf("") }
+                // Mel's Fix: rememberSaveable and nullable selectedGoal
+                val selectedDiets = rememberSaveable { mutableStateOf(emptySet<String>()) }
+                val selectedCategories = rememberSaveable { mutableStateOf(emptySet<String>()) }
+                val selectedGoal = rememberSaveable { mutableStateOf<String?>(null) }
 
-                // 2. Listen for the ViewModel to broadcast "Success" to trigger navigation
+                // Mel's Fix: Handle Error state with Snackbar
                 LaunchedEffect(uiState) {
-                    if (uiState is OnboardingUiState.Success) {
-                        navController.navigate(Dest.ShoppingLists) {
-                            popUpTo(Dest.Onboarding::class) { inclusive = true }
+                    when (val s = uiState) {
+                        is OnboardingUiState.Success -> {
+                            navController.navigate(Dest.ShoppingLists) {
+                                popUpTo(Dest.Onboarding::class) { inclusive = true }
+                            }
                         }
+                        is OnboardingUiState.Error -> {
+                            snackbarHostState.showSnackbar(s.message)
+                        }
+                        else -> {}
                     }
                 }
 
@@ -276,8 +286,6 @@ fun ShoppingMadeBetterApp(
                     selectedDiets = selectedDiets.value,
                     selectedCategories = selectedCategories.value,
                     selectedGoal = selectedGoal.value,
-
-                    // 3. Update our local state variables when chips are clicked
                     onDietToggled = { diet ->
                         val current = selectedDiets.value
                         selectedDiets.value = if (current.contains(diet)) current - diet else current + diet
@@ -286,21 +294,17 @@ fun ShoppingMadeBetterApp(
                         val current = selectedCategories.value
                         selectedCategories.value = if (current.contains(category)) current - category else current + category
                     },
-                    onGoalSelected = { goal ->
-                        selectedGoal.value = goal
-                    },
+                    onGoalSelected = { goal -> selectedGoal.value = goal },
 
-                    // 4. Pass our finalized local state into the ViewModel to save to Supabase
+                    // Mel's Fix: Fallback to empty string for the nullable goal
                     onSubmit = {
                         onboardingViewModel.submitFinalPreferences(
                             dietary = selectedDiets.value.toList(),
                             categories = selectedCategories.value.toList(),
-                            goal = selectedGoal.value
+                            goal = selectedGoal.value ?: ""
                         )
                     },
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    }
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 
