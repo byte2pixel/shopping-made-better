@@ -69,7 +69,13 @@ import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingScreen
 import com.fullsail.shoppingmadebetter.feature.profile.ui.ChangePasswordScreen
 import com.fullsail.shoppingmadebetter.feature.profile.ui.ProfileScreen
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListItemsScreen
-
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingUiState
+import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingViewModel
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.saveable.rememberSaveable
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -163,6 +169,7 @@ fun ShoppingMadeBetterApp(
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -178,6 +185,7 @@ fun ShoppingMadeBetterApp(
         },
     ) {
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             if (showAppChrome) {
                 AppTopBar(
@@ -234,7 +242,7 @@ fun ShoppingMadeBetterApp(
             composable<Dest.SignUp> {
                 SignUpScreen(
                     onSignedUp = {
-                        // Bypass Mel's auto-login event and force onboarding for new accounts
+
                         navController.navigate(Dest.Onboarding) {
                             popUpTo(Dest.Login) { inclusive = true }
                             launchSingleTop = true
@@ -250,22 +258,53 @@ fun ShoppingMadeBetterApp(
             }
 
             composable<Dest.Onboarding> {
-                OnboardingScreen(
-                    isSubmitting = false,
-                    selectedDiets = emptySet(),
-                    selectedCategories = emptySet(),
-                    selectedGoal = "",
-                    onDietToggled = { _ -> },
-                    onCategoryToggled = { _ -> },
-                    onGoalSelected = {},
-                    onSubmit = {
-                        navController.navigate(Dest.ShoppingLists) {
-                            popUpTo(Dest.Onboarding::class) { inclusive = true }
+                val onboardingViewModel: OnboardingViewModel = hiltViewModel()
+                val uiState by onboardingViewModel.uiState.collectAsState()
+
+                // Mel's Fix: rememberSaveable and nullable selectedGoal
+                val selectedDiets = rememberSaveable { mutableStateOf(emptySet<String>()) }
+                val selectedCategories = rememberSaveable { mutableStateOf(emptySet<String>()) }
+                val selectedGoal = rememberSaveable { mutableStateOf<String?>(null) }
+
+                // Mel's Fix: Handle Error state with Snackbar
+                LaunchedEffect(uiState) {
+                    when (val s = uiState) {
+                        is OnboardingUiState.Success -> {
+                            navController.navigate(Dest.ShoppingLists) {
+                                popUpTo(Dest.Onboarding::class) { inclusive = true }
+                            }
                         }
-                    },
-                    onNavigateBack = {
-                        navController.popBackStack()
+                        is OnboardingUiState.Error -> {
+                            snackbarHostState.showSnackbar(s.message)
+                        }
+                        else -> {}
                     }
+                }
+
+                OnboardingScreen(
+                    isSubmitting = uiState is OnboardingUiState.Submitting,
+                    selectedDiets = selectedDiets.value,
+                    selectedCategories = selectedCategories.value,
+                    selectedGoal = selectedGoal.value,
+                    onDietToggled = { diet ->
+                        val current = selectedDiets.value
+                        selectedDiets.value = if (current.contains(diet)) current - diet else current + diet
+                    },
+                    onCategoryToggled = { category ->
+                        val current = selectedCategories.value
+                        selectedCategories.value = if (current.contains(category)) current - category else current + category
+                    },
+                    onGoalSelected = { goal -> selectedGoal.value = goal },
+
+                    // Mel's Fix: Fallback to empty string for the nullable goal
+                    onSubmit = {
+                        onboardingViewModel.submitFinalPreferences(
+                            dietary = selectedDiets.value.toList(),
+                            categories = selectedCategories.value.toList(),
+                            goal = selectedGoal.value ?: ""
+                        )
+                    },
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 
