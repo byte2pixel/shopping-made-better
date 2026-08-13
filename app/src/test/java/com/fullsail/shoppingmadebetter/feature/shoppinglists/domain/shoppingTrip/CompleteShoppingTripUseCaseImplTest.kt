@@ -1,4 +1,4 @@
-package com.fullsail.shoppingmadebetter.feature.shoppinglists.domain
+package com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip
 
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.InsertItemResultDto
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ProductSearchDto
@@ -6,21 +6,31 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListIt
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingTripDto
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.StoreProductPricingDto
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCaseImpl
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
 
-class GetShoppingTripsUseCaseTest {
+class CompleteShoppingTripUseCaseImplTest {
 
     private class FakeRepo(
-        private val result: List<ShoppingTripDto> = emptyList(),
         private val error: Throwable? = null,
     ) : ShoppingListRepository {
-        override suspend fun getTrips() = error?.let { throw it } ?: result
+        var completedListId: String? = null
+
+        override suspend fun completeShoppingTrip(listId: String) {
+            error?.let { throw it }
+            completedListId = listId
+        }
+
+        override suspend fun getTrips(): List<ShoppingTripDto> {
+            TODO("Not yet implemented")
+        }
+
         override suspend fun getStores(productName: String): List<StoreProductPricingDto> {
             TODO("Not yet implemented")
         }
@@ -52,34 +62,25 @@ class GetShoppingTripsUseCaseTest {
         override suspend fun renameList(listId: String, newName: String) {
             TODO("Not yet implemented")
         }
-
-        override suspend fun completeShoppingTrip(listId: String) {
-            TODO("Not yet implemented")
-        }
     }
 
     @Test
-    fun `maps DTOs to domain trips on success`() = runTest {
-        val dtos = listOf(
-            ShoppingTripDto("l1", "ALDI Weekly", "s1", "ALDI", itemCount = 5, totalCost = 12.34),
-        )
-        val useCase = GetShoppingTripsUseCaseImpl(FakeRepo(result = dtos))
+    fun `returns Success and forwards the list id to the repository`() = runTest {
+        val repo = FakeRepo()
 
-        val out = useCase.execute(Unit)
+        val out = CompleteShoppingTripUseCaseImpl(repo).execute("list-7")
 
-        assertTrue(out is GetShoppingTripsUseCase.Output.Success)
-        val trips = (out as GetShoppingTripsUseCase.Output.Success).trips
-        assertEquals(1, trips.size)
-        assertEquals("ALDI", trips[0].storeName)
-        assertEquals(5, trips[0].itemCount)
-        assertEquals(12.34, trips[0].totalCost, 0.001)
+        assertTrue(out is CompleteShoppingTripUseCase.Output.Success)
+        assertEquals("list-7", repo.completedListId)
     }
 
     @Test
     fun `returns Failure when the repository throws`() = runTest {
-        val boom = IOException("network down")
-        val out = GetShoppingTripsUseCaseImpl(FakeRepo(error = boom)).execute(Unit)
-        assertTrue(out is GetShoppingTripsUseCase.Output.Failure)
-        assertSame(boom, (out as GetShoppingTripsUseCase.Output.Failure).error)
+        val boom = IOException("rpc failed")
+
+        val out = CompleteShoppingTripUseCaseImpl(FakeRepo(error = boom)).execute("list-7")
+
+        assertTrue(out is CompleteShoppingTripUseCase.Output.Failure)
+        assertSame(boom, (out as CompleteShoppingTripUseCase.Output.Failure).error)
     }
 }
