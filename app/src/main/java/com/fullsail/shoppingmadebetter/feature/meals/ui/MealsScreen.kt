@@ -34,7 +34,6 @@ fun MealsScreen(
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onFilterSelected = viewModel::onFilterSelected,
         onSelectMeal = viewModel::selectMealPlan,
-        // Updated to pass both ID and Name
         onQuickAddIngredient = { id, name -> viewModel.quickAddIngredient(id, name) },
         onRetry = viewModel::loadMeals,
         modifier = modifier
