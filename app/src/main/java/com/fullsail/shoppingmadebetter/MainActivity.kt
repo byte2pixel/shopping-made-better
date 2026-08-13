@@ -61,7 +61,6 @@ import com.fullsail.shoppingmadebetter.navigation.NavigationViewModel
 import com.fullsail.shoppingmadebetter.navigation.TopLevelDestination
 import com.fullsail.shoppingmadebetter.ui.screens.CartScreen
 import com.fullsail.shoppingmadebetter.ui.screens.HistoryScreen
-import com.fullsail.shoppingmadebetter.ui.screens.MealsScreen
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
