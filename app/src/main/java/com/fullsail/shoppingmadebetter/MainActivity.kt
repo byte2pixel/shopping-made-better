@@ -76,6 +76,9 @@ import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingViewModel
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.saveable.rememberSaveable
+import com.fullsail.shoppingmadebetter.feature.meals.ui.MealsScreen
+import com.fullsail.shoppingmadebetter.feature.meals.ui.MealsViewModel
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -335,8 +338,10 @@ fun ShoppingMadeBetterApp(
                 )
             }
             composable<Dest.History> { HistoryScreen() }
-            composable<Dest.Meals> { MealsScreen() }
-            // Dev-only example wired to the Supabase store use case (SCRUM-79).
+            composable<Dest.Meals> {
+                val mealsViewModel: MealsViewModel = hiltViewModel()
+                MealsScreen(viewModel = mealsViewModel)
+            }
             composable<Dest.Stores> { StoresScreen() }
         }
     }
