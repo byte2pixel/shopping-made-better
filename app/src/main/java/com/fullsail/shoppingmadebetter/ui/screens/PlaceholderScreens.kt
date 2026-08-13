@@ -38,9 +38,6 @@ fun CartScreen(modifier: Modifier = Modifier) =
 fun HistoryScreen(modifier: Modifier = Modifier) =
     PlaceholderScreen(titleRes = R.string.tab_history, modifier = modifier)
 
-@Composable
-fun MealsScreen(modifier: Modifier = Modifier) =
-    PlaceholderScreen(titleRes = R.string.tab_meals, modifier = modifier)
 
 @Preview(showBackground = true)
 @Composable
