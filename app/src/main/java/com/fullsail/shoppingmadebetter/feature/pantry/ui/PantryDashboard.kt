@@ -58,7 +58,9 @@ enum class PantryDashboardFilter(
     Fridge(R.drawable.ic_fridge, R.string.pantry_dashboard_fridge) {
         override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Fridge }
     },
-    Pantry(R.drawable.ic_pantry, R.string.pantry_dashboard_pantry),
+    Pantry(R.drawable.ic_pantry, R.string.pantry_dashboard_pantry) {
+        override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Pantry }
+    },
     ;
 
     /**
@@ -178,7 +180,6 @@ private fun DashboardCard(
 private val placeholderCounts: Map<PantryDashboardFilter, Int> = mapOf(
     PantryDashboardFilter.RunningLow to 5,
     PantryDashboardFilter.Out to 2,
-    PantryDashboardFilter.Pantry to 24,
 )
 
 /**
