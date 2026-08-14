@@ -41,9 +41,10 @@ class PantryFilterTest {
     private val freezerA = item("freezerA", expiresInDays = 30, location = PantryLocation.Freezer)
     private val freezerB = item("freezerB", expiresInDays = null, location = PantryLocation.Freezer)
     private val fridge = item("fridge", expiresInDays = 3, location = PantryLocation.Fridge)
+    private val fridgeB = item("fridgeB", expiresInDays = 30, location = PantryLocation.Fridge)
     private val pantry = item("pantry", expiresInDays = 100, location = PantryLocation.Pantry)
 
-    private val locatedItems = listOf(freezerA, fridge, freezerB, pantry)
+    private val locatedItems = listOf(freezerA, fridge, freezerB, pantry, fridgeB)
 
     @Test
     fun `no filters returns the full list unchanged`() {
@@ -81,7 +82,7 @@ class PantryFilterTest {
     fun `expiring filter still applies when combined with an unwired filter`() {
         val result = applyPantryFilters(
             allItems,
-            setOf(PantryDashboardFilter.Expiring, PantryDashboardFilter.Fridge),
+            setOf(PantryDashboardFilter.Expiring, PantryDashboardFilter.RunningLow),
         )
 
         assertEquals(listOf(expired, today, soon, boundary), result)
@@ -131,5 +132,35 @@ class PantryFilterTest {
             setOf(PantryDashboardFilter.Freezer, PantryDashboardFilter.Expiring),
         )
         assertEquals(listOf(expiringFreezerItem), withExpiring)
+    }
+
+    @Test
+    fun `fridge filter keeps only items stored in the fridge`() {
+        val result = applyPantryFilters(locatedItems, setOf(PantryDashboardFilter.Fridge))
+
+        // Order is preserved and non-fridge locations are dropped.
+        assertEquals(listOf(fridge, fridgeB), result)
+    }
+
+    @Test
+    fun `fridge filter still applies when combined with an unwired filter`() {
+        val result = applyPantryFilters(
+            locatedItems,
+            setOf(PantryDashboardFilter.Fridge, PantryDashboardFilter.RunningLow),
+        )
+
+        assertEquals(listOf(fridge, fridgeB), result)
+    }
+
+    @Test
+    fun `fridge and expiring compose as an intersection`() {
+        val result = applyPantryFilters(
+            locatedItems,
+            setOf(PantryDashboardFilter.Fridge, PantryDashboardFilter.Expiring),
+        )
+
+        // fridge is due in 3 days so it clears the threshold; fridgeB is 30 days out
+        // and drops. Only the fridge item matching both predicates survives.
+        assertEquals(listOf(fridge), result)
     }
 }
