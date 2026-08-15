@@ -7,8 +7,8 @@ import kotlinx.serialization.Serializable
 data class MealIngredientDto(
     @SerialName("id") val id: String,
     @SerialName("meal_id") val mealId: String,
-    @SerialName("product_id") val productId: String?, // Nullable as per your SQL schema
+    @SerialName("product_id") val productId: String? = null,
     @SerialName("ingredient_name") val ingredientName: String,
-    @SerialName("quantity") val quantity: Double,
-    @SerialName("unit") val unit: String
+    @SerialName("quantity") val quantity: Double? = 1.0,
+    @SerialName("unit") val unit: String? = ""
 )
