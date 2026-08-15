@@ -35,6 +35,9 @@ class PantryDashboardCardsTest {
         // Two freezer items, neither expiring soon, so they don't affect other counts.
         item("freezerA", EXPIRING_SOON_DAYS + 20, location = PantryLocation.Freezer),
         item("freezerB", null, location = PantryLocation.Freezer),
+        // Two fridge items, neither expiring soon, so they don't affect other counts.
+        item("fridgeA", EXPIRING_SOON_DAYS + 20, location = PantryLocation.Fridge),
+        item("fridgeB", null, location = PantryLocation.Fridge),
     )
 
     private fun cardCount(filter: PantryDashboardFilter, items: List<InventoryItem>) =
@@ -68,6 +71,17 @@ class PantryDashboardCardsTest {
     fun `freezer card count matches the freezer filter result size`() {
         val filtered = applyPantryFilters(items, setOf(PantryDashboardFilter.Freezer))
         assertEquals(filtered.size, cardCount(PantryDashboardFilter.Freezer, items))
+    }
+
+    @Test
+    fun `fridge card shows the real count of fridge items`() {
+        assertEquals(2, cardCount(PantryDashboardFilter.Fridge, items))
+    }
+
+    @Test
+    fun `fridge card count matches the fridge filter result size`() {
+        val filtered = applyPantryFilters(items, setOf(PantryDashboardFilter.Fridge))
+        assertEquals(filtered.size, cardCount(PantryDashboardFilter.Fridge, items))
     }
 
     @Test
