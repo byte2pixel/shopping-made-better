@@ -85,6 +85,18 @@ class PantryDashboardCardsTest {
     }
 
     @Test
+    fun `pantry card shows the real count of pantry items`() {
+        // The six items with no explicit location default to the pantry.
+        assertEquals(6, cardCount(PantryDashboardFilter.Pantry, items))
+    }
+
+    @Test
+    fun `pantry card count matches the pantry filter result size`() {
+        val filtered = applyPantryFilters(items, setOf(PantryDashboardFilter.Pantry))
+        assertEquals(filtered.size, cardCount(PantryDashboardFilter.Pantry, items))
+    }
+
+    @Test
     fun `unwired card counts are placeholders, independent of the inventory`() {
         // A filter without a predicate keeps its stand-in count regardless of what
         // is in the pantry.
