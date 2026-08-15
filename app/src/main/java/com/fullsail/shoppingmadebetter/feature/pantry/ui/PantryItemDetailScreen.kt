@@ -61,13 +61,20 @@ fun PantryItemDetailScreen(
             )
 
             PantryItemDetailUiState.NotFound -> CenteredMessage(message = stringResource(R.string.pantry_detail_not_found))
-            is PantryItemDetailUiState.Success -> PantryItemDetailContent(item = state.item)
+            is PantryItemDetailUiState.Success -> PantryItemDetailContent(
+                item = state.item,
+                onLowStockThresholdChange = viewModel::onLowStockThresholdChanged,
+            )
         }
     }
 }
 
 @Composable
-private fun PantryItemDetailContent(item: InventoryItem, modifier: Modifier = Modifier) {
+private fun PantryItemDetailContent(
+    item: InventoryItem,
+    onLowStockThresholdChange: (Int?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -91,8 +98,39 @@ private fun PantryItemDetailContent(item: InventoryItem, modifier: Modifier = Mo
 
         HorizontalDivider()
 
+        LowStockRow(
+            threshold = item.lowStockThreshold,
+            onThresholdChange = onLowStockThresholdChange,
+        )
         DetailStubRow(label = stringResource(R.string.pantry_detail_stores))
         ExpirationRow(expiresInDays = item.expiresInDays)
+    }
+}
+
+@Composable
+private fun LowStockRow(
+    threshold: Int?,
+    onThresholdChange: (Int?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column {
+            Text(
+                text = stringResource(R.string.pantry_low_stock_label),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = threshold?.let { stringResource(R.string.pantry_low_stock_value, it) }
+                    ?: stringResource(R.string.pantry_low_stock_off_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        LowStockThresholdStepper(threshold = threshold, onThresholdChange = onThresholdChange)
     }
 }
 
@@ -184,7 +222,7 @@ private fun CenteredMessage(
     }
 }
 
-private fun previewItem(expiresInDays: Int?) = InventoryItem(
+private fun previewItem(expiresInDays: Int?, lowStockThreshold: Int? = 3) = InventoryItem(
     id = "1",
     productId = "p1",
     name = "2% Milk",
@@ -194,13 +232,14 @@ private fun previewItem(expiresInDays: Int?) = InventoryItem(
     imageUrl = "",
     quantity = 2,
     expiresInDays = expiresInDays,
+    lowStockThreshold = lowStockThreshold,
 )
 
 @Preview(showBackground = true, name = "5 days left")
 @Composable
 private fun PantryItemDetailPreview() {
     ShoppingMadeBetterTheme {
-        PantryItemDetailContent(item = previewItem(expiresInDays = 5))
+        PantryItemDetailContent(item = previewItem(expiresInDays = 5), onLowStockThresholdChange = {})
     }
 }
 
@@ -208,6 +247,9 @@ private fun PantryItemDetailPreview() {
 @Composable
 private fun PantryItemDetailExpiredPreview() {
     ShoppingMadeBetterTheme {
-        PantryItemDetailContent(item = previewItem(expiresInDays = -3))
+        PantryItemDetailContent(
+            item = previewItem(expiresInDays = -3, lowStockThreshold = null),
+            onLowStockThresholdChange = {},
+        )
     }
 }

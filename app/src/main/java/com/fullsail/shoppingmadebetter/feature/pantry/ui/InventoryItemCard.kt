@@ -94,6 +94,7 @@ internal fun stockLevel(quantity: Int, lowStockThreshold: Int?): StockLevel = wh
  * @param onQuantityChange requests persisting a new on-hand quantity for this item.
  * @param onLocationChange requests persisting a new storage location for this item.
  * @param onExpiryChange requests persisting a new shelf life (days from today) for this item.
+ * @param onLowStockThresholdChange requests persisting a new low-stock threshold (`null` clears it).
  */
 @Composable
 fun InventoryItemCard(
@@ -104,6 +105,7 @@ fun InventoryItemCard(
     onQuantityChange: (Int) -> Unit,
     onLocationChange: (PantryLocation) -> Unit,
     onExpiryChange: (Int) -> Unit,
+    onLowStockThresholdChange: (Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(onClick = onClick, modifier = modifier.fillMaxWidth()) {
@@ -146,6 +148,7 @@ fun InventoryItemCard(
                 onQuantityChange = onQuantityChange,
                 onLocationChange = onLocationChange,
                 onExpiryChange = onExpiryChange,
+                onLowStockThresholdChange = onLowStockThresholdChange,
                 modifier = Modifier.padding(top = 8.dp),
             )
         }
@@ -162,6 +165,7 @@ private fun InventoryIndicators(
     onQuantityChange: (Int) -> Unit,
     onLocationChange: (PantryLocation) -> Unit,
     onExpiryChange: (Int) -> Unit,
+    onLowStockThresholdChange: (Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -173,6 +177,7 @@ private fun InventoryIndicators(
             quantity = item.quantity,
             lowStockThreshold = item.lowStockThreshold,
             onQuantityChange = onQuantityChange,
+            onLowStockThresholdChange = onLowStockThresholdChange,
         )
         LocationChip(location = item.location, onLocationChange = onLocationChange)
         item.expiresInDays?.let { days ->
@@ -254,19 +259,22 @@ private fun LocationChip(
 }
 
 /**
- * The quantity chip. Tapping it opens an anchored popup with a [Stepper]; the new
- * value is committed via [onQuantityChange] when the popup closes (nothing is sent
- * when the value is unchanged). Quantity floors at 0 — that's "out of stock"
+ * The quantity chip. Tapping it opens an anchored popup with a quantity [Stepper] and a
+ * low-stock threshold stepper; both new values are committed (via [onQuantityChange] and
+ * [onLowStockThresholdChange]) when the popup closes, and only when actually changed.
+ * Quantity floors at 0 — that's "out of stock".
  */
 @Composable
 private fun QuantityChip(
     quantity: Int,
     lowStockThreshold: Int?,
     onQuantityChange: (Int) -> Unit,
+    onLowStockThresholdChange: (Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var draft by remember { mutableIntStateOf(quantity) }
+    var thresholdDraft by remember { mutableStateOf(lowStockThreshold) }
 
     val dark = isSystemInDarkTheme()
     val accent: Color = when (stockLevel(quantity, lowStockThreshold)) {
@@ -287,6 +295,7 @@ private fun QuantityChip(
             ),
             onClick = {
                 draft = quantity
+                thresholdDraft = lowStockThreshold
                 expanded = true
             },
         )
@@ -295,12 +304,14 @@ private fun QuantityChip(
             onDismissRequest = {
                 expanded = false
                 onQuantityChange(draft)
+                onLowStockThresholdChange(thresholdDraft)
             },
             shape = MaterialTheme.shapes.medium,
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
                     text = stringResource(R.string.pantry_quantity_edit_label),
@@ -314,6 +325,15 @@ private fun QuantityChip(
                     decrementContentDescription = stringResource(R.string.pantry_quantity_decrease),
                     incrementContentDescription = stringResource(R.string.pantry_quantity_increase),
                     decrementEnabled = draft > MIN_QUANTITY,
+                )
+                Text(
+                    text = stringResource(R.string.pantry_low_stock_label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                LowStockThresholdStepper(
+                    threshold = thresholdDraft,
+                    onThresholdChange = { thresholdDraft = it },
                 )
             }
         }
@@ -449,6 +469,7 @@ private fun InventoryItemCardPreview() {
             onQuantityChange = {},
             onLocationChange = {},
             onExpiryChange = {},
+            onLowStockThresholdChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }
@@ -466,6 +487,7 @@ private fun InventoryItemCardExpiredPreview() {
             onQuantityChange = {},
             onLocationChange = {},
             onExpiryChange = {},
+            onLowStockThresholdChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }
@@ -483,6 +505,7 @@ private fun InventoryItemCardLaterPreview() {
             onQuantityChange = {},
             onLocationChange = {},
             onExpiryChange = {},
+            onLowStockThresholdChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }
@@ -500,6 +523,7 @@ private fun InventoryItemCardNoChipPreview() {
             onQuantityChange = {},
             onLocationChange = {},
             onExpiryChange = {},
+            onLowStockThresholdChange = {},
             modifier = Modifier.padding(16.dp),
         )
     }

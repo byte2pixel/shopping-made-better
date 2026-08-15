@@ -83,6 +83,14 @@
     <string name="pantry_quantity_decrease">Decrease quantity</string>
     <string name="pantry_quantity_increase">Increase quantity</string>
 
+    <!-- Pantry low stock threshold (per-item "running low" warning level) -->
+    <string name="pantry_low_stock_label">Low stock alert</string>
+    <string name="pantry_low_stock_off">Off</string>
+    <string name="pantry_low_stock_value">At %1$d or fewer</string>
+    <string name="pantry_low_stock_off_desc">Low stock alert off</string>
+    <string name="pantry_low_stock_decrease">Lower low stock threshold</string>
+    <string name="pantry_low_stock_increase">Raise low stock threshold</string>
+
     <!-- Pantry inventory card chip indicators - location -->
     <string name="pantry_card_location_desc">Stored in %1$s</string>
 
