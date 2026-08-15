@@ -35,6 +35,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
 /**
@@ -51,7 +52,9 @@ enum class PantryDashboardFilter(
     },
     RunningLow(R.drawable.ic_running_low, R.string.pantry_dashboard_running_low),
     Out(R.drawable.ic_out_of_stock, R.string.pantry_dashboard_out),
-    Freezer(R.drawable.ic_freezer, R.string.pantry_dashboard_freezer),
+    Freezer(R.drawable.ic_freezer, R.string.pantry_dashboard_freezer) {
+        override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Freezer }
+    },
     Fridge(R.drawable.ic_fridge, R.string.pantry_dashboard_fridge),
     Pantry(R.drawable.ic_pantry, R.string.pantry_dashboard_pantry),
     ;
@@ -173,7 +176,6 @@ private fun DashboardCard(
 private val placeholderCounts: Map<PantryDashboardFilter, Int> = mapOf(
     PantryDashboardFilter.RunningLow to 5,
     PantryDashboardFilter.Out to 2,
-    PantryDashboardFilter.Freezer to 8,
     PantryDashboardFilter.Fridge to 12,
     PantryDashboardFilter.Pantry to 24,
 )
