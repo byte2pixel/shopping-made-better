@@ -12,6 +12,8 @@ class PantryDashboardCardsTest {
         id: String,
         expiresInDays: Int?,
         location: PantryLocation = PantryLocation.Pantry,
+        quantity: Int = 1,
+        lowStockThreshold: Int? = null,
     ) = InventoryItem(
         id = id,
         productId = "p-$id",
@@ -20,9 +22,10 @@ class PantryDashboardCardsTest {
         description = "",
         size = "1 ea",
         imageUrl = "",
-        quantity = 1,
+        quantity = quantity,
         expiresInDays = expiresInDays,
         location = location,
+        lowStockThreshold = lowStockThreshold,
     )
 
     private val items = listOf(
@@ -96,13 +99,41 @@ class PantryDashboardCardsTest {
         assertEquals(filtered.size, cardCount(PantryDashboardFilter.Pantry, items))
     }
 
+    // Low stock is opt-in per item, so it needs its own fixtures rather than the
+    // shared list (whose items all have a null threshold).
+    private val stockItems = listOf(
+        item("low", null, quantity = 2, lowStockThreshold = 3),
+        item("lowBoundary", null, quantity = 3, lowStockThreshold = 3),
+        item("out", null, quantity = 0, lowStockThreshold = 3),
+        item("noThreshold", null, quantity = 1, lowStockThreshold = null),
+        item("wellStocked", null, quantity = 5, lowStockThreshold = 3),
+    )
+
+    @Test
+    fun `running low card shows the real count of low-stock items`() {
+        assertEquals(2, cardCount(PantryDashboardFilter.RunningLow, stockItems))
+    }
+
+    @Test
+    fun `running low card count matches the low stock filter result size`() {
+        val filtered = applyPantryFilters(stockItems, setOf(PantryDashboardFilter.RunningLow))
+        assertEquals(filtered.size, cardCount(PantryDashboardFilter.RunningLow, stockItems))
+    }
+
+    @Test
+    fun `running low card is empty until items get a threshold`() {
+        // The shared items have no lowStockThreshold, mirroring today's data. Until
+        // SCRUM-158 lets users set one, the running low filter shows nothing.
+        assertEquals(0, cardCount(PantryDashboardFilter.RunningLow, items))
+    }
+
     @Test
     fun `unwired card counts are placeholders, independent of the inventory`() {
         // A filter without a predicate keeps its stand-in count regardless of what
         // is in the pantry.
         assertEquals(
-            cardCount(PantryDashboardFilter.RunningLow, emptyList()),
-            cardCount(PantryDashboardFilter.RunningLow, items),
+            cardCount(PantryDashboardFilter.Out, emptyList()),
+            cardCount(PantryDashboardFilter.Out, items),
         )
     }
 }

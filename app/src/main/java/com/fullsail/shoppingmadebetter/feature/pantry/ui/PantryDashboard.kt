@@ -50,7 +50,9 @@ enum class PantryDashboardFilter(
     Expiring(R.drawable.ic_expiring, R.string.pantry_dashboard_expiring) {
         override val predicate: (InventoryItem) -> Boolean = { it.isExpiringSoon() }
     },
-    RunningLow(R.drawable.ic_running_low, R.string.pantry_dashboard_running_low),
+    RunningLow(R.drawable.ic_running_low, R.string.pantry_dashboard_running_low) {
+        override val predicate: (InventoryItem) -> Boolean = { it.isLowStock() }
+    },
     Out(R.drawable.ic_out_of_stock, R.string.pantry_dashboard_out),
     Freezer(R.drawable.ic_freezer, R.string.pantry_dashboard_freezer) {
         override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Freezer }
@@ -178,7 +180,6 @@ private fun DashboardCard(
  * filter's entry here once its predicate lands.
  */
 private val placeholderCounts: Map<PantryDashboardFilter, Int> = mapOf(
-    PantryDashboardFilter.RunningLow to 5,
     PantryDashboardFilter.Out to 2,
 )
 

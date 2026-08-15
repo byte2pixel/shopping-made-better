@@ -90,6 +90,15 @@ internal fun applyPantryFilters(
 internal fun InventoryItem.isExpiringSoon(): Boolean =
     expiresInDays != null && expiryBucket(expiresInDays) != ExpiryBucket.Later
 
+/**
+ * Whether this item is running low: it has a per-item low threshold set and its
+ * quantity sits between 1 and that threshold. Quantity 0 is "out", not "low".
+ * Items without a threshold ([lowStockThreshold] null) are
+ * never low.
+ */
+internal fun InventoryItem.isLowStock(): Boolean =
+    lowStockThreshold != null && quantity in 1..lowStockThreshold
+
 @Composable
 fun PantryScreen(
     onItemClick: (String) -> Unit,
