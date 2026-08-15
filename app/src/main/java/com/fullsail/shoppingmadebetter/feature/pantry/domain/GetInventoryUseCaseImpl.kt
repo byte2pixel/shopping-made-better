@@ -34,6 +34,7 @@ class GetInventoryUseCaseImpl @Inject constructor(
         quantity = quantity,
         expiresInDays = expiryDate?.let { today.daysUntil(it) },
         location = PantryLocation.fromDbValue(location),
+        lowStockThreshold = lowStockThreshold,
     )
 
     private companion object {
