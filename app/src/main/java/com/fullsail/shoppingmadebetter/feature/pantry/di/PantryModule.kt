@@ -18,6 +18,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpi
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCaseImpl
 import dagger.Binds
@@ -70,4 +72,9 @@ abstract class PantryModule {
     abstract fun bindUpdateInventoryExpiryUseCase(
         impl: UpdateInventoryExpiryUseCaseImpl,
     ): UpdateInventoryExpiryUseCase
+
+    @Binds
+    abstract fun bindUpdateInventoryLowStockThresholdUseCase(
+        impl: UpdateInventoryLowStockThresholdUseCaseImpl,
+    ): UpdateInventoryLowStockThresholdUseCase
 }
