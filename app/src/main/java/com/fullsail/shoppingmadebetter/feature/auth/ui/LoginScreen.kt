@@ -1,6 +1,5 @@
 package com.fullsail.shoppingmadebetter.feature.auth.ui
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -9,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,7 +20,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,8 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -82,15 +77,18 @@ private fun LoginContent(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    val lightGreenBg = Color(0xFFC2F0C2)
-    val darkGreenActive = Color(0xFF4A5D4E)
-    val lightGreenInactive = Color(0xFFD5E8D4)
-    val whiteCardBg = Color(0xFFF7F9F6)
+    // Theme roles keep the green branding while staying legible in light and dark mode.
+    val pageColor = MaterialTheme.colorScheme.primaryContainer
+    val cardColor = MaterialTheme.colorScheme.surface
+    val activePill = MaterialTheme.colorScheme.primary
+    val onActivePill = MaterialTheme.colorScheme.onPrimary
+    val inactiveTrack = MaterialTheme.colorScheme.secondaryContainer
+    val onInactivePill = MaterialTheme.colorScheme.onSecondaryContainer
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(lightGreenBg)
+            .background(pageColor)
             .padding(horizontal = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -111,7 +109,7 @@ private fun LoginContent(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = whiteCardBg),
+            colors = CardDefaults.cardColors(containerColor = cardColor),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
@@ -126,7 +124,7 @@ private fun LoginContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 24.dp)
-                        .background(lightGreenInactive, shape = RoundedCornerShape(12.dp))
+                        .background(inactiveTrack, shape = RoundedCornerShape(12.dp))
                         .padding(4.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
@@ -135,12 +133,12 @@ private fun LoginContent(
                         modifier = Modifier
                             .weight(1f)
                             .height(36.dp)
-                            .background(darkGreenActive, shape = RoundedCornerShape(10.dp)),
+                            .background(activePill, shape = RoundedCornerShape(10.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = stringResource(R.string.auth_sign_in),
-                            color = Color.White,
+                            color = onActivePill,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 14.sp
                         )
@@ -156,7 +154,7 @@ private fun LoginContent(
                     ) {
                         Text(
                             text = stringResource(R.string.auth_sign_up),
-                            color = darkGreenActive,
+                            color = onInactivePill,
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp
                         )
@@ -167,29 +165,17 @@ private fun LoginContent(
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    placeholder = { Text(stringResource(R.string.auth_email_hint), color = Color.Gray) },
+                    placeholder = { Text(stringResource(R.string.auth_email_hint)) },
                     shape = RoundedCornerShape(8.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Gray,
-                        unfocusedBorderColor = Color.Gray,
-                        focusedContainerColor = whiteCardBg,
-                        unfocusedContainerColor = whiteCardBg
-                    ),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp)
                 )
 
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    placeholder = { Text(stringResource(R.string.auth_password_hint), color = Color.Gray) },
+                    placeholder = { Text(stringResource(R.string.auth_password_hint)) },
                     visualTransformation = PasswordVisualTransformation(),
                     shape = RoundedCornerShape(8.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Gray,
-                        unfocusedBorderColor = Color.Gray,
-                        focusedContainerColor = whiteCardBg,
-                        unfocusedContainerColor = whiteCardBg
-                    ),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 28.dp)
                 )
 
@@ -207,13 +193,13 @@ private fun LoginContent(
                 Button(
                     onClick = { onSignIn(email, password) },
                     enabled = uiState !is SignInUiState.Submitting,
-                    colors = ButtonDefaults.buttonColors(containerColor = darkGreenActive),
+                    colors = ButtonDefaults.buttonColors(containerColor = activePill),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.fillMaxWidth().height(46.dp)
                 ) {
                     Text(
                         stringResource(R.string.auth_login_button),
-                        color = Color.White,
+                        color = onActivePill,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -222,10 +208,22 @@ private fun LoginContent(
         }
     }
 }
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Light")
 @Composable
 private fun LoginContentPreview() {
-    ShoppingMadeBetterTheme {
+    ShoppingMadeBetterTheme(darkTheme = false) {
+        LoginContent(
+            uiState = SignInUiState.Idle,
+            onSignIn = { _, _ -> },
+            onNavigateToSignUp = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Dark")
+@Composable
+private fun LoginContentDarkPreview() {
+    ShoppingMadeBetterTheme(darkTheme = true) {
         LoginContent(
             uiState = SignInUiState.Idle,
             onSignIn = { _, _ -> },
