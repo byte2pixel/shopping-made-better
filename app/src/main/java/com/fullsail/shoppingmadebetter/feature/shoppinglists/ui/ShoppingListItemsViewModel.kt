@@ -41,16 +41,24 @@ class ShoppingListItemsViewModel @Inject constructor(
             }
         }
     }
-    fun deleteItems(input : String)
+    fun deleteItems(input : String, listId : String? = null)
     {
         _uiState.value = ShoppingListItemsState.Loading
         viewModelScope.launch {
             _uiState.value = when (val out = getDeleteItemsUseCase.execute(input)) {
-                is DeleteItemsUseCase.Output.Success ->
+                is DeleteItemsUseCase.Output.Success -> {
+                    if (listId != null)
+                    {
+                        getItems(listId)
+                    }
                     ShoppingListItemsState.DeleteSuccess
+                }
+
+
                 is DeleteItemsUseCase.Output.Failure ->
                     ShoppingListItemsState.Error
             }
         }
+
     }
 }

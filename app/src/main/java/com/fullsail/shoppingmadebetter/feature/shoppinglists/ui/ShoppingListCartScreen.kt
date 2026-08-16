@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -37,7 +38,7 @@ fun ShoppingListCartScreen(
 ) {
 
     val uiState by viewModel.uiState.collectAsState()
-
+    var checkedItems = remember { mutableStateListOf<String>()}
 
 
     Box() {
@@ -58,22 +59,35 @@ fun ShoppingListCartScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
 
-                        items(state.items, key = { it.id }) { CartRow(it,viewModel) }
+                        items(state.items, key = { it.id }) { CartRow(it,viewModel, onItemCrossed = {
+                            checkedItems.add(it.id)
+                        }, onItemUncrossed = {
+                            checkedItems.remove(it.id)
+                        }) }
                     }
                 }
 
 
             else -> {}
         }
-        FloatingActionButton(onClick = {}, Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding( 20.dp)) { Text("Complete List")}
+        FloatingActionButton(onClick = {
+            checkedItems.forEach { viewModel.deleteItems(it, listId) }
+            checkedItems.clear()
+
+        }, Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding( 20.dp)) { Text("Complete List")}
     }
 }
 @Composable
-fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel) {
+fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onItemCrossed: () -> Unit, onItemUncrossed : () -> Unit) {
 
     var clicked by remember { mutableStateOf(false)}
     Card(Modifier.fillMaxWidth().clickable(onClick = {
         clicked = !clicked
+        if (clicked)
+        onItemCrossed()
+        else {
+        onItemUncrossed()
+        }
 
     }), colors = CardDefaults.cardColors(
 
