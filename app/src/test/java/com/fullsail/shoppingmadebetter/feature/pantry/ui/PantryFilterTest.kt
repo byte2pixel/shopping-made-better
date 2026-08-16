@@ -78,21 +78,6 @@ class PantryFilterTest {
     }
 
     @Test
-    fun `an unwired filter alone leaves the list unchanged`() {
-        assertEquals(allItems, applyPantryFilters(allItems, setOf(PantryDashboardFilter.Out)))
-    }
-
-    @Test
-    fun `expiring filter still applies when combined with an unwired filter`() {
-        val result = applyPantryFilters(
-            allItems,
-            setOf(PantryDashboardFilter.Expiring, PantryDashboardFilter.Out),
-        )
-
-        assertEquals(listOf(expired, today, soon, boundary), result)
-    }
-
-    @Test
     fun `freezer filter keeps only items stored in the freezer`() {
         val result = applyPantryFilters(locatedItems, setOf(PantryDashboardFilter.Freezer))
 
@@ -105,16 +90,6 @@ class PantryFilterTest {
         // Tapping the card again removes it from the selected set; with no active
         // predicate the full list comes back unchanged.
         assertEquals(locatedItems, applyPantryFilters(locatedItems, emptySet()))
-    }
-
-    @Test
-    fun `freezer filter still applies when combined with an unwired filter`() {
-        val result = applyPantryFilters(
-            locatedItems,
-            setOf(PantryDashboardFilter.Freezer, PantryDashboardFilter.Out),
-        )
-
-        assertEquals(listOf(freezerA, freezerB), result)
     }
 
     @Test
@@ -147,16 +122,6 @@ class PantryFilterTest {
     }
 
     @Test
-    fun `fridge filter still applies when combined with an unwired filter`() {
-        val result = applyPantryFilters(
-            locatedItems,
-            setOf(PantryDashboardFilter.Fridge, PantryDashboardFilter.Out),
-        )
-
-        assertEquals(listOf(fridge, fridgeB), result)
-    }
-
-    @Test
     fun `fridge and expiring compose as an intersection`() {
         val result = applyPantryFilters(
             locatedItems,
@@ -177,16 +142,6 @@ class PantryFilterTest {
     }
 
     @Test
-    fun `pantry filter still applies when combined with an unwired filter`() {
-        val result = applyPantryFilters(
-            locatedItems,
-            setOf(PantryDashboardFilter.Pantry, PantryDashboardFilter.Out),
-        )
-
-        assertEquals(listOf(pantry, pantryB), result)
-    }
-
-    @Test
     fun `pantry and expiring compose as an intersection`() {
         val result = applyPantryFilters(
             locatedItems,
@@ -203,11 +158,12 @@ class PantryFilterTest {
     private val low = item("low", expiresInDays = null, quantity = 2, lowStockThreshold = 3)
     private val lowBoundary = item("lowBoundary", expiresInDays = null, quantity = 3, lowStockThreshold = 3)
     private val outWithThreshold = item("out", expiresInDays = null, quantity = 0, lowStockThreshold = 3)
+    private val outNoThreshold = item("outNoThreshold", expiresInDays = null, quantity = 0, lowStockThreshold = null)
     private val noThreshold = item("noThreshold", expiresInDays = null, quantity = 1, lowStockThreshold = null)
     private val wellStocked = item("wellStocked", expiresInDays = null, quantity = 5, lowStockThreshold = 3)
 
     private val stockItems =
-        listOf(low, lowBoundary, outWithThreshold, noThreshold, wellStocked)
+        listOf(low, lowBoundary, outWithThreshold, outNoThreshold, noThreshold, wellStocked)
 
     @Test
     fun `low stock filter keeps items at or below their own threshold`() {
@@ -229,12 +185,23 @@ class PantryFilterTest {
     }
 
     @Test
-    fun `low stock filter still applies when combined with an unwired filter`() {
+    fun `out filter keeps only zero-quantity items, regardless of threshold`() {
+        val result = applyPantryFilters(stockItems, setOf(PantryDashboardFilter.Out))
+
+        // Order is preserved; both out items survive whether or not they have a
+        // threshold, and nothing with stock on hand does.
+        assertEquals(listOf(outWithThreshold, outNoThreshold), result)
+    }
+
+    @Test
+    fun `out and low stock are disjoint, so their intersection is empty`() {
+        // Quantity 0 is "out"; "low" is 1..threshold. No item can be both, so
+        // composing the two filters yields nothing.
         val result = applyPantryFilters(
             stockItems,
             setOf(PantryDashboardFilter.RunningLow, PantryDashboardFilter.Out),
         )
 
-        assertEquals(listOf(low, lowBoundary), result)
+        assertTrue(result.isEmpty())
     }
 }

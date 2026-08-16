@@ -128,12 +128,20 @@ class PantryDashboardCardsTest {
     }
 
     @Test
-    fun `unwired card counts are placeholders, independent of the inventory`() {
-        // A filter without a predicate keeps its stand-in count regardless of what
-        // is in the pantry.
-        assertEquals(
-            cardCount(PantryDashboardFilter.Out, emptyList()),
-            cardCount(PantryDashboardFilter.Out, items),
-        )
+    fun `out card shows the real count of zero-quantity items`() {
+        // Only "out" (quantity 0) qualifies; low, boundary, and well-stocked don't.
+        assertEquals(1, cardCount(PantryDashboardFilter.Out, stockItems))
+    }
+
+    @Test
+    fun `out card count matches the out filter result size`() {
+        val filtered = applyPantryFilters(stockItems, setOf(PantryDashboardFilter.Out))
+        assertEquals(filtered.size, cardCount(PantryDashboardFilter.Out, stockItems))
+    }
+
+    @Test
+    fun `out card is empty when everything is in stock`() {
+        // The shared items all default to quantity 1, so nothing is out.
+        assertEquals(0, cardCount(PantryDashboardFilter.Out, items))
     }
 }

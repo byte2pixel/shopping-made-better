@@ -97,7 +97,13 @@ internal fun InventoryItem.isExpiringSoon(): Boolean =
  * never low.
  */
 internal fun InventoryItem.isLowStock(): Boolean =
-    lowStockThreshold != null && quantity in 1..lowStockThreshold
+    stockLevel(quantity, lowStockThreshold) == StockLevel.Low
+
+/**
+ * Whether this item is out of stock: nothing on hand ([quantity] 0).
+ */
+internal fun InventoryItem.isOutOfStock(): Boolean =
+    stockLevel(quantity, lowStockThreshold) == StockLevel.Out
 
 @Composable
 fun PantryScreen(

@@ -41,8 +41,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import com.fullsail.shoppingmadebetter.ui.theme.expirySoonAccentDark
 import com.fullsail.shoppingmadebetter.ui.theme.expirySoonAccentLight
-import com.fullsail.shoppingmadebetter.ui.theme.expiryUrgentAccentDark
-import com.fullsail.shoppingmadebetter.ui.theme.expiryUrgentAccentLight
+import com.fullsail.shoppingmadebetter.ui.theme.warningAccentDark
+import com.fullsail.shoppingmadebetter.ui.theme.warningAccentLight
 
 /**
  * Severity of an item's remaining shelf life, used to color the expiry chip.
@@ -63,6 +63,27 @@ internal fun expiryBucket(expiresInDays: Int): ExpiryBucket = when {
     expiresInDays <= 2 -> ExpiryBucket.Urgent
     expiresInDays <= EXPIRING_SOON_DAYS -> ExpiryBucket.Soon
     else -> ExpiryBucket.Later
+}
+
+/**
+ * On-hand severity of an item, used to color the quantity chip and drive the
+ * dashboard's "Out"/"Running Low" filters. See [stockLevel] for the thresholds.
+ */
+enum class StockLevel { Out, Low, Ok }
+
+/**
+ * Maps an item's on-hand [quantity] and its per-item [lowStockThreshold] to a severity.
+ *
+ * - `<= 0`                    -> [StockLevel.Out] (red) — none on hand
+ * - `1..lowStockThreshold`    -> [StockLevel.Low] (orange) — running low
+ * - otherwise / no threshold  -> [StockLevel.Ok] (grey) — plenty on hand
+ *
+ * Items without a [lowStockThreshold] are never [StockLevel.Low].
+ */
+internal fun stockLevel(quantity: Int, lowStockThreshold: Int?): StockLevel = when {
+    quantity <= 0 -> StockLevel.Out
+    lowStockThreshold != null && quantity <= lowStockThreshold -> StockLevel.Low
+    else -> StockLevel.Ok
 }
 
 /**
@@ -148,7 +169,11 @@ private fun InventoryIndicators(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        QuantityChip(quantity = item.quantity, onQuantityChange = onQuantityChange)
+        QuantityChip(
+            quantity = item.quantity,
+            lowStockThreshold = item.lowStockThreshold,
+            onQuantityChange = onQuantityChange,
+        )
         LocationChip(location = item.location, onLocationChange = onLocationChange)
         item.expiresInDays?.let { days ->
             ExpiryChip(
@@ -231,22 +256,29 @@ private fun LocationChip(
 /**
  * The quantity chip. Tapping it opens an anchored popup with a [Stepper]; the new
  * value is committed via [onQuantityChange] when the popup closes (nothing is sent
- * when the value is unchanged). Quantity is floored at 1 — removing the item is the
- * job of the card's separate remove action.
+ * when the value is unchanged). Quantity floors at 0 — that's "out of stock"
  */
 @Composable
 private fun QuantityChip(
     quantity: Int,
+    lowStockThreshold: Int?,
     onQuantityChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var draft by remember { mutableIntStateOf(quantity) }
 
+    val dark = isSystemInDarkTheme()
+    val accent: Color = when (stockLevel(quantity, lowStockThreshold)) {
+        StockLevel.Out -> MaterialTheme.colorScheme.error
+        StockLevel.Low -> if (dark) warningAccentDark else warningAccentLight
+        StockLevel.Ok -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
     Box(modifier = modifier) {
         LabelChip(
             label = stringResource(R.string.pantry_card_quantity, quantity),
-            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            accentColor = accent,
             iconRes = R.drawable.ic_add,
             contentDescription = pluralStringResource(
                 R.plurals.pantry_card_quantity_desc,
@@ -288,8 +320,8 @@ private fun QuantityChip(
     }
 }
 
-/** Quantity can't be lowered below this from the chip; use the remove action instead. */
-private const val MIN_QUANTITY = 1
+/** Quantity floors here from the chip: 0 means out of stock (still wanted). */
+private const val MIN_QUANTITY = 0
 
 /** Days added by each expiry quick-add button, in the order shown. */
 private val expiryQuickAddDays = listOf(1, 3, 7)
@@ -309,7 +341,7 @@ private fun ExpiryChip(
     val dark = isSystemInDarkTheme()
     val accent: Color = when (bucket) {
         ExpiryBucket.Expired -> MaterialTheme.colorScheme.error
-        ExpiryBucket.Urgent -> if (dark) expiryUrgentAccentDark else expiryUrgentAccentLight
+        ExpiryBucket.Urgent -> if (dark) warningAccentDark else warningAccentLight
         ExpiryBucket.Soon -> if (dark) expirySoonAccentDark else expirySoonAccentLight
         ExpiryBucket.Later -> MaterialTheme.colorScheme.onSurfaceVariant
     }
