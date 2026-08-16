@@ -217,7 +217,7 @@ fun ShoppingMadeBetterApp(
             }
 
             composable<Dest.ShoppingListCartScreen>{
-                ShoppingListCartScreen( listId = it.toRoute<Dest.ShoppingListItemsScreen>().listId )
+                ShoppingListCartScreen( listId = it.toRoute<Dest.ShoppingListCartScreen>().listId )
             }
             composable<Dest.ShoppingListItemsScreen>{
                 ShoppingListItemsScreen( listId = it.toRoute<Dest.ShoppingListItemsScreen>().listId )
