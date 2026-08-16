@@ -10,6 +10,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpi
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
@@ -141,6 +143,20 @@ class PantryViewModelTest {
         }
     }
 
+    /** Fake threshold-update use case: records its input and returns a settable [output]. */
+    private class FakeUpdateInventoryLowStockThresholdUseCase(
+        var output: UpdateInventoryLowStockThresholdUseCase.Output =
+            UpdateInventoryLowStockThresholdUseCase.Output.Success,
+    ) : UpdateInventoryLowStockThresholdUseCase {
+        var lastInput: UpdateInventoryLowStockThreshold? = null
+        override suspend fun execute(
+            input: UpdateInventoryLowStockThreshold,
+        ): UpdateInventoryLowStockThresholdUseCase.Output {
+            lastInput = input
+            return output
+        }
+    }
+
     private val sampleItem = InventoryItem(
         id = "i1",
         productId = "p1",
@@ -173,9 +189,11 @@ class PantryViewModelTest {
         updateQuantity: FakeUpdateInventoryQuantityUseCase = FakeUpdateInventoryQuantityUseCase(),
         updateLocation: FakeUpdateInventoryLocationUseCase = FakeUpdateInventoryLocationUseCase(),
         updateExpiry: FakeUpdateInventoryExpiryUseCase = FakeUpdateInventoryExpiryUseCase(),
+        updateThreshold: FakeUpdateInventoryLowStockThresholdUseCase =
+            FakeUpdateInventoryLowStockThresholdUseCase(),
     ) = PantryViewModel(
         inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, updateQuantity,
-        updateLocation, updateExpiry,
+        updateLocation, updateExpiry, updateThreshold,
     )
 
     @Test
@@ -563,6 +581,76 @@ class PantryViewModelTest {
         )
 
         viewModel.onQuantityChanged(sampleItem, newQuantity = sampleItem.quantity)
+
+        assertNull(update.lastInput)
+    }
+
+    @Test
+    fun `onLowStockThresholdChanged updates the item in place and persists the threshold`() = runTest {
+        val update = FakeUpdateInventoryLowStockThresholdUseCase()
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(sampleItem))
+            ),
+            updateThreshold = update,
+        )
+
+        viewModel.onLowStockThresholdChanged(sampleItem, newThreshold = 3)
+
+        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        assertEquals(3, items.single().lowStockThreshold)
+        assertEquals(UpdateInventoryLowStockThreshold(productId = "p1", threshold = 3), update.lastInput)
+    }
+
+    @Test
+    fun `onLowStockThresholdChanged updates every pantry entry of the same product`() = runTest {
+        // Two separate pantry rows for the same product (p1); the threshold is per-product,
+        // so setting it on one must update both.
+        val entryA = sampleItem.copy(id = "a")
+        val entryB = sampleItem.copy(id = "b")
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(entryA, entryB))
+            ),
+        )
+
+        viewModel.onLowStockThresholdChanged(entryA, newThreshold = 4)
+
+        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        assertTrue(items.all { it.lowStockThreshold == 4 })
+    }
+
+    @Test
+    fun `onLowStockThresholdChanged reverts and emits UpdateFailed when the save fails`() = runTest {
+        val update = FakeUpdateInventoryLowStockThresholdUseCase(
+            UpdateInventoryLowStockThresholdUseCase.Output.Failure(IOException("boom"))
+        )
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(sampleItem))
+            ),
+            updateThreshold = update,
+        )
+
+        viewModel.onLowStockThresholdChanged(sampleItem, newThreshold = 3)
+
+        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        assertEquals(sampleItem.lowStockThreshold, items.single().lowStockThreshold)
+        val event = viewModel.events.first()
+        assertTrue(event is PantryEvent.UpdateFailed)
+    }
+
+    @Test
+    fun `onLowStockThresholdChanged does nothing when the threshold is unchanged`() = runTest {
+        val update = FakeUpdateInventoryLowStockThresholdUseCase()
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(sampleItem))
+            ),
+            updateThreshold = update,
+        )
+
+        viewModel.onLowStockThresholdChanged(sampleItem, newThreshold = sampleItem.lowStockThreshold)
 
         assertNull(update.lastInput)
     }

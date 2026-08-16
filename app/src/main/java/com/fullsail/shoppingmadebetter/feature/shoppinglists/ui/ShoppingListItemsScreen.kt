@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
@@ -37,32 +40,46 @@ fun ShoppingListItemsScreen(
 
     val uiState by viewModel.uiState.collectAsState()
 
+    LaunchedEffect(listId) { viewModel.getItems(listId) }
 
-
-    Box() {
-        LaunchedEffect(listId) { viewModel.getItems(listId)}
-        when (val state = uiState) {
-            ShoppingTripsUiState.Loading ->
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
-
-            ShoppingTripsUiState.Error ->
-                Text("Couldn't load your lists", Modifier.align(Alignment.Center))
-
-            is ShoppingListItemsState.Success ->
-                if (state.items.isEmpty()) {
-                    Text("No items added to list", Modifier.align(Alignment.Center))
-                } else {
-                    LazyColumn(
-                        Modifier.fillMaxSize().padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-
-                        items(state.items, key = { it.id }) { ListRow(it,viewModel) }
-                    }
+    Scaffold(
+        modifier = modifier,
+        bottomBar = {
+            val state = uiState
+            if (state is ShoppingListItemsState.Success && state.items.isNotEmpty()) {
+                Button(
+                    onClick = { viewModel.markAllPurchased(listId) },
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                ) {
+                    Text(stringResource(R.string.mark_all_purchased))
                 }
+            }
+        },
+    ) { innerPadding ->
+        Box(Modifier.fillMaxSize().padding(innerPadding)) {
+            when (val state = uiState) {
+                ShoppingTripsUiState.Loading ->
+                    CircularProgressIndicator(Modifier.align(Alignment.Center))
+
+                ShoppingTripsUiState.Error ->
+                    Text("Couldn't load your lists", Modifier.align(Alignment.Center))
+
+                is ShoppingListItemsState.Success ->
+                    if (state.items.isEmpty()) {
+                        Text("No items added to list", Modifier.align(Alignment.Center))
+                    } else {
+                        LazyColumn(
+                            Modifier.fillMaxSize().padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+
+                            items(state.items, key = { it.id }) { ListRow(it,viewModel) }
+                        }
+                    }
 
 
-            else -> {}
+                else -> {}
+            }
         }
     }
 }

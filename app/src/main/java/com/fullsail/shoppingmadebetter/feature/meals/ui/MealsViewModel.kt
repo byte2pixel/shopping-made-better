@@ -124,11 +124,24 @@ class MealsViewModel @Inject constructor(
         if (currentState is MealsUiState.Success) {
             viewModelScope.launch {
                 try {
-
                     val activeListId = "DEFAULT_LIST_ID"
                     repository.addIngredientToShoppingList(ingredientId, title, activeListId)
                 } catch (e: Exception) {
                     println("Error in quickAddIngredient: ${e.message}")
+                }
+            }
+        }
+    }
+
+    fun addMealToList(mealId: String) {
+        val currentState = _uiState.value
+        if (currentState is MealsUiState.Success) {
+            viewModelScope.launch {
+                try {
+                    val activeListId = "DEFAULT_LIST_ID"
+                    repository.addMealToShoppingList(mealId, activeListId)
+                } catch (e: Exception) {
+                    println("Error in addMealToList: ${e.message}")
                 }
             }
         }

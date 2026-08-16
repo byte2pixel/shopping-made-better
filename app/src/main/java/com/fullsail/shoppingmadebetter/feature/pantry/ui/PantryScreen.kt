@@ -59,7 +59,7 @@ private val filterSetSaver = listSaver<Set<PantryDashboardFilter>, String>(
 )
 
 /**
- * Items with a known expiration date fewer than this many days out — including
+ * Items with a known expiration date within this many days — including
  * already-expired ones — count as "expiring soon". Hard-coded for now; a future
  * task may let the user configure it (e.g. by long-pressing the dashboard card).
  */
@@ -83,8 +83,27 @@ internal fun applyPantryFilters(
     }
 }
 
+/**
+ * Whether this item's expiry chip reads as a warning — red, orange, or yellow
+ * rather than gray.
+ */
 internal fun InventoryItem.isExpiringSoon(): Boolean =
-    expiresInDays != null && expiresInDays < EXPIRING_SOON_DAYS
+    expiresInDays != null && expiryBucket(expiresInDays) != ExpiryBucket.Later
+
+/**
+ * Whether this item is running low: it has a per-item low threshold set and its
+ * quantity sits between 1 and that threshold. Quantity 0 is "out", not "low".
+ * Items without a threshold ([lowStockThreshold] null) are
+ * never low.
+ */
+internal fun InventoryItem.isLowStock(): Boolean =
+    stockLevel(quantity, lowStockThreshold) == StockLevel.Low
+
+/**
+ * Whether this item is out of stock: nothing on hand ([quantity] 0).
+ */
+internal fun InventoryItem.isOutOfStock(): Boolean =
+    stockLevel(quantity, lowStockThreshold) == StockLevel.Out
 
 @Composable
 fun PantryScreen(
@@ -97,6 +116,10 @@ fun PantryScreen(
     val removeConfirm by viewModel.removeConfirm.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val resources = LocalResources.current
+
+    // Re-fetch on every entry so items purchased elsewhere — e.g. via
+    // "mark all as purchased" on a shopping list show up, when re-visiting pantry.
+    LaunchedEffect(Unit) { viewModel.loadInventory() }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -151,6 +174,7 @@ fun PantryScreen(
             onQuantityChange = viewModel::onQuantityChanged,
             onLocationChange = viewModel::onLocationChanged,
             onExpiryChange = viewModel::onExpiryChanged,
+            onLowStockThresholdChange = viewModel::onLowStockThresholdChanged,
         )
         SnackbarHost(
             hostState = snackbarHostState,
@@ -185,6 +209,7 @@ private fun PantryContent(
     onQuantityChange: (InventoryItem, Int) -> Unit,
     onLocationChange: (InventoryItem, PantryLocation) -> Unit,
     onExpiryChange: (InventoryItem, Int) -> Unit,
+    onLowStockThresholdChange: (InventoryItem, Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -250,6 +275,9 @@ private fun PantryContent(
                                 },
                                 onExpiryChange = { newDays ->
                                     onExpiryChange(inventoryItem, newDays)
+                                },
+                                onLowStockThresholdChange = { newThreshold ->
+                                    onLowStockThresholdChange(inventoryItem, newThreshold)
                                 },
                             )
                         }

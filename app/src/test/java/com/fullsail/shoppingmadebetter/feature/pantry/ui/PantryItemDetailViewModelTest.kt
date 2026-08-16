@@ -2,9 +2,12 @@ package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
 import com.fullsail.shoppingmadebetter.testing.MainDispatcherRule
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -30,6 +33,25 @@ class PantryItemDetailViewModelTest {
         }
     }
 
+    /** Fake threshold use case: records the input and returns [output]. */
+    private class FakeUpdateThresholdUseCase(
+        var output: UpdateInventoryLowStockThresholdUseCase.Output =
+            UpdateInventoryLowStockThresholdUseCase.Output.Success,
+    ) : UpdateInventoryLowStockThresholdUseCase {
+        var lastInput: UpdateInventoryLowStockThreshold? = null
+        override suspend fun execute(
+            input: UpdateInventoryLowStockThreshold,
+        ): UpdateInventoryLowStockThresholdUseCase.Output {
+            lastInput = input
+            return output
+        }
+    }
+
+    private fun viewModel(
+        getUseCase: FakeGetInventoryItemUseCase,
+        updateUseCase: FakeUpdateThresholdUseCase = FakeUpdateThresholdUseCase(),
+    ) = PantryItemDetailViewModel(getUseCase, updateUseCase)
+
     private val sampleItem = InventoryItem(
         id = "i1",
         productId = "p1",
@@ -44,7 +66,7 @@ class PantryItemDetailViewModelTest {
 
     @Test
     fun `initial state is Loading before load is called`() {
-        val viewModel = PantryItemDetailViewModel(
+        val viewModel = viewModel(
             FakeGetInventoryItemUseCase(GetInventoryItemUseCase.Output.NotFound)
         )
 
@@ -56,7 +78,7 @@ class PantryItemDetailViewModelTest {
         val useCase = FakeGetInventoryItemUseCase(
             GetInventoryItemUseCase.Output.Success(sampleItem)
         )
-        val viewModel = PantryItemDetailViewModel(useCase)
+        val viewModel = viewModel(useCase)
 
         viewModel.load("i1")
 
@@ -68,7 +90,7 @@ class PantryItemDetailViewModelTest {
 
     @Test
     fun `load exposes NotFound when the item is missing`() = runTest {
-        val viewModel = PantryItemDetailViewModel(
+        val viewModel = viewModel(
             FakeGetInventoryItemUseCase(GetInventoryItemUseCase.Output.NotFound)
         )
 
@@ -79,7 +101,7 @@ class PantryItemDetailViewModelTest {
 
     @Test
     fun `load exposes Error when the lookup fails`() = runTest {
-        val viewModel = PantryItemDetailViewModel(
+        val viewModel = viewModel(
             FakeGetInventoryItemUseCase(
                 GetInventoryItemUseCase.Output.Failure(RuntimeException("boom"))
             )
@@ -88,5 +110,70 @@ class PantryItemDetailViewModelTest {
         viewModel.load("i1")
 
         assertTrue(viewModel.uiState.value is PantryItemDetailUiState.Error)
+    }
+
+    @Test
+    fun `changing the threshold updates state and persists it`() = runTest {
+        val update = FakeUpdateThresholdUseCase()
+        val viewModel = viewModel(
+            FakeGetInventoryItemUseCase(GetInventoryItemUseCase.Output.Success(sampleItem)),
+            update,
+        )
+        viewModel.load("i1")
+
+        viewModel.onLowStockThresholdChanged(3)
+
+        val state = viewModel.uiState.value as PantryItemDetailUiState.Success
+        assertEquals(3, state.item.lowStockThreshold)
+        assertEquals(UpdateInventoryLowStockThreshold("p1", 3), update.lastInput)
+    }
+
+    @Test
+    fun `clearing the threshold persists null`() = runTest {
+        val update = FakeUpdateThresholdUseCase()
+        val stocked = sampleItem.copy(lowStockThreshold = 3)
+        val viewModel = viewModel(
+            FakeGetInventoryItemUseCase(GetInventoryItemUseCase.Output.Success(stocked)),
+            update,
+        )
+        viewModel.load("i1")
+
+        viewModel.onLowStockThresholdChanged(null)
+
+        val state = viewModel.uiState.value as PantryItemDetailUiState.Success
+        assertNull(state.item.lowStockThreshold)
+        assertEquals(UpdateInventoryLowStockThreshold("p1", null), update.lastInput)
+    }
+
+    @Test
+    fun `an unchanged threshold is not persisted`() = runTest {
+        val update = FakeUpdateThresholdUseCase()
+        val stocked = sampleItem.copy(lowStockThreshold = 3)
+        val viewModel = viewModel(
+            FakeGetInventoryItemUseCase(GetInventoryItemUseCase.Output.Success(stocked)),
+            update,
+        )
+        viewModel.load("i1")
+
+        viewModel.onLowStockThresholdChanged(3)
+
+        assertNull(update.lastInput)
+    }
+
+    @Test
+    fun `a failed save reverts the threshold`() = runTest {
+        val update = FakeUpdateThresholdUseCase(
+            UpdateInventoryLowStockThresholdUseCase.Output.Failure(RuntimeException("boom")),
+        )
+        val viewModel = viewModel(
+            FakeGetInventoryItemUseCase(GetInventoryItemUseCase.Output.Success(sampleItem)),
+            update,
+        )
+        viewModel.load("i1")
+
+        viewModel.onLowStockThresholdChanged(5)
+
+        val state = viewModel.uiState.value as PantryItemDetailUiState.Success
+        assertNull(state.item.lowStockThreshold)
     }
 }

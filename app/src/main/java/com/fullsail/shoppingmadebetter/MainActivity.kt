@@ -61,7 +61,6 @@ import com.fullsail.shoppingmadebetter.navigation.NavigationViewModel
 import com.fullsail.shoppingmadebetter.navigation.TopLevelDestination
 import com.fullsail.shoppingmadebetter.ui.screens.CartScreen
 import com.fullsail.shoppingmadebetter.ui.screens.HistoryScreen
-import com.fullsail.shoppingmadebetter.ui.screens.MealsScreen
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -70,6 +69,15 @@ import com.fullsail.shoppingmadebetter.feature.profile.ui.ChangePasswordScreen
 import com.fullsail.shoppingmadebetter.feature.profile.ui.ProfileScreen
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListCartScreen
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListItemsScreen
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingUiState
+import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingViewModel
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.fullsail.shoppingmadebetter.feature.meals.ui.MealsScreen
+import com.fullsail.shoppingmadebetter.feature.meals.ui.MealsViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -164,6 +172,7 @@ fun ShoppingMadeBetterApp(
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -179,6 +188,7 @@ fun ShoppingMadeBetterApp(
         },
     ) {
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             if (showAppChrome) {
                 AppTopBar(
@@ -217,7 +227,7 @@ fun ShoppingMadeBetterApp(
             }
 
             composable<Dest.ShoppingListCartScreen>{
-                ShoppingListCartScreen( listId = it.toRoute<Dest.ShoppingListItemsScreen>().listId )
+                ShoppingListCartScreen( listId = it.toRoute<Dest.ShoppingListCartScreen>().listId )
             }
             composable<Dest.ShoppingListItemsScreen>{
                 ShoppingListItemsScreen( listId = it.toRoute<Dest.ShoppingListItemsScreen>().listId )
@@ -239,7 +249,7 @@ fun ShoppingMadeBetterApp(
             composable<Dest.SignUp> {
                 SignUpScreen(
                     onSignedUp = {
-                        // Bypass Mel's auto-login event and force onboarding for new accounts
+
                         navController.navigate(Dest.Onboarding) {
                             popUpTo(Dest.Login) { inclusive = true }
                             launchSingleTop = true
@@ -255,27 +265,58 @@ fun ShoppingMadeBetterApp(
             }
 
             composable<Dest.Onboarding> {
-                OnboardingScreen(
-                    isSubmitting = false,
-                    selectedDiets = emptySet(),
-                    selectedCategories = emptySet(),
-                    selectedGoal = "",
-                    onDietToggled = { _ -> },
-                    onCategoryToggled = { _ -> },
-                    onGoalSelected = {},
-                    onSubmit = {
-                        navController.navigate(Dest.ShoppingLists) {
-                            popUpTo(Dest.Onboarding::class) { inclusive = true }
+                val onboardingViewModel: OnboardingViewModel = hiltViewModel()
+                val uiState by onboardingViewModel.uiState.collectAsState()
+
+
+                val selectedDiets = rememberSaveable { mutableStateOf(emptySet<String>()) }
+                val selectedCategories = rememberSaveable { mutableStateOf(emptySet<String>()) }
+                val selectedGoal = rememberSaveable { mutableStateOf<String?>(null) }
+
+
+                LaunchedEffect(uiState) {
+                    when (val s = uiState) {
+                        is OnboardingUiState.Success -> {
+                            navController.navigate(Dest.ShoppingLists) {
+                                popUpTo(Dest.Onboarding::class) { inclusive = true }
+                            }
                         }
-                    },
-                    onNavigateBack = {
-                        navController.popBackStack()
+                        is OnboardingUiState.Error -> {
+                            snackbarHostState.showSnackbar(s.message)
+                        }
+                        else -> {}
                     }
+                }
+
+                OnboardingScreen(
+                    isSubmitting = uiState is OnboardingUiState.Submitting,
+                    selectedDiets = selectedDiets.value,
+                    selectedCategories = selectedCategories.value,
+                    selectedGoal = selectedGoal.value,
+                    onDietToggled = { diet ->
+                        val current = selectedDiets.value
+                        selectedDiets.value = if (current.contains(diet)) current - diet else current + diet
+                    },
+                    onCategoryToggled = { category ->
+                        val current = selectedCategories.value
+                        selectedCategories.value = if (current.contains(category)) current - category else current + category
+                    },
+                    onGoalSelected = { goal -> selectedGoal.value = goal },
+
+
+                    onSubmit = {
+                        onboardingViewModel.submitFinalPreferences(
+                            dietary = selectedDiets.value.toList(),
+                            categories = selectedCategories.value.toList(),
+                            goal = selectedGoal.value ?: ""
+                        )
+                    },
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 
             composable<Dest.Profile> {
-                // Tier 3 Fix: Clean import
+
                 ProfileScreen(
                     onNavigateToChangePassword = { navController.navigate(Dest.ChangePassword) },
                     onNavigateBack = { navController.popBackStack() },
@@ -301,8 +342,10 @@ fun ShoppingMadeBetterApp(
                 )
             }
             composable<Dest.History> { HistoryScreen() }
-            composable<Dest.Meals> { MealsScreen() }
-            // Dev-only example wired to the Supabase store use case (SCRUM-79).
+            composable<Dest.Meals> {
+                val mealsViewModel: MealsViewModel = hiltViewModel()
+                MealsScreen(viewModel = mealsViewModel)
+            }
             composable<Dest.Stores> { StoresScreen() }
         }
     }

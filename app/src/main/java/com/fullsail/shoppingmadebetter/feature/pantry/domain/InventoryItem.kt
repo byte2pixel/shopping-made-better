@@ -13,4 +13,5 @@ data class InventoryItem(
     val quantity: Int,
     val expiresInDays: Int?,
     val location: PantryLocation = PantryLocation.Pantry,
+    val lowStockThreshold: Int? = null,
 )

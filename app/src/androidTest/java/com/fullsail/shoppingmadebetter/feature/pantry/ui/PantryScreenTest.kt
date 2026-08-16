@@ -16,6 +16,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpi
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
@@ -118,6 +120,19 @@ class PantryScreenTest {
         }
     }
 
+    private class FakeUpdateInventoryLowStockThresholdUseCase(
+        var output: UpdateInventoryLowStockThresholdUseCase.Output =
+            UpdateInventoryLowStockThresholdUseCase.Output.Success,
+    ) : UpdateInventoryLowStockThresholdUseCase {
+        var lastInput: UpdateInventoryLowStockThreshold? = null
+        override suspend fun execute(
+            input: UpdateInventoryLowStockThreshold,
+        ): UpdateInventoryLowStockThresholdUseCase.Output {
+            lastInput = input
+            return output
+        }
+    }
+
     private val milk = InventoryItem(
         id = "i1",
         productId = "p1",
@@ -183,11 +198,13 @@ class PantryScreenTest {
         updateQuantity: UpdateInventoryQuantityUseCase = FakeUpdateInventoryQuantityUseCase(),
         updateLocation: UpdateInventoryLocationUseCase = FakeUpdateInventoryLocationUseCase(),
         updateExpiry: UpdateInventoryExpiryUseCase = FakeUpdateInventoryExpiryUseCase(),
+        updateThreshold: UpdateInventoryLowStockThresholdUseCase =
+            FakeUpdateInventoryLowStockThresholdUseCase(),
         onItemClick: (String) -> Unit = {},
     ) {
         val viewModel = PantryViewModel(
             inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, updateQuantity,
-            updateLocation, updateExpiry,
+            updateLocation, updateExpiry, updateThreshold,
         )
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
@@ -209,6 +226,29 @@ class PantryScreenTest {
                     R.plurals.pantry_card_quantity_desc, 2, 2,
                 )
             )
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun theExpiryChipStaysForItemsThatExpireFarOut() {
+        setScreen(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Success(listOf(milk.copy(expiresInDays = 30)))
+            )
+        )
+
+        // Well past the "expiring soon" threshold, but the chip is still there and
+        // still opens the editor, so a mistyped date can be corrected.
+        composeTestRule
+            .onNodeWithContentDescription(
+                composeTestRule.activity.resources.getQuantityString(
+                    R.plurals.pantry_detail_expires_in_days, 30, 30,
+                )
+            )
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_expiry_edit_label))
             .assertIsDisplayed()
     }
 
@@ -376,8 +416,9 @@ class PantryScreenTest {
         composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
         composeTestRule.onNodeWithText("Canned Beans").assertIsDisplayed()
 
-        // Turn the filter on: only the soon-to-expire item remains.
-        val expiringCard = expiringCardDescription(count = 3)
+        // Turn the filter on: only the soon-to-expire item remains. The card counts
+        // one item — the yogurt; the beans have no expiration date at all.
+        val expiringCard = expiringCardDescription(count = 1)
         composeTestRule.onNodeWithContentDescription(expiringCard).performClick()
         composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
         composeTestRule.onNodeWithText("Canned Beans").assertDoesNotExist()

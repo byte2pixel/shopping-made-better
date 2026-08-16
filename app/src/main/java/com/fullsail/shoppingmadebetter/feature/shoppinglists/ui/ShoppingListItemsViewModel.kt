@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetShoppingListItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListItems
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CompleteShoppingTripUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +23,8 @@ sealed interface ShoppingListItemsState {
 @HiltViewModel
 class ShoppingListItemsViewModel @Inject constructor(
     private val getShoppingListItemsUseCase: GetShoppingListItemsUseCase,
-    private val getDeleteItemsUseCase: DeleteItemsUseCase
+    private val getDeleteItemsUseCase: DeleteItemsUseCase,
+    private val completeShoppingTripUseCase: CompleteShoppingTripUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ShoppingListItemsState>(ShoppingListItemsState.Loading)
@@ -60,5 +62,17 @@ class ShoppingListItemsViewModel @Inject constructor(
             }
         }
 
+    }
+
+    fun markAllPurchased(listId : String) {
+        _uiState.value = ShoppingListItemsState.Loading
+        viewModelScope.launch {
+            when (completeShoppingTripUseCase.execute(listId)) {
+                is CompleteShoppingTripUseCase.Output.Success ->
+                    getItems(listId) // refresh the list since now it should be empty.
+                is CompleteShoppingTripUseCase.Output.Failure ->
+                    _uiState.value = ShoppingListItemsState.Error
+            }
+        }
     }
 }

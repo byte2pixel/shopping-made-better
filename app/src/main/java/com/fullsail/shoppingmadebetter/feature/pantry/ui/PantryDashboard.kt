@@ -35,6 +35,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
 /**
@@ -49,11 +50,21 @@ enum class PantryDashboardFilter(
     Expiring(R.drawable.ic_expiring, R.string.pantry_dashboard_expiring) {
         override val predicate: (InventoryItem) -> Boolean = { it.isExpiringSoon() }
     },
-    RunningLow(R.drawable.ic_running_low, R.string.pantry_dashboard_running_low),
-    Out(R.drawable.ic_out_of_stock, R.string.pantry_dashboard_out),
-    Freezer(R.drawable.ic_freezer, R.string.pantry_dashboard_freezer),
-    Fridge(R.drawable.ic_fridge, R.string.pantry_dashboard_fridge),
-    Pantry(R.drawable.ic_pantry, R.string.pantry_dashboard_pantry),
+    RunningLow(R.drawable.ic_running_low, R.string.pantry_dashboard_running_low) {
+        override val predicate: (InventoryItem) -> Boolean = { it.isLowStock() }
+    },
+    Out(R.drawable.ic_out_of_stock, R.string.pantry_dashboard_out) {
+        override val predicate: (InventoryItem) -> Boolean = { it.isOutOfStock() }
+    },
+    Freezer(R.drawable.ic_freezer, R.string.pantry_dashboard_freezer) {
+        override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Freezer }
+    },
+    Fridge(R.drawable.ic_fridge, R.string.pantry_dashboard_fridge) {
+        override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Fridge }
+    },
+    Pantry(R.drawable.ic_pantry, R.string.pantry_dashboard_pantry) {
+        override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Pantry }
+    },
     ;
 
     /**
@@ -166,28 +177,13 @@ private fun DashboardCard(
 }
 
 /**
- * Stand-in counts for cards whose filter has no [PantryDashboardFilter.predicate]
- * yet. Wired filters compute real counts from the inventory instead; drop a
- * filter's entry here once its predicate lands.
- */
-private val placeholderCounts: Map<PantryDashboardFilter, Int> = mapOf(
-    PantryDashboardFilter.RunningLow to 5,
-    PantryDashboardFilter.Out to 2,
-    PantryDashboardFilter.Freezer to 8,
-    PantryDashboardFilter.Fridge to 12,
-    PantryDashboardFilter.Pantry to 24,
-)
-
-/**
- * Builds the dashboard cards for [items]. A card whose filter is wired up shows
- * the real count of matching items; the rest fall back to [placeholderCounts]
- * until their predicates land.
+ * Builds the dashboard cards for [items]. Each card shows the real count of items
+ * matching its filter's [PantryDashboardFilter.predicate]; a filter still awaiting
+ * a predicate shows 0.
  */
 internal fun pantryDashboardCards(items: List<InventoryItem>): List<PantryDashboardCard> =
     PantryDashboardFilter.entries.map { filter ->
-        val count = filter.predicate?.let { predicate -> items.count(predicate) }
-            ?: placeholderCounts[filter]
-            ?: 0
+        val count = filter.predicate?.let { predicate -> items.count(predicate) } ?: 0
         PantryDashboardCard(filter, count)
     }
 
