@@ -35,6 +35,7 @@ fun MealsScreen(
         onFilterSelected = viewModel::onFilterSelected,
         onSelectMeal = viewModel::selectMealPlan,
         onQuickAddIngredient = { id, name -> viewModel.quickAddIngredient(id, name) },
+        onAddMealToList = viewModel::addMealToList,
         onRetry = viewModel::loadMeals,
         modifier = modifier
     )
@@ -46,8 +47,8 @@ private fun MealsContent(
     onSearchQueryChanged: (String) -> Unit,
     onFilterSelected: (String) -> Unit,
     onSelectMeal: (String) -> Unit,
-    // Updated signature here
     onQuickAddIngredient: (String, String) -> Unit,
+    onAddMealToList: (String) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -118,7 +119,8 @@ private fun MealsContent(
                                     meal = meal,
                                     isSelected = meal.id == uiState.selectedMealId,
                                     onDetailsClick = { onSelectMeal(meal.id) },
-                                    onQuickAddIngredient = onQuickAddIngredient
+                                    onQuickAddIngredient = onQuickAddIngredient,
+                                    onAddMealToList = onAddMealToList
                                 )
                             }
                         }
@@ -129,7 +131,6 @@ private fun MealsContent(
     }
 }
 
-// ... [EmptyMealsState, ErrorMealsState, MetricsBanner, MetricCard, FilterChipsRow remain unchanged] ...
 @Composable
 private fun EmptyMealsState(
     searchQuery: String,
@@ -295,8 +296,8 @@ private fun MealRecipeCard(
     meal: Meal,
     isSelected: Boolean,
     onDetailsClick: () -> Unit,
-    // Updated signature here
-    onQuickAddIngredient: (String, String) -> Unit
+    onQuickAddIngredient: (String, String) -> Unit,
+    onAddMealToList: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -325,7 +326,7 @@ private fun MealRecipeCard(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-                IconButton(onClick = { /* Options */ }) {
+                IconButton(onClick = {}) {
                     Icon(
                         painter = painterResource(R.drawable.ic_arrow_back),
                         contentDescription = "More"
@@ -368,7 +369,6 @@ private fun MealRecipeCard(
                             style = MaterialTheme.typography.bodyMedium
                         )
                         OutlinedButton(
-                            // We now pass both the ID and the Name!
                             onClick = { onQuickAddIngredient(ingredient.id, ingredient.name) },
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp)
                         ) {
@@ -383,7 +383,7 @@ private fun MealRecipeCard(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedButton(onClick = { /* Add to List */ }) {
+                OutlinedButton(onClick = { onAddMealToList(meal.id) }) {
                     Text("Add to List")
                 }
                 Spacer(modifier = Modifier.width(8.dp))
@@ -420,6 +420,7 @@ private fun MealsScreenPreview() {
             onFilterSelected = {},
             onSelectMeal = {},
             onQuickAddIngredient = { _, _ -> },
+            onAddMealToList = {},
             onRetry = {}
         )
     }
