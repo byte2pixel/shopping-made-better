@@ -67,6 +67,7 @@ import kotlinx.coroutines.launch
 import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingScreen
 import com.fullsail.shoppingmadebetter.feature.profile.ui.ChangePasswordScreen
 import com.fullsail.shoppingmadebetter.feature.profile.ui.ProfileScreen
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListCartScreen
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListItemsScreen
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -223,6 +224,10 @@ fun ShoppingMadeBetterApp(
                 ShoppingListsScreen(onItemComparison = {
                     navController.navigate(it)
                 })
+            }
+
+            composable<Dest.ShoppingListCartScreen>{
+                ShoppingListCartScreen( listId = it.toRoute<Dest.ShoppingListCartScreen>().listId )
             }
             composable<Dest.ShoppingListItemsScreen>{
                 ShoppingListItemsScreen( listId = it.toRoute<Dest.ShoppingListItemsScreen>().listId )
