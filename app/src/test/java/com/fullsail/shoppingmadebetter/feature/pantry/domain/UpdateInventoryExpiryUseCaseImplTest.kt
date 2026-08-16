@@ -36,6 +36,8 @@ class UpdateInventoryExpiryUseCaseImplTest {
             lastId = id
             lastExpiresAt = expiresAt
         }
+
+        override suspend fun updateLowStockThreshold(id: String, threshold: Int?) = Unit
     }
 
     private val fixedClock = object : Clock {

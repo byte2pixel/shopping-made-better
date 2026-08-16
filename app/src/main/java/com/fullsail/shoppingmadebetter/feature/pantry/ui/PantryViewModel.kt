@@ -12,6 +12,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpi
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
@@ -86,6 +88,7 @@ class PantryViewModel @Inject constructor(
     private val updateInventoryQuantityUseCase: UpdateInventoryQuantityUseCase,
     private val updateInventoryLocationUseCase: UpdateInventoryLocationUseCase,
     private val updateInventoryExpiryUseCase: UpdateInventoryExpiryUseCase,
+    private val updateInventoryLowStockThresholdUseCase: UpdateInventoryLowStockThresholdUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PantryUiState>(PantryUiState.Loading)
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
@@ -294,6 +297,26 @@ class PantryViewModel @Inject constructor(
     }
 
     /**
+     * Optimistically sets the low-stock [newThreshold] (`null` clears it) for [item]'s product,
+     * persists it, and reverts with a snackbar if the save fails. The threshold is per-product,
+     * so every pantry entry of the same product updates together. No-op when unchanged.
+     */
+    fun onLowStockThresholdChanged(item: InventoryItem, newThreshold: Int?) {
+        if (newThreshold == item.lowStockThreshold) return
+        val previous = item.lowStockThreshold
+        updateItemsByProductId(item.productId) { it.copy(lowStockThreshold = newThreshold) }
+        viewModelScope.launch {
+            val out = updateInventoryLowStockThresholdUseCase.execute(
+                UpdateInventoryLowStockThreshold(item.productId, newThreshold),
+            )
+            if (out is UpdateInventoryLowStockThresholdUseCase.Output.Failure) {
+                updateItemsByProductId(item.productId) { it.copy(lowStockThreshold = previous) }
+                _events.send(PantryEvent.UpdateFailed(item.name))
+            }
+        }
+    }
+
+    /**
      * Drops [itemId] from the current success list in place.
      */
     private fun removeItemFromState(itemId: String) {
@@ -315,6 +338,25 @@ class PantryViewModel @Inject constructor(
             _uiState.value = current.copy(
                 inventoryItems = current.inventoryItems.map { item ->
                     if (item.id == itemId) transform(item) else item
+                },
+            )
+        }
+    }
+
+    /**
+     * Applies [transform] to every item in the current success list sharing [productId],
+     * leaving others untouched. Used for per-product settings (the low-stock threshold), which
+     * apply to all pantry entries of a product at once. No-ops unless the state is Success.
+     */
+    private fun updateItemsByProductId(
+        productId: String,
+        transform: (InventoryItem) -> InventoryItem,
+    ) {
+        val current = _uiState.value
+        if (current is PantryUiState.Success) {
+            _uiState.value = current.copy(
+                inventoryItems = current.inventoryItems.map { item ->
+                    if (item.productId == productId) transform(item) else item
                 },
             )
         }

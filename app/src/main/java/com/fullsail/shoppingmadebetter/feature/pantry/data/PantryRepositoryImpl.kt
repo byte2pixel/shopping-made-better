@@ -44,4 +44,20 @@ class PantryRepositoryImpl @Inject constructor(
         }
         Unit
     }
+
+    override suspend fun updateLowStockThreshold(productId: String, threshold: Int?) =
+        withContext(Dispatchers.IO) {
+            if (threshold == null) {
+                postgrest.from("user_product_stock_settings").delete {
+                    filter { eq("product_id", productId) }
+                }
+            } else {
+                postgrest.from("user_product_stock_settings").upsert(
+                    ProductStockSettingDto(productId = productId, lowStockThreshold = threshold),
+                ) {
+                    onConflict = "user_id,product_id"
+                }
+            }
+            Unit
+        }
 }

@@ -16,6 +16,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpi
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
@@ -118,6 +120,19 @@ class PantryScreenTest {
         }
     }
 
+    private class FakeUpdateInventoryLowStockThresholdUseCase(
+        var output: UpdateInventoryLowStockThresholdUseCase.Output =
+            UpdateInventoryLowStockThresholdUseCase.Output.Success,
+    ) : UpdateInventoryLowStockThresholdUseCase {
+        var lastInput: UpdateInventoryLowStockThreshold? = null
+        override suspend fun execute(
+            input: UpdateInventoryLowStockThreshold,
+        ): UpdateInventoryLowStockThresholdUseCase.Output {
+            lastInput = input
+            return output
+        }
+    }
+
     private val milk = InventoryItem(
         id = "i1",
         productId = "p1",
@@ -183,11 +198,13 @@ class PantryScreenTest {
         updateQuantity: UpdateInventoryQuantityUseCase = FakeUpdateInventoryQuantityUseCase(),
         updateLocation: UpdateInventoryLocationUseCase = FakeUpdateInventoryLocationUseCase(),
         updateExpiry: UpdateInventoryExpiryUseCase = FakeUpdateInventoryExpiryUseCase(),
+        updateThreshold: UpdateInventoryLowStockThresholdUseCase =
+            FakeUpdateInventoryLowStockThresholdUseCase(),
         onItemClick: (String) -> Unit = {},
     ) {
         val viewModel = PantryViewModel(
             inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, updateQuantity,
-            updateLocation, updateExpiry,
+            updateLocation, updateExpiry, updateThreshold,
         )
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {

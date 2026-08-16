@@ -15,4 +15,5 @@ data class InventoryItemDto(
     val imageUrl: String,
     val expiryDate: LocalDate?,
     val location: String = "pantry",
+    val lowStockThreshold: Int? = null,
 )

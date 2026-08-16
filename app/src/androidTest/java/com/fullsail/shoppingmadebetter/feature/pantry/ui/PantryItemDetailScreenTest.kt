@@ -10,6 +10,8 @@ import androidx.compose.ui.test.performClick
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
@@ -38,6 +40,14 @@ class PantryItemDetailScreenTest {
         }
     }
 
+    /** No-op threshold-update use case; the detail screen tests don't exercise saves. */
+    private class FakeUpdateThresholdUseCase : UpdateInventoryLowStockThresholdUseCase {
+        override suspend fun execute(
+            input: UpdateInventoryLowStockThreshold,
+        ): UpdateInventoryLowStockThresholdUseCase.Output =
+            UpdateInventoryLowStockThresholdUseCase.Output.Success
+    }
+
     private val milk = InventoryItem(
         id = "i1",
         productId = "p1",
@@ -59,7 +69,7 @@ class PantryItemDetailScreenTest {
 
     /** Renders the screen wired to [useCase], inside the app theme. */
     private fun setScreen(useCase: GetInventoryItemUseCase) {
-        val viewModel = PantryItemDetailViewModel(useCase)
+        val viewModel = PantryItemDetailViewModel(useCase, FakeUpdateThresholdUseCase())
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
                 PantryItemDetailScreen(

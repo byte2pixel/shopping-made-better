@@ -174,6 +174,7 @@ fun PantryScreen(
             onQuantityChange = viewModel::onQuantityChanged,
             onLocationChange = viewModel::onLocationChanged,
             onExpiryChange = viewModel::onExpiryChanged,
+            onLowStockThresholdChange = viewModel::onLowStockThresholdChanged,
         )
         SnackbarHost(
             hostState = snackbarHostState,
@@ -208,6 +209,7 @@ private fun PantryContent(
     onQuantityChange: (InventoryItem, Int) -> Unit,
     onLocationChange: (InventoryItem, PantryLocation) -> Unit,
     onExpiryChange: (InventoryItem, Int) -> Unit,
+    onLowStockThresholdChange: (InventoryItem, Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -273,6 +275,9 @@ private fun PantryContent(
                                 },
                                 onExpiryChange = { newDays ->
                                     onExpiryChange(inventoryItem, newDays)
+                                },
+                                onLowStockThresholdChange = { newThreshold ->
+                                    onLowStockThresholdChange(inventoryItem, newThreshold)
                                 },
                             )
                         }
