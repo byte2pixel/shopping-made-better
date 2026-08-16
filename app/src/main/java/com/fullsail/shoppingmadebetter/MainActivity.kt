@@ -263,12 +263,12 @@ fun ShoppingMadeBetterApp(
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel()
                 val uiState by onboardingViewModel.uiState.collectAsState()
 
-                // Mel's Fix: rememberSaveable and nullable selectedGoal
+
                 val selectedDiets = rememberSaveable { mutableStateOf(emptySet<String>()) }
                 val selectedCategories = rememberSaveable { mutableStateOf(emptySet<String>()) }
                 val selectedGoal = rememberSaveable { mutableStateOf<String?>(null) }
 
-                // Mel's Fix: Handle Error state with Snackbar
+
                 LaunchedEffect(uiState) {
                     when (val s = uiState) {
                         is OnboardingUiState.Success -> {
@@ -298,7 +298,7 @@ fun ShoppingMadeBetterApp(
                     },
                     onGoalSelected = { goal -> selectedGoal.value = goal },
 
-                    // Mel's Fix: Fallback to empty string for the nullable goal
+
                     onSubmit = {
                         onboardingViewModel.submitFinalPreferences(
                             dietary = selectedDiets.value.toList(),
@@ -311,7 +311,7 @@ fun ShoppingMadeBetterApp(
             }
 
             composable<Dest.Profile> {
-                // Tier 3 Fix: Clean import
+
                 ProfileScreen(
                     onNavigateToChangePassword = { navController.navigate(Dest.ChangePassword) },
                     onNavigateBack = { navController.popBackStack() },

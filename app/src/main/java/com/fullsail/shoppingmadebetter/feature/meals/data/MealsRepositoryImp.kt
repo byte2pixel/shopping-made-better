@@ -29,14 +29,12 @@ class MealsRepositoryImpl @Inject constructor(
                 .select()
                 .decodeList<DbMeal>()
 
-
             val pantryItems = try {
                 pantryRepository.getInventoryItems()
             } catch (e: Exception) {
                 emptyList()
             }
             val pantryProductIds = pantryItems.mapNotNull { it.productId }.toSet()
-
 
             dbMeals.map { dbMeal ->
                 val ingredients = fetchIngredientsForMeal(dbMeal.id)
@@ -108,12 +106,24 @@ class MealsRepositoryImpl @Inject constructor(
 
             if (mealIngredients.isNotEmpty()) {
                 val shoppingListItems = mealIngredients.map { ingredient ->
+
+
+                    val safeQuantity: Double = ingredient.quantity ?: 1.0
+                    val safeUnit: String = ingredient.unit ?: ""
+
+
+                    val displayTitle = if (safeUnit.isNotBlank()) {
+                        "$safeQuantity $safeUnit of ${ingredient.ingredientName}"
+                    } else {
+                        ingredient.ingredientName
+                    }
+
                     ShoppingListItemsDto(
                         id = UUID.randomUUID().toString(),
                         shoppingListId = activeListId,
                         productId = ingredient.productId ?: UUID.randomUUID().toString(),
-                        quantity = ingredient.quantity.toInt(),
-                        title = ingredient.ingredientName
+                        quantity = if (safeQuantity < 1.0) 1 else safeQuantity.toInt(),
+                        title = displayTitle
                     )
                 }
 
