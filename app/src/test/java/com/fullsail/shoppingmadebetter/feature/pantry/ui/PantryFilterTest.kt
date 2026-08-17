@@ -153,6 +153,64 @@ class PantryFilterTest {
         assertEquals(listOf(pantryB), result)
     }
 
+    @Test
+    fun `freezer and fridge OR-join to the union of both locations`() {
+        val result = applyPantryFilters(
+            locatedItems,
+            setOf(PantryDashboardFilter.Freezer, PantryDashboardFilter.Fridge),
+        )
+
+        // Locations are mutually exclusive, so combining them widens rather than
+        // empties the result. Order follows the input list, pantry items dropped.
+        assertEquals(listOf(freezerA, fridge, freezerB, fridgeB), result)
+    }
+
+    @Test
+    fun `selecting all three locations returns every located item`() {
+        val result = applyPantryFilters(
+            locatedItems,
+            setOf(
+                PantryDashboardFilter.Freezer,
+                PantryDashboardFilter.Fridge,
+                PantryDashboardFilter.Pantry,
+            ),
+        )
+
+        // The union of every location covers the whole list, order preserved.
+        assertEquals(locatedItems, result)
+    }
+
+    @Test
+    fun `expiring ANDs against the OR-joined cold-storage locations`() {
+        // Cross-category composition: the location group (Fridge OR Freezer) is
+        // intersected with Expiring, yielding cold items that are also expiring soon.
+        val result = applyPantryFilters(
+            locatedItems,
+            setOf(
+                PantryDashboardFilter.Expiring,
+                PantryDashboardFilter.Fridge,
+                PantryDashboardFilter.Freezer,
+            ),
+        )
+
+        // fridge (3 days) is cold and expiring soon; freezerA/freezerB/fridgeB are
+        // cold but not expiring soon; pantryB is expiring but not cold.
+        assertEquals(listOf(fridge), result)
+
+        // A freezer item that is also expiring soon joins the fridge item in the union.
+        val expiringFreezerItem =
+            item("freezerExpiring", expiresInDays = 1, location = PantryLocation.Freezer)
+        val withExpiring = applyPantryFilters(
+            locatedItems + expiringFreezerItem,
+            setOf(
+                PantryDashboardFilter.Expiring,
+                PantryDashboardFilter.Fridge,
+                PantryDashboardFilter.Freezer,
+            ),
+        )
+        assertEquals(listOf(fridge, expiringFreezerItem), withExpiring)
+    }
+
     // Low stock is opt-in per item: an item counts as low only when it has a
     // lowStockThreshold set and its quantity is between 1 and that threshold.
     private val low = item("low", expiresInDays = null, quantity = 2, lowStockThreshold = 3)

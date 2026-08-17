@@ -66,20 +66,31 @@ private val filterSetSaver = listSaver<Set<PantryDashboardFilter>, String>(
 internal const val EXPIRING_SOON_DAYS = 5
 
 /**
- * Narrows [items] to those matching every active, wired-up dashboard filter in
+ * Narrows [items] to those matching the active, wired-up dashboard filters in
  * [filters]. Filters without a [PantryDashboardFilter.predicate] yet are ignored;
- * when no active filter has a predicate, [items] is returned unchanged. Multiple
- * wired filters compose as an intersection — an item must match them all.
+ * when no active filter has a predicate, [items] is returned unchanged.
+ *
+ * Location filters ([PantryDashboardFilter.isLocationFilter]) OR-join within their
+ * group, so selecting Fridge + Freezer widens the result to the union rather than emptying it.
+ * Every other group ANDs: the location group as a whole is intersected with the remaining predicates
  */
 internal fun applyPantryFilters(
     items: List<InventoryItem>,
     filters: Set<PantryDashboardFilter>,
 ): List<InventoryItem> {
-    val predicates = filters.mapNotNull { it.predicate }
-    return if (predicates.isEmpty()) {
-        items
-    } else {
-        items.filter { item -> predicates.all { predicate -> predicate(item) } }
+    val (locationFilters, otherFilters) =
+        filters.filter { it.predicate != null }.partition { it.isLocationFilter }
+
+    val locationPredicates = locationFilters.mapNotNull { it.predicate }
+    val otherPredicates = otherFilters.mapNotNull { it.predicate }
+
+    if (locationPredicates.isEmpty() && otherPredicates.isEmpty()) return items
+
+    return items.filter { item ->
+        val matchesLocation =
+            locationPredicates.isEmpty() || locationPredicates.any { predicate -> predicate(item) }
+        val matchesOthers = otherPredicates.all { predicate -> predicate(item) }
+        matchesLocation && matchesOthers
     }
 }
 
