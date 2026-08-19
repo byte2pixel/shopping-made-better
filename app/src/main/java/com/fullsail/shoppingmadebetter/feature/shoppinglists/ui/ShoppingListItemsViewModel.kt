@@ -30,8 +30,25 @@ class ShoppingListItemsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<ShoppingListItemsState>(ShoppingListItemsState.Loading)
     val uiState: StateFlow<ShoppingListItemsState> = _uiState.asStateFlow()
 
-    init { }
+    private val _checkedItems = MutableStateFlow<List<String>>(emptyList())
+    val checkedItems: StateFlow<List<String>> = _checkedItems.asStateFlow()
 
+
+    init { }
+    fun toggleItemCheck(itemId: String) {
+        val current = _checkedItems.value.toMutableList()
+        if (itemId in current) {
+            current.remove(itemId)
+        } else {
+            current.add(itemId)
+        }
+        _checkedItems.value = current
+    }
+
+    fun clearCheckedItems(listId: String) {
+        _checkedItems.value.forEach { deleteItems(it, listId) }
+        _checkedItems.value = emptyList()
+    }
     fun getItems(input : String)  {
         _uiState.value = ShoppingListItemsState.Loading
         viewModelScope.launch {

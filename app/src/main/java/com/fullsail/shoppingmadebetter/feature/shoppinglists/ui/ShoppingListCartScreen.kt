@@ -19,7 +19,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,7 +37,7 @@ fun ShoppingListCartScreen(
 ) {
 
     val uiState by viewModel.uiState.collectAsState()
-    var checkedItems = remember { mutableStateListOf<String>()}
+    val checkedItems by viewModel.checkedItems.collectAsState()
 
 
     Box() {
@@ -60,9 +59,9 @@ fun ShoppingListCartScreen(
                     ) {
 
                         items(state.items, key = { it.id }) { CartRow(it,viewModel, onItemCrossed = {
-                            checkedItems.add(it.id)
+                            viewModel.toggleItemCheck(it.id)
                         }, onItemUncrossed = {
-                            checkedItems.remove(it.id)
+                            viewModel.toggleItemCheck(it.id)
                         }) }
                     }
                 }
@@ -72,7 +71,7 @@ fun ShoppingListCartScreen(
         }
         FloatingActionButton(onClick = {
             checkedItems.forEach { viewModel.deleteItems(it, listId) }
-            checkedItems.clear()
+            viewModel.clearCheckedItems(listId)
 
         }, Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding( 20.dp)) { Text("Complete List")}
     }
