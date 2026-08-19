@@ -20,6 +20,7 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowS
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.groupInventoryByProduct
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
@@ -29,6 +30,10 @@ import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+
+/** A successful inventory fetch of [items], grouped the way the real use case returns it. */
+private fun inventoryOf(vararg items: InventoryItem) =
+    GetInventoryUseCase.Output.Success(groupInventoryByProduct(items.toList()))
 
 /**
  * Compose UI tests for [PantryScreen] — the inventory list, its row/cart
@@ -40,7 +45,7 @@ class PantryScreenTest {
     val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
     private class FakeGetInventoryUseCase(
-        var output: GetInventoryUseCase.Output = GetInventoryUseCase.Output.Success(emptyList()),
+        var output: GetInventoryUseCase.Output = inventoryOf(),
     ) : GetInventoryUseCase {
         override suspend fun execute(input: Unit) = output
     }
@@ -184,9 +189,7 @@ class PantryScreenTest {
 
     /** Builds the screen; callers can pre-configure the fakes and observe [onItemClick]. */
     private fun setScreen(
-        inventory: GetInventoryUseCase = FakeGetInventoryUseCase(
-            GetInventoryUseCase.Output.Success(listOf(milk))
-        ),
+        inventory: GetInventoryUseCase = FakeGetInventoryUseCase(inventoryOf(milk)),
         trips: GetShoppingTripsUseCase = FakeGetShoppingTripsUseCase(
             GetShoppingTripsUseCase.Output.Success(listOf(weeklyTrip))
         ),
@@ -232,9 +235,7 @@ class PantryScreenTest {
     @Test
     fun theExpiryChipStaysForItemsThatExpireFarOut() {
         setScreen(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(milk.copy(expiresInDays = 30)))
-            )
+            inventory = FakeGetInventoryUseCase(inventoryOf(milk.copy(expiresInDays = 30)))
         )
 
         // Well past the "expiring soon" threshold, but the chip is still there and
@@ -408,9 +409,7 @@ class PantryScreenTest {
     @Test
     fun tappingTheExpiringCardTogglesTheFilter() {
         setScreen(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(expiringYogurt, cannedBeans))
-            )
+            inventory = FakeGetInventoryUseCase(inventoryOf(expiringYogurt, cannedBeans))
         )
         // Both items show before any filter is applied.
         composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
