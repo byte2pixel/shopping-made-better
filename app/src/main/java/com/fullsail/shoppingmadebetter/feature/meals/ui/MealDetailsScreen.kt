@@ -17,6 +17,8 @@ import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 @Composable
 fun MealDetailsScreen(
     mealId: String,
+    matchPercentage: Int,
+    categoryName: String,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -26,7 +28,6 @@ fun MealDetailsScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -36,6 +37,34 @@ fun MealDetailsScreen(
             contentAlignment = Alignment.Center
         ) {
             Text(text = "Recipe Image Placeholder", color = Color.DarkGray)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "$matchPercentage% Match",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color(0xFF2E5A44),
+                fontWeight = FontWeight.Bold
+            )
+
+            Surface(
+                color = Color(0xFFE8F5E9),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text(
+                    text = categoryName,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xFF2E5A44),
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -61,6 +90,8 @@ private fun MealDetailsScreenPreview() {
     ShoppingMadeBetterTheme {
         MealDetailsScreen(
             mealId = "12345",
+            matchPercentage = 85,
+            categoryName = "Almost There",
             onNavigateBack = {}
         )
     }
