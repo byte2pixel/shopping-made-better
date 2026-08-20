@@ -17,7 +17,7 @@ class GetInventoryUseCaseImpl @Inject constructor(
     override suspend fun execute(input: Unit): GetInventoryUseCase.Output = try {
         val today = clock.todayIn(TimeZone.currentSystemDefault())
         val inventoryItems = pantryRepository.getInventoryItems().map { it.toDomain(today) }
-        GetInventoryUseCase.Output.Success(inventoryItems)
+        GetInventoryUseCase.Output.Success(groupInventoryByProduct(inventoryItems))
     } catch (e: Exception) {
         Log.e(TAG, "Failed to fetch inventory items: ${e.message}", e)
         GetInventoryUseCase.Output.Failure(e)

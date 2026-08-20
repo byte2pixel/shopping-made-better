@@ -14,6 +14,7 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowS
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.groupInventoryByProduct
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
@@ -30,6 +31,10 @@ import org.junit.Rule
 import org.junit.Test
 import java.io.IOException
 
+/** A successful inventory fetch of [items], grouped the way the real use case returns it. */
+private fun inventoryOf(vararg items: InventoryItem) =
+    GetInventoryUseCase.Output.Success(groupInventoryByProduct(items.toList()))
+
 /**
  * Unit tests for [PantryViewModel]. Each collaborator is a hand-written fake, and
  * [MainDispatcherRule] backs `viewModelScope` with an unconfined test dispatcher
@@ -43,7 +48,7 @@ class PantryViewModelTest {
 
     /** Fake inventory use case: returns a settable [output]. */
     private class FakeGetInventoryUseCase(
-        var output: GetInventoryUseCase.Output = GetInventoryUseCase.Output.Success(emptyList()),
+        var output: GetInventoryUseCase.Output = inventoryOf(),
     ) : GetInventoryUseCase {
         override suspend fun execute(input: Unit): GetInventoryUseCase.Output = output
     }
@@ -199,9 +204,7 @@ class PantryViewModelTest {
     @Test
     fun `initial load exposes Success with the inventory items`() = runTest {
         val viewModel = buildViewModel(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(sampleItem))
-            )
+            inventory = FakeGetInventoryUseCase(inventoryOf(sampleItem))
         )
 
         val state = viewModel.uiState.value
@@ -222,11 +225,11 @@ class PantryViewModelTest {
 
     @Test
     fun `loadInventory refreshes the state on demand`() = runTest {
-        val inventory = FakeGetInventoryUseCase(GetInventoryUseCase.Output.Success(emptyList()))
+        val inventory = FakeGetInventoryUseCase(inventoryOf())
         val viewModel = buildViewModel(inventory = inventory)
         assertEquals(emptyList<InventoryItem>(), (viewModel.uiState.value as PantryUiState.Success).inventoryItems)
 
-        inventory.output = GetInventoryUseCase.Output.Success(listOf(sampleItem))
+        inventory.output = inventoryOf(sampleItem)
         viewModel.loadInventory()
 
         val state = viewModel.uiState.value
@@ -420,9 +423,7 @@ class PantryViewModelTest {
     fun `confirmRemove drops the item from the list in place without a loading flash`() = runTest {
         val otherItem = sampleItem.copy(id = "i2", productId = "p2", name = "Bread")
         val viewModel = buildViewModel(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(sampleItem, otherItem))
-            ),
+            inventory = FakeGetInventoryUseCase(inventoryOf(sampleItem, otherItem)),
             deleteInventory = FakeDeleteInventoryItemUseCase(DeleteInventoryItemUseCase.Output.Success),
         )
         viewModel.onRemoveClicked(sampleItem)
@@ -534,9 +535,7 @@ class PantryViewModelTest {
     fun `onQuantityChanged updates the item in place and persists the new quantity`() = runTest {
         val update = FakeUpdateInventoryQuantityUseCase()
         val viewModel = buildViewModel(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(sampleItem))
-            ),
+            inventory = FakeGetInventoryUseCase(inventoryOf(sampleItem)),
             updateQuantity = update,
         )
 
@@ -554,9 +553,7 @@ class PantryViewModelTest {
             UpdateInventoryQuantityUseCase.Output.Failure(IOException("boom"))
         )
         val viewModel = buildViewModel(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(sampleItem))
-            ),
+            inventory = FakeGetInventoryUseCase(inventoryOf(sampleItem)),
             updateQuantity = update,
         )
 
@@ -574,9 +571,7 @@ class PantryViewModelTest {
     fun `onQuantityChanged does nothing when the quantity is unchanged`() = runTest {
         val update = FakeUpdateInventoryQuantityUseCase()
         val viewModel = buildViewModel(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(sampleItem))
-            ),
+            inventory = FakeGetInventoryUseCase(inventoryOf(sampleItem)),
             updateQuantity = update,
         )
 
@@ -589,9 +584,7 @@ class PantryViewModelTest {
     fun `onLowStockThresholdChanged updates the item in place and persists the threshold`() = runTest {
         val update = FakeUpdateInventoryLowStockThresholdUseCase()
         val viewModel = buildViewModel(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(sampleItem))
-            ),
+            inventory = FakeGetInventoryUseCase(inventoryOf(sampleItem)),
             updateThreshold = update,
         )
 
@@ -609,9 +602,7 @@ class PantryViewModelTest {
         val entryA = sampleItem.copy(id = "a")
         val entryB = sampleItem.copy(id = "b")
         val viewModel = buildViewModel(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(entryA, entryB))
-            ),
+            inventory = FakeGetInventoryUseCase(inventoryOf(entryA, entryB)),
         )
 
         viewModel.onLowStockThresholdChanged(entryA, newThreshold = 4)
@@ -626,9 +617,7 @@ class PantryViewModelTest {
             UpdateInventoryLowStockThresholdUseCase.Output.Failure(IOException("boom"))
         )
         val viewModel = buildViewModel(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(sampleItem))
-            ),
+            inventory = FakeGetInventoryUseCase(inventoryOf(sampleItem)),
             updateThreshold = update,
         )
 
@@ -644,9 +633,7 @@ class PantryViewModelTest {
     fun `onLowStockThresholdChanged does nothing when the threshold is unchanged`() = runTest {
         val update = FakeUpdateInventoryLowStockThresholdUseCase()
         val viewModel = buildViewModel(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(sampleItem))
-            ),
+            inventory = FakeGetInventoryUseCase(inventoryOf(sampleItem)),
             updateThreshold = update,
         )
 
@@ -660,9 +647,7 @@ class PantryViewModelTest {
         val update = FakeUpdateInventoryLocationUseCase()
         val fridgeItem = sampleItem.copy(location = PantryLocation.Fridge)
         val viewModel = buildViewModel(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(fridgeItem))
-            ),
+            inventory = FakeGetInventoryUseCase(inventoryOf(fridgeItem)),
             updateLocation = update,
         )
 
@@ -683,9 +668,7 @@ class PantryViewModelTest {
         )
         val fridgeItem = sampleItem.copy(location = PantryLocation.Fridge)
         val viewModel = buildViewModel(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(fridgeItem))
-            ),
+            inventory = FakeGetInventoryUseCase(inventoryOf(fridgeItem)),
             updateLocation = update,
         )
 
@@ -703,9 +686,7 @@ class PantryViewModelTest {
         val update = FakeUpdateInventoryLocationUseCase()
         val fridgeItem = sampleItem.copy(location = PantryLocation.Fridge)
         val viewModel = buildViewModel(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(fridgeItem))
-            ),
+            inventory = FakeGetInventoryUseCase(inventoryOf(fridgeItem)),
             updateLocation = update,
         )
 
@@ -719,9 +700,7 @@ class PantryViewModelTest {
         val update = FakeUpdateInventoryExpiryUseCase()
         val soonItem = sampleItem.copy(expiresInDays = 4)
         val viewModel = buildViewModel(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(soonItem))
-            ),
+            inventory = FakeGetInventoryUseCase(inventoryOf(soonItem)),
             updateExpiry = update,
         )
 
@@ -739,9 +718,7 @@ class PantryViewModelTest {
         )
         val soonItem = sampleItem.copy(expiresInDays = 4)
         val viewModel = buildViewModel(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(soonItem))
-            ),
+            inventory = FakeGetInventoryUseCase(inventoryOf(soonItem)),
             updateExpiry = update,
         )
 
@@ -759,9 +736,7 @@ class PantryViewModelTest {
         val update = FakeUpdateInventoryExpiryUseCase()
         val soonItem = sampleItem.copy(expiresInDays = 4)
         val viewModel = buildViewModel(
-            inventory = FakeGetInventoryUseCase(
-                GetInventoryUseCase.Output.Success(listOf(soonItem))
-            ),
+            inventory = FakeGetInventoryUseCase(inventoryOf(soonItem)),
             updateExpiry = update,
         )
 

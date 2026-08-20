@@ -119,7 +119,9 @@ class PantryViewModel @Inject constructor(
         viewModelScope.launch {
             when (val out = getInventoryUseCase.execute(Unit)) {
                 is GetInventoryUseCase.Output.Success ->
-                    _uiState.value = PantryUiState.Success(out.inventoryItems)
+                    // Flattened for now: the screen is still one card per lot. SCRUM-179
+                    // reworks the card and has this state hold the groups directly.
+                    _uiState.value = PantryUiState.Success(out.productGroups.flatMap { it.lots })
 
                 is GetInventoryUseCase.Output.Failure ->
                     if (_uiState.value !is PantryUiState.Success) {
