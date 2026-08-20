@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListItems
@@ -101,7 +102,15 @@ fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onI
 
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically)
         {
+        if (!clicked)
+        {
             Text(item.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+
+        } else {
+            Text(item.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, textDecoration = TextDecoration.LineThrough)
+        }
+
+
         }
     }
 }
