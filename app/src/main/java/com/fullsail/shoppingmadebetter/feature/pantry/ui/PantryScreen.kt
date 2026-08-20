@@ -49,6 +49,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ProductGroup
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
@@ -92,6 +93,19 @@ internal fun applyPantryFilters(
     return items.filter { item ->
         predicateGroups.values.all { group -> group.any { predicate -> predicate(item) } }
     }
+}
+
+/**
+ * Narrows [groups] to the product cards to show for the active dashboard filters:
+ * a product stays visible when any of its lots matches, and the card keeps all of
+ * its lots and true aggregates. Interim behavior — SCRUM-180 finishes the filter logic
+ */
+@JvmName("applyPantryFiltersToGroups") // The item overload erases to the same JVM signature.
+internal fun applyPantryFilters(
+    groups: List<ProductGroup>,
+    filters: Set<PantryDashboardFilter>,
+): List<ProductGroup> = groups.filter { group ->
+    applyPantryFilters(group.lots, filters).isNotEmpty()
 }
 
 /**
@@ -243,15 +257,17 @@ private fun PantryContent(
             }
 
             is PantryUiState.Success -> {
-                val dashboardCards = remember(uiState.inventoryItems) {
-                    pantryDashboardCards(uiState.inventoryItems)
+                // Dashboard cards still count individual lots; SCRUM-180 moves them
+                // (and the filters) onto the grouped model properly.
+                val dashboardCards = remember(uiState.productGroups) {
+                    pantryDashboardCards(uiState.productGroups.flatMap { it.lots })
                 }
                 var selectedFilters by rememberSaveable(stateSaver = filterSetSaver) {
                     mutableStateOf(emptySet<PantryDashboardFilter>())
                 }
 
-                val visibleItems = remember(uiState.inventoryItems, selectedFilters) {
-                    applyPantryFilters(uiState.inventoryItems, selectedFilters)
+                val visibleGroups = remember(uiState.productGroups, selectedFilters) {
+                    applyPantryFilters(uiState.productGroups, selectedFilters)
                 }
 
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -272,24 +288,23 @@ private fun PantryContent(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        items(visibleItems, key = { it.id }) { inventoryItem ->
-                            InventoryItemCard(
-                                item = inventoryItem,
-                                onClick = { onItemClick(inventoryItem.id) },
-                                onAddToList = { onAddToListClick(inventoryItem) },
-                                onRemove = { onRemoveClick(inventoryItem) },
-                                onQuantityChange = { newQty ->
-                                    onQuantityChange(inventoryItem, newQty)
-                                },
-                                onLocationChange = { newLocation ->
-                                    onLocationChange(inventoryItem, newLocation)
-                                },
-                                onExpiryChange = { newDays ->
-                                    onExpiryChange(inventoryItem, newDays)
-                                },
+                        items(visibleGroups, key = { it.productId }) { group ->
+                            // UI-only state, keyed by the item key, survives scrolling away and config changes.
+                            var isExpanded by rememberSaveable { mutableStateOf(false) }
+                            ProductCard(
+                                group = group,
+                                isExpanded = isExpanded,
+                                onExpandedChange = { isExpanded = it },
+                                onLotClick = { lot -> onItemClick(lot.id) },
+                                onAddToList = { onAddToListClick(group.lots.first()) },
+                                onRemoveLot = onRemoveClick,
+                                onQuantityChange = onQuantityChange,
+                                onLocationChange = onLocationChange,
+                                onExpiryChange = onExpiryChange,
                                 onLowStockThresholdChange = { newThreshold ->
-                                    onLowStockThresholdChange(inventoryItem, newThreshold)
+                                    onLowStockThresholdChange(group.lots.first(), newThreshold)
                                 },
+                                modifier = Modifier.animateItem(),
                             )
                         }
                     }
