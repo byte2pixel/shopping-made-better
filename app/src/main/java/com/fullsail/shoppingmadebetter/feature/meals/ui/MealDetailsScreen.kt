@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
@@ -22,65 +23,110 @@ fun MealDetailsScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color.LightGray),
-            contentAlignment = Alignment.Center
+
+    if (mealId.isBlank() || mealId == "error") {
+        MealNotFoundState(onNavigateBack = onNavigateBack, modifier = modifier)
+    } else {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Recipe Image Placeholder", color = Color.DarkGray)
-        }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.LightGray),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "Recipe Image Placeholder", color = Color.DarkGray)
+            }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "$matchPercentage% Match",
-                style = MaterialTheme.typography.titleMedium,
-                color = Color(0xFF2E5A44),
-                fontWeight = FontWeight.Bold
-            )
-
-            Surface(
-                color = Color(0xFFE8F5E9),
-                shape = RoundedCornerShape(16.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = categoryName,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.labelMedium,
+                    text = "$matchPercentage% Match",
+                    style = MaterialTheme.typography.titleMedium,
                     color = Color(0xFF2E5A44),
                     fontWeight = FontWeight.Bold
                 )
+
+                Surface(
+                    color = Color(0xFFE8F5E9),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        text = categoryName,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF2E5A44),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Loading recipe for Meal: $mealId",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Instructions and ingredients will populate here.",
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
+    }
+}
+
+
+@Composable
+private fun MealNotFoundState(
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Meal Not Found",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.error
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "We couldn't find the details for this recipe. It may have been removed or there was a network error.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray,
+            textAlign = TextAlign.Center
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Text(
-            text = "Loading recipe for Meal: $mealId",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Instructions and ingredients will populate here.",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Button(
+            onClick = onNavigateBack,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E5A44))
+        ) {
+            Text("Go Back")
+        }
     }
 }
 
@@ -92,6 +138,19 @@ private fun MealDetailsScreenPreview() {
             mealId = "12345",
             matchPercentage = 85,
             categoryName = "Almost There",
+            onNavigateBack = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MealNotFoundPreview() {
+    ShoppingMadeBetterTheme {
+        MealDetailsScreen(
+            mealId = "",
+            matchPercentage = 0,
+            categoryName = "",
             onNavigateBack = {}
         )
     }
