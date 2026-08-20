@@ -35,6 +35,10 @@ import java.io.IOException
 private fun inventoryOf(vararg items: InventoryItem) =
     GetInventoryUseCase.Output.Success(groupInventoryByProduct(items.toList()))
 
+/** Every lot across the state's product groups, flattened in display order. */
+private val PantryUiState.Success.lots: List<InventoryItem>
+    get() = productGroups.flatMap { it.lots }
+
 /**
  * Unit tests for [PantryViewModel]. Each collaborator is a hand-written fake, and
  * [MainDispatcherRule] backs `viewModelScope` with an unconfined test dispatcher
@@ -209,7 +213,7 @@ class PantryViewModelTest {
 
         val state = viewModel.uiState.value
         assertTrue(state is PantryUiState.Success)
-        assertEquals(listOf(sampleItem), (state as PantryUiState.Success).inventoryItems)
+        assertEquals(listOf(sampleItem), (state as PantryUiState.Success).lots)
     }
 
     @Test
@@ -227,14 +231,14 @@ class PantryViewModelTest {
     fun `loadInventory refreshes the state on demand`() = runTest {
         val inventory = FakeGetInventoryUseCase(inventoryOf())
         val viewModel = buildViewModel(inventory = inventory)
-        assertEquals(emptyList<InventoryItem>(), (viewModel.uiState.value as PantryUiState.Success).inventoryItems)
+        assertEquals(emptyList<InventoryItem>(), (viewModel.uiState.value as PantryUiState.Success).lots)
 
         inventory.output = inventoryOf(sampleItem)
         viewModel.loadInventory()
 
         val state = viewModel.uiState.value
         assertTrue(state is PantryUiState.Success)
-        assertEquals(listOf(sampleItem), (state as PantryUiState.Success).inventoryItems)
+        assertEquals(listOf(sampleItem), (state as PantryUiState.Success).lots)
     }
 
     @Test
@@ -433,7 +437,37 @@ class PantryViewModelTest {
         // State stays Success (never flips to Loading) and only the removed item is gone.
         val state = viewModel.uiState.value
         assertTrue(state is PantryUiState.Success)
-        assertEquals(listOf(otherItem), (state as PantryUiState.Success).inventoryItems)
+        assertEquals(listOf(otherItem), (state as PantryUiState.Success).lots)
+    }
+
+    @Test
+    fun `confirmRemove keeps the product group while other lots remain`() = runTest {
+        // Two lots of the same product: removing one lot must not take the card with it.
+        val lotA = sampleItem.copy(id = "a")
+        val lotB = sampleItem.copy(id = "b")
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(lotA, lotB)),
+        )
+        viewModel.onRemoveClicked(lotA)
+
+        viewModel.confirmRemove(dontAskAgain = false)
+
+        val groups = (viewModel.uiState.value as PantryUiState.Success).productGroups
+        assertEquals(listOf(lotB), groups.single().lots)
+    }
+
+    @Test
+    fun `confirmRemove drops the whole product group with its last lot`() = runTest {
+        val otherProduct = sampleItem.copy(id = "i2", productId = "p2", name = "Bread")
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(sampleItem, otherProduct)),
+        )
+        viewModel.onRemoveClicked(sampleItem)
+
+        viewModel.confirmRemove(dontAskAgain = false)
+
+        val groups = (viewModel.uiState.value as PantryUiState.Success).productGroups
+        assertEquals(listOf("p2"), groups.map { it.productId })
     }
 
     @Test
@@ -542,7 +576,7 @@ class PantryViewModelTest {
         viewModel.onQuantityChanged(sampleItem, newQuantity = 5)
 
         // The list reflects the new quantity immediately and the id/value are persisted.
-        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        val items = (viewModel.uiState.value as PantryUiState.Success).lots
         assertEquals(5, items.single().quantity)
         assertEquals(UpdateInventoryQuantity(id = "i1", quantity = 5), update.lastInput)
     }
@@ -560,11 +594,28 @@ class PantryViewModelTest {
         viewModel.onQuantityChanged(sampleItem, newQuantity = 5)
 
         // The optimistic change is rolled back to the original quantity.
-        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        val items = (viewModel.uiState.value as PantryUiState.Success).lots
         assertEquals(sampleItem.quantity, items.single().quantity)
         val event = viewModel.events.first()
         assertTrue(event is PantryEvent.UpdateFailed)
         assertEquals("Milk", (event as PantryEvent.UpdateFailed).itemName)
+    }
+
+    @Test
+    fun `onQuantityChanged patches only the target lot within its product group`() = runTest {
+        val lotA = sampleItem.copy(id = "a", quantity = 2)
+        val lotB = sampleItem.copy(id = "b", quantity = 3)
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(lotA, lotB)),
+        )
+
+        viewModel.onQuantityChanged(lotB, newQuantity = 7)
+
+        // The sibling lot is untouched and the group's aggregate follows the edit.
+        val group = (viewModel.uiState.value as PantryUiState.Success).productGroups.single()
+        assertEquals(2, group.lots.first { it.id == "a" }.quantity)
+        assertEquals(7, group.lots.first { it.id == "b" }.quantity)
+        assertEquals(9, group.totalQuantity)
     }
 
     @Test
@@ -590,7 +641,7 @@ class PantryViewModelTest {
 
         viewModel.onLowStockThresholdChanged(sampleItem, newThreshold = 3)
 
-        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        val items = (viewModel.uiState.value as PantryUiState.Success).lots
         assertEquals(3, items.single().lowStockThreshold)
         assertEquals(UpdateInventoryLowStockThreshold(productId = "p1", threshold = 3), update.lastInput)
     }
@@ -607,7 +658,7 @@ class PantryViewModelTest {
 
         viewModel.onLowStockThresholdChanged(entryA, newThreshold = 4)
 
-        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        val items = (viewModel.uiState.value as PantryUiState.Success).lots
         assertTrue(items.all { it.lowStockThreshold == 4 })
     }
 
@@ -623,7 +674,7 @@ class PantryViewModelTest {
 
         viewModel.onLowStockThresholdChanged(sampleItem, newThreshold = 3)
 
-        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        val items = (viewModel.uiState.value as PantryUiState.Success).lots
         assertEquals(sampleItem.lowStockThreshold, items.single().lowStockThreshold)
         val event = viewModel.events.first()
         assertTrue(event is PantryEvent.UpdateFailed)
@@ -653,7 +704,7 @@ class PantryViewModelTest {
 
         viewModel.onLocationChanged(fridgeItem, newLocation = PantryLocation.Freezer)
 
-        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        val items = (viewModel.uiState.value as PantryUiState.Success).lots
         assertEquals(PantryLocation.Freezer, items.single().location)
         assertEquals(
             UpdateInventoryLocation(id = "i1", location = PantryLocation.Freezer),
@@ -674,7 +725,7 @@ class PantryViewModelTest {
 
         viewModel.onLocationChanged(fridgeItem, newLocation = PantryLocation.Freezer)
 
-        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        val items = (viewModel.uiState.value as PantryUiState.Success).lots
         assertEquals(PantryLocation.Fridge, items.single().location)
         val event = viewModel.events.first()
         assertTrue(event is PantryEvent.UpdateFailed)
@@ -706,7 +757,7 @@ class PantryViewModelTest {
 
         viewModel.onExpiryChanged(soonItem, newExpiresInDays = 7)
 
-        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        val items = (viewModel.uiState.value as PantryUiState.Success).lots
         assertEquals(7, items.single().expiresInDays)
         assertEquals(UpdateInventoryExpiry(id = "i1", expiresInDays = 7), update.lastInput)
     }
@@ -724,7 +775,7 @@ class PantryViewModelTest {
 
         viewModel.onExpiryChanged(soonItem, newExpiresInDays = 7)
 
-        val items = (viewModel.uiState.value as PantryUiState.Success).inventoryItems
+        val items = (viewModel.uiState.value as PantryUiState.Success).lots
         assertEquals(4, items.single().expiresInDays)
         val event = viewModel.events.first()
         assertTrue(event is PantryEvent.UpdateFailed)

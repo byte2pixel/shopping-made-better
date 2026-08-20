@@ -7,6 +7,7 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ProductGroup
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiry
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCase
@@ -32,7 +33,7 @@ import javax.inject.Inject
 
 sealed interface PantryUiState {
     data object Loading : PantryUiState
-    data class Success(val inventoryItems: List<InventoryItem>) : PantryUiState
+    data class Success(val productGroups: List<ProductGroup>) : PantryUiState
     data object Error : PantryUiState
 }
 
@@ -119,9 +120,7 @@ class PantryViewModel @Inject constructor(
         viewModelScope.launch {
             when (val out = getInventoryUseCase.execute(Unit)) {
                 is GetInventoryUseCase.Output.Success ->
-                    // Flattened for now: the screen is still one card per lot. SCRUM-179
-                    // reworks the card and has this state hold the groups directly.
-                    _uiState.value = PantryUiState.Success(out.productGroups.flatMap { it.lots })
+                    _uiState.value = PantryUiState.Success(out.productGroups)
 
                 is GetInventoryUseCase.Output.Failure ->
                     if (_uiState.value !is PantryUiState.Success) {
@@ -229,13 +228,13 @@ class PantryViewModel @Inject constructor(
     }
 
     /**
-     * Deletes [item] from the pantry, drops it from the current list on success,
-     * and reports the outcome via a snackbar event.
+     * Deletes [item] — a single lot — from the pantry, drops it from its product
+     * group on success, and reports the outcome via a snackbar event.
      */
     private suspend fun deleteItem(item: InventoryItem) {
         val event = when (deleteInventoryItemUseCase.execute(item.id)) {
             is DeleteInventoryItemUseCase.Output.Success -> {
-                removeItemFromState(item.id)
+                removeLotFromState(item.id)
                 PantryEvent.RemovedFromPantry(item.name)
             }
 
@@ -250,13 +249,13 @@ class PantryViewModel @Inject constructor(
      */
     fun onQuantityChanged(item: InventoryItem, newQuantity: Int) {
         if (newQuantity == item.quantity) return
-        updateItemInState(item.id) { it.copy(quantity = newQuantity) }
+        updateLotInState(item.id) { it.copy(quantity = newQuantity) }
         viewModelScope.launch {
             val out = updateInventoryQuantityUseCase.execute(
                 UpdateInventoryQuantity(item.id, newQuantity),
             )
             if (out is UpdateInventoryQuantityUseCase.Output.Failure) {
-                updateItemInState(item.id) { item }
+                updateLotInState(item.id) { item }
                 _events.send(PantryEvent.UpdateFailed(item.name))
             }
         }
@@ -268,13 +267,13 @@ class PantryViewModel @Inject constructor(
      */
     fun onLocationChanged(item: InventoryItem, newLocation: PantryLocation) {
         if (newLocation == item.location) return
-        updateItemInState(item.id) { it.copy(location = newLocation) }
+        updateLotInState(item.id) { it.copy(location = newLocation) }
         viewModelScope.launch {
             val out = updateInventoryLocationUseCase.execute(
                 UpdateInventoryLocation(item.id, newLocation),
             )
             if (out is UpdateInventoryLocationUseCase.Output.Failure) {
-                updateItemInState(item.id) { item }
+                updateLotInState(item.id) { item }
                 _events.send(PantryEvent.UpdateFailed(item.name))
             }
         }
@@ -286,13 +285,13 @@ class PantryViewModel @Inject constructor(
      */
     fun onExpiryChanged(item: InventoryItem, newExpiresInDays: Int) {
         if (newExpiresInDays == item.expiresInDays) return
-        updateItemInState(item.id) { it.copy(expiresInDays = newExpiresInDays) }
+        updateLotInState(item.id) { it.copy(expiresInDays = newExpiresInDays) }
         viewModelScope.launch {
             val out = updateInventoryExpiryUseCase.execute(
                 UpdateInventoryExpiry(item.id, newExpiresInDays),
             )
             if (out is UpdateInventoryExpiryUseCase.Output.Failure) {
-                updateItemInState(item.id) { item }
+                updateLotInState(item.id) { item }
                 _events.send(PantryEvent.UpdateFailed(item.name))
             }
         }
@@ -306,59 +305,81 @@ class PantryViewModel @Inject constructor(
     fun onLowStockThresholdChanged(item: InventoryItem, newThreshold: Int?) {
         if (newThreshold == item.lowStockThreshold) return
         val previous = item.lowStockThreshold
-        updateItemsByProductId(item.productId) { it.copy(lowStockThreshold = newThreshold) }
+        updateLotsByProductId(item.productId) { it.copy(lowStockThreshold = newThreshold) }
         viewModelScope.launch {
             val out = updateInventoryLowStockThresholdUseCase.execute(
                 UpdateInventoryLowStockThreshold(item.productId, newThreshold),
             )
             if (out is UpdateInventoryLowStockThresholdUseCase.Output.Failure) {
-                updateItemsByProductId(item.productId) { it.copy(lowStockThreshold = previous) }
+                updateLotsByProductId(item.productId) { it.copy(lowStockThreshold = previous) }
                 _events.send(PantryEvent.UpdateFailed(item.name))
             }
         }
     }
 
     /**
-     * Drops [itemId] from the current success list in place.
+     * Drops the lot [lotId] from its product group, removing the group entirely
+     * when that was its last lot.
      */
-    private fun removeItemFromState(itemId: String) {
+    private fun removeLotFromState(lotId: String) {
         val current = _uiState.value
         if (current is PantryUiState.Success) {
             _uiState.value = current.copy(
-                inventoryItems = current.inventoryItems.filterNot { it.id == itemId },
-            )
-        }
-    }
-
-    /**
-     * Replaces the item [itemId] in the current success list with [transform] applied to
-     * it, leaving every other item untouched. No-ops unless the state is [PantryUiState.Success].
-     */
-    private fun updateItemInState(itemId: String, transform: (InventoryItem) -> InventoryItem) {
-        val current = _uiState.value
-        if (current is PantryUiState.Success) {
-            _uiState.value = current.copy(
-                inventoryItems = current.inventoryItems.map { item ->
-                    if (item.id == itemId) transform(item) else item
+                productGroups = current.productGroups.mapNotNull { group ->
+                    val remaining = group.lots.filterNot { it.id == lotId }
+                    when {
+                        remaining.size == group.lots.size -> group
+                        remaining.isEmpty() -> null
+                        else -> group.copy(lots = remaining)
+                    }
                 },
             )
         }
     }
 
     /**
-     * Applies [transform] to every item in the current success list sharing [productId],
-     * leaving others untouched. Used for per-product settings (the low-stock threshold), which
-     * apply to all pantry entries of a product at once. No-ops unless the state is Success.
+     * Replaces the lot [lotId] inside its product group with [transform] applied to it,
+     * leaving every other lot untouched. The group's derived aggregates (total quantity,
+     * earliest expiry, locations) recompute. Group and lot order are kept
+     * as-is, the next full load re-sorts. No-ops unless the state is [PantryUiState.Success].
      */
-    private fun updateItemsByProductId(
+    private fun updateLotInState(lotId: String, transform: (InventoryItem) -> InventoryItem) {
+        val current = _uiState.value
+        if (current is PantryUiState.Success) {
+            _uiState.value = current.copy(
+                productGroups = current.productGroups.map { group ->
+                    if (group.lots.none { it.id == lotId }) {
+                        group
+                    } else {
+                        group.copy(
+                            lots = group.lots.map { lot ->
+                                if (lot.id == lotId) transform(lot) else lot
+                            },
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    /**
+     * Applies [transform] to every lot of the product [productId], leaving other groups
+     * untouched. Used for per-product settings (the low-stock threshold), which every lot
+     * of a product carries together. No-ops unless the state is [PantryUiState.Success].
+     */
+    private fun updateLotsByProductId(
         productId: String,
         transform: (InventoryItem) -> InventoryItem,
     ) {
         val current = _uiState.value
         if (current is PantryUiState.Success) {
             _uiState.value = current.copy(
-                inventoryItems = current.inventoryItems.map { item ->
-                    if (item.productId == productId) transform(item) else item
+                productGroups = current.productGroups.map { group ->
+                    if (group.productId == productId) {
+                        group.copy(lots = group.lots.map(transform))
+                    } else {
+                        group
+                    }
                 },
             )
         }
