@@ -58,12 +58,15 @@ enum class PantryDashboardFilter(
     },
     Freezer(R.drawable.ic_freezer, R.string.pantry_dashboard_freezer) {
         override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Freezer }
+        override val isLocationFilter: Boolean = true
     },
     Fridge(R.drawable.ic_fridge, R.string.pantry_dashboard_fridge) {
         override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Fridge }
+        override val isLocationFilter: Boolean = true
     },
     Pantry(R.drawable.ic_pantry, R.string.pantry_dashboard_pantry) {
         override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Pantry }
+        override val isLocationFilter: Boolean = true
     },
     ;
 
@@ -72,6 +75,12 @@ enum class PantryDashboardFilter(
      * or `null` while still a placeholder.
      */
     open val predicate: ((InventoryItem) -> Boolean)? = null
+
+    /**
+     * True for the mutually-exclusive location cards (Freezer/Fridge/Pantry),
+     * which OR-join instead of AND-ing when several are selected.
+     */
+    open val isLocationFilter: Boolean = false
 }
 
 /** One card's view data: which filter it represents and its count. */
