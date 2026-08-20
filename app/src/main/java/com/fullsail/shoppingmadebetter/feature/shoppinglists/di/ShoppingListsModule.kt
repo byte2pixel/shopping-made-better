@@ -14,6 +14,8 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isCheckedUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isCheckedUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch.ProductSearchUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch.ProductSearchUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CompleteShoppingTripUseCase
@@ -51,6 +53,11 @@ abstract class ShoppingListsModule {
     abstract fun bindRenameShoppingList(
         impl: RenameShoppingListUseCaseImpl,
     ): RenameShoppingListUseCase
+    @Binds
+    abstract fun bindCheckItem(
+        impl: isCheckedUseCaseImpl,
+    ): isCheckedUseCase
+
 
     @Binds
     abstract fun bindStoreProductPricingUseCase(

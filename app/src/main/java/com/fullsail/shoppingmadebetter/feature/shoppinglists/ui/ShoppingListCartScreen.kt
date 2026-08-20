@@ -61,8 +61,10 @@ fun ShoppingListCartScreen(
 
                         items(state.items, key = { it.id }) { CartRow(it,viewModel, onItemCrossed = {
                             checkedItems.add(it.id)
+                            viewModel.checkItem(it.id, true)
                         }, onItemUncrossed = {
                             checkedItems.remove(it.id)
+                            viewModel.checkItem(it.id, false)
                         }) }
                     }
                 }
@@ -85,6 +87,7 @@ fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onI
         clicked = !clicked
         if (clicked)
         onItemCrossed()
+
         else {
         onItemUncrossed()
         }
