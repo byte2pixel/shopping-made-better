@@ -70,27 +70,27 @@ internal const val EXPIRING_SOON_DAYS = 5
  * [filters]. Filters without a [PantryDashboardFilter.predicate] yet are ignored;
  * when no active filter has a predicate, [items] is returned unchanged.
  *
- * Location filters ([PantryDashboardFilter.isLocationFilter]) OR-join within their
- * group, so selecting Fridge + Freezer widens the result to the union rather than emptying it.
- * Every other group ANDs: the location group as a whole is intersected with the remaining predicates
+ * Filters that share a [PantryDashboardFilter.category] — the mutually-exclusive
+ * location and stock-status groups — OR-join: an item can only be in one location
+ * or one stock state, so selecting Fridge + Freezer (or Running Low + Out) widens
+ * the result to the union rather than emptying it. Distinct categories, and every
+ * solo (category-less) filter such as Expiring, AND together. So Expiring + Fridge
+ * + Freezer yields cold items expiring soon.
  */
 internal fun applyPantryFilters(
     items: List<InventoryItem>,
     filters: Set<PantryDashboardFilter>,
 ): List<InventoryItem> {
-    val (locationFilters, otherFilters) =
-        filters.filter { it.predicate != null }.partition { it.isLocationFilter }
+    // Group the active predicates by category; a null category keys on the filter
+    // itself so each solo filter forms its own group. OR within a group, AND across.
+    val predicateGroups = filters
+        .mapNotNull { filter -> filter.predicate?.let { predicate -> (filter.category ?: filter) to predicate } }
+        .groupBy(keySelector = { it.first }, valueTransform = { it.second })
 
-    val locationPredicates = locationFilters.mapNotNull { it.predicate }
-    val otherPredicates = otherFilters.mapNotNull { it.predicate }
-
-    if (locationPredicates.isEmpty() && otherPredicates.isEmpty()) return items
+    if (predicateGroups.isEmpty()) return items
 
     return items.filter { item ->
-        val matchesLocation =
-            locationPredicates.isEmpty() || locationPredicates.any { predicate -> predicate(item) }
-        val matchesOthers = otherPredicates.all { predicate -> predicate(item) }
-        matchesLocation && matchesOthers
+        predicateGroups.values.all { group -> group.any { predicate -> predicate(item) } }
     }
 }
 

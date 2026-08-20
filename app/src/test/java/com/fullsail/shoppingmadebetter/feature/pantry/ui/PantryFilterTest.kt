@@ -252,14 +252,65 @@ class PantryFilterTest {
     }
 
     @Test
-    fun `out and low stock are disjoint, so their intersection is empty`() {
-        // Quantity 0 is "out"; "low" is 1..threshold. No item can be both, so
-        // composing the two filters yields nothing.
+    fun `running low and out OR-join to the union of both`() {
+        // Stock statuses are mutually exclusive — quantity 0 is "out", "low" is
+        // 1..threshold — so combining them widens rather than empties the result.
         val result = applyPantryFilters(
             stockItems,
             setOf(PantryDashboardFilter.RunningLow, PantryDashboardFilter.Out),
         )
 
-        assertTrue(result.isEmpty())
+        // Low OR out, order preserved; well-stocked and no-threshold items drop.
+        assertEquals(listOf(low, lowBoundary, outWithThreshold, outNoThreshold), result)
+    }
+
+    // Items varying in both stock status and location, for cross-category tests.
+    private val outFreezer =
+        item("outFreezer", expiresInDays = null, location = PantryLocation.Freezer, quantity = 0)
+    private val lowFreezer = item(
+        "lowFreezer",
+        expiresInDays = null,
+        location = PantryLocation.Freezer,
+        quantity = 2,
+        lowStockThreshold = 3,
+    )
+    private val stockedFreezer = item(
+        "stockedFreezer",
+        expiresInDays = null,
+        location = PantryLocation.Freezer,
+        quantity = 5,
+        lowStockThreshold = 3,
+    )
+    private val outFridge =
+        item("outFridge", expiresInDays = null, location = PantryLocation.Fridge, quantity = 0)
+
+    private val mixedItems = listOf(outFreezer, lowFreezer, stockedFreezer, outFridge)
+
+    @Test
+    fun `stock filter ANDs against a location`() {
+        val result = applyPantryFilters(
+            mixedItems,
+            setOf(PantryDashboardFilter.Out, PantryDashboardFilter.Freezer),
+        )
+
+        // Out AND Freezer: only the out-of-stock freezer item; outFridge is out but
+        // in the wrong location, lowFreezer/stockedFreezer are freezer but not out.
+        assertEquals(listOf(outFreezer), result)
+    }
+
+    @Test
+    fun `OR-joined stock group ANDs against a location`() {
+        val result = applyPantryFilters(
+            mixedItems,
+            setOf(
+                PantryDashboardFilter.RunningLow,
+                PantryDashboardFilter.Out,
+                PantryDashboardFilter.Freezer,
+            ),
+        )
+
+        // (Low OR Out) AND Freezer: outFreezer and lowFreezer qualify; stockedFreezer
+        // is well stocked and outFridge is in the wrong location.
+        assertEquals(listOf(outFreezer, lowFreezer), result)
     }
 }
