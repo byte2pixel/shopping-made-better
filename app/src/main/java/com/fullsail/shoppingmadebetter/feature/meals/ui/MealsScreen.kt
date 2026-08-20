@@ -25,6 +25,7 @@ import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 @Composable
 fun MealsScreen(
     viewModel: MealsViewModel,
+    onNavigateToDetails: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -33,7 +34,7 @@ fun MealsScreen(
         uiState = uiState,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onFilterSelected = viewModel::onFilterSelected,
-        onSelectMeal = viewModel::selectMealPlan,
+        onSelectMeal = onNavigateToDetails,
         onQuickAddIngredient = { id, name -> viewModel.quickAddIngredient(id, name) },
         onAddMealToList = viewModel::addMealToList,
         onRetry = viewModel::loadMeals,
@@ -181,7 +182,7 @@ private fun ErrorMealsState(
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = message,
+            text = "Something went wrong",
             style = MaterialTheme.typography.bodySmall,
             color = Color.Gray
         )
