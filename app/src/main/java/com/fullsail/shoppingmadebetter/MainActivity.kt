@@ -230,7 +230,7 @@ fun ShoppingMadeBetterApp(
                 ShoppingListCartScreen( listId = it.toRoute<Dest.ShoppingListCartScreen>().listId )
             }
             composable<Dest.ShoppingListItemsScreen>{
-                ShoppingListItemsScreen( listId = it.toRoute<Dest.ShoppingListItemsScreen>().listId )
+                ShoppingListItemsScreen( listId = it.toRoute<Dest.ShoppingListItemsScreen>().listId , onItemComparison = {navController.navigate(it)})
             }
             composable<Dest.ShoppingListItemComparison> {
                 ShoppingListItemComparisonScreen(onItemComparison = {
