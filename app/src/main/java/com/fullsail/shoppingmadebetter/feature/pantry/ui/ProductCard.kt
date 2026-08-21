@@ -328,11 +328,7 @@ private fun LotRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LotQuantityChip(
-            quantity = lot.quantity,
-            lowStockThreshold = lot.lowStockThreshold,
-            onQuantityChange = onQuantityChange,
-        )
+        LotQuantityChip(quantity = lot.quantity, onQuantityChange = onQuantityChange)
         LocationChip(location = lot.location, onLocationChange = onLocationChange)
         lot.expiresInDays?.let { days ->
             ExpiryChip(
@@ -523,13 +519,14 @@ private fun TotalQuantityChip(
  * A lot row's quantity chip. Tapping it opens an anchored popup with a quantity
  * [Stepper]; the new value is committed via [onQuantityChange] when the popup
  * closes, and only when actually changed. Quantity floors at 0 — that's "out of
- * stock". The product-wide [lowStockThreshold] only colors the chip here; it is
- * edited from the header's [TotalQuantityChip].
+ * stock", and an empty lot is the one severity this chip shows.
+ * Running low is a property of the product, not of one lot — the threshold is
+ * per-product and the quantity that answers it is the total across every lot — so it
+ * is colored once, on the header's [TotalQuantityChip], and never here.
  */
 @Composable
 private fun LotQuantityChip(
     quantity: Int,
-    lowStockThreshold: Int?,
     onQuantityChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -539,7 +536,7 @@ private fun LotQuantityChip(
     Box(modifier = modifier) {
         LabelChip(
             label = stringResource(R.string.pantry_card_quantity, quantity),
-            accentColor = stockAccent(stockLevel(quantity, lowStockThreshold)),
+            accentColor = stockAccent(stockLevel(quantity, lowStockThreshold = null)),
             iconRes = R.drawable.ic_add,
             contentDescription = pluralStringResource(
                 R.plurals.pantry_card_quantity_desc,
@@ -740,6 +737,23 @@ private fun ProductCardExpiredPreview() {
             listOf(
                 previewLot(id = "1", expiresInDays = -2, location = PantryLocation.Freezer),
                 previewLot(id = "2", expiresInDays = 12, location = PantryLocation.Freezer),
+            ),
+        ),
+        isExpanded = true,
+    )
+}
+
+@Preview(showBackground = true, name = "Running low, expanded")
+@Composable
+private fun ProductCardLowStockPreview() {
+    // Three on hand against a threshold of five: the header reads low, while the lot
+    // chips stay neutral except the empty lot, which is out on its own.
+    ProductCardPreviewScaffold(
+        group = previewGroup(
+            listOf(
+                previewLot(id = "1", quantity = 1, expiresInDays = 2, lowStockThreshold = 5),
+                previewLot(id = "2", quantity = 2, expiresInDays = 6, lowStockThreshold = 5),
+                previewLot(id = "3", quantity = 0, expiresInDays = 14, lowStockThreshold = 5),
             ),
         ),
         isExpanded = true,

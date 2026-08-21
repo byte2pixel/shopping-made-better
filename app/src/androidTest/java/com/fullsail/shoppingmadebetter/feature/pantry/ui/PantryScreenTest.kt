@@ -197,12 +197,12 @@ class PantryScreenTest {
         composeTestRule.onNodeWithText(productName).performClick()
     }
 
-    /** Content description of the "Expiring" dashboard card, used to tap it. */
-    private fun expiringCardDescription(count: Int) =
-        composeTestRule.activity.resources.getQuantityString(
+    /** Content description of a dashboard card, used to find and tap it. */
+    private fun cardDescription(filter: PantryDashboardFilter, count: Int) =
+        quantityString(
             R.plurals.pantry_dashboard_card_desc,
             count,
-            string(R.string.pantry_dashboard_expiring),
+            string(filter.labelRes),
             count,
         )
 
@@ -546,7 +546,7 @@ class PantryScreenTest {
 
         // Turn the filter on: only the soon-to-expire item remains. The card counts
         // one item — the yogurt; the beans have no expiration date at all.
-        val expiringCard = expiringCardDescription(count = 1)
+        val expiringCard = cardDescription(PantryDashboardFilter.Expiring, count = 1)
         composeTestRule.onNodeWithContentDescription(expiringCard).performClick()
         composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
         composeTestRule.onNodeWithText("Canned Beans").assertDoesNotExist()
@@ -555,5 +555,55 @@ class PantryScreenTest {
         composeTestRule.onNodeWithContentDescription(expiringCard).performClick()
         composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
         composeTestRule.onNodeWithText("Canned Beans").assertIsDisplayed()
+    }
+
+    @Test
+    fun theRunningLowCardCountsProductsNotLots() {
+        // Two loaves in separate lots against a threshold of one: two on hand, so the
+        // product is not low even though every lot sits at the threshold.
+        val bread = milk.copy(
+            id = "b1",
+            productId = "bread",
+            name = "Sourdough",
+            quantity = 1,
+            expiresInDays = 2,
+            lowStockThreshold = 1,
+        )
+        setScreen(
+            inventory = FakeGetInventoryUseCase(
+                inventoryOf(bread, bread.copy(id = "b2", expiresInDays = 5))
+            )
+        )
+        composeTestRule.onNodeWithText("Sourdough").assertIsDisplayed()
+
+        // The card counts no low products, and turning it on filters the bread away.
+        composeTestRule
+            .onNodeWithContentDescription(cardDescription(PantryDashboardFilter.RunningLow, 0))
+            .performClick()
+        composeTestRule.onNodeWithText("Sourdough").assertDoesNotExist()
+    }
+
+    @Test
+    fun theRunningLowCardCountsALowProductOnceAcrossItsLots() {
+        // The same two lots against a threshold of three: two on hand is low, and the
+        // product counts once however many lots it is spread over.
+        val bread = milk.copy(
+            id = "b1",
+            productId = "bread",
+            name = "Sourdough",
+            quantity = 1,
+            expiresInDays = 2,
+            lowStockThreshold = 3,
+        )
+        setScreen(
+            inventory = FakeGetInventoryUseCase(
+                inventoryOf(bread, bread.copy(id = "b2", expiresInDays = 5))
+            )
+        )
+
+        composeTestRule
+            .onNodeWithContentDescription(cardDescription(PantryDashboardFilter.RunningLow, 1))
+            .performClick()
+        composeTestRule.onAllNodesWithText("Sourdough").assertCountEquals(1)
     }
 }
