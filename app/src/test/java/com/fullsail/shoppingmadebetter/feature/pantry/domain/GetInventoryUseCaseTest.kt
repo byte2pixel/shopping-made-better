@@ -63,6 +63,12 @@ class GetInventoryUseCaseTest {
         expiryDate = expiryDate,
     )
 
+    /** The groups from a successful run, keyed by product id for order-independent lookup. */
+    private fun GetInventoryUseCase.Output.groupsByProduct(): Map<String, ProductGroup> {
+        assertTrue(this is GetInventoryUseCase.Output.Success)
+        return (this as GetInventoryUseCase.Output.Success).productGroups.associateBy { it.productId }
+    }
+
     @Test
     fun `execute maps DTOs to domain items on success`() = runTest {
         val dtos = listOf(
@@ -91,13 +97,11 @@ class GetInventoryUseCaseTest {
         )
         val useCase = GetInventoryUseCaseImpl(FakePantryRepository(items = dtos), fixedClock)
 
-        val output = useCase.execute(Unit)
+        val groups = useCase.execute(Unit).groupsByProduct()
 
-        assertTrue(output is GetInventoryUseCase.Output.Success)
-        val items = (output as GetInventoryUseCase.Output.Success).inventoryItems
-        assertEquals(2, items.size)
-        // Every field maps across, in order.
-        val milk = items[0]
+        assertEquals(2, groups.size)
+        // Every field maps across, onto the product's single lot.
+        val milk = groups.getValue("p1").lots.single()
         assertEquals("1", milk.id)
         assertEquals("p1", milk.productId)
         assertEquals("Milk", milk.name)
@@ -106,7 +110,7 @@ class GetInventoryUseCaseTest {
         assertEquals("1 gal", milk.size)
         assertEquals("http://img/milk.png", milk.imageUrl)
         assertEquals(2, milk.quantity)
-        assertEquals("Bread", items[1].name)
+        assertEquals("Bread", groups.getValue("p2").lots.single().name)
     }
 
     @Test
@@ -119,12 +123,12 @@ class GetInventoryUseCaseTest {
         )
         val useCase = GetInventoryUseCaseImpl(FakePantryRepository(items = dtos), fixedClock)
 
-        val items = (useCase.execute(Unit) as GetInventoryUseCase.Output.Success).inventoryItems
+        val groups = useCase.execute(Unit).groupsByProduct()
 
-        assertEquals(5, items[0].expiresInDays)   // future -> days remaining
-        assertEquals(0, items[1].expiresInDays)   // due today
-        assertEquals(-3, items[2].expiresInDays)  // overdue -> negative
-        assertNull(items[3].expiresInDays)        // no date -> null
+        assertEquals(5, groups.getValue("p-future").lots.single().expiresInDays)   // days remaining
+        assertEquals(0, groups.getValue("p-today").lots.single().expiresInDays)    // due today
+        assertEquals(-3, groups.getValue("p-expired").lots.single().expiresInDays) // overdue -> negative
+        assertNull(groups.getValue("p-undated").lots.single().expiresInDays)       // no date -> null
     }
 
     @Test
@@ -138,13 +142,34 @@ class GetInventoryUseCaseTest {
             )
             val useCase = GetInventoryUseCaseImpl(FakePantryRepository(items = dtos), fixedClock)
 
-            val items = (useCase.execute(Unit) as GetInventoryUseCase.Output.Success).inventoryItems
+            val groups = useCase.execute(Unit).groupsByProduct()
 
-            assertEquals(PantryLocation.Freezer, items[0].location)
-            assertEquals(PantryLocation.Fridge, items[1].location)
-            assertEquals(PantryLocation.Pantry, items[2].location)
-            assertEquals(PantryLocation.Pantry, items[3].location) // unrecognized -> Pantry
+            assertEquals(PantryLocation.Freezer, groups.getValue("p-freezer").lots.single().location)
+            assertEquals(PantryLocation.Fridge, groups.getValue("p-fridge").lots.single().location)
+            assertEquals(PantryLocation.Pantry, groups.getValue("p-pantry").lots.single().location)
+            // Unrecognized -> Pantry.
+            assertEquals(PantryLocation.Pantry, groups.getValue("p-unknown").lots.single().location)
         }
+
+    @Test
+    fun `execute groups repeat purchases of one product into a single group`() = runTest {
+        val dtos = listOf(
+            dto("old", today.plus(2, DateTimeUnit.DAY)).copy(productId = "milk", quantity = 1),
+            dto("new", today.plus(9, DateTimeUnit.DAY)).copy(productId = "milk", quantity = 3),
+            dto("bread", null).copy(productId = "bread"),
+        )
+        val useCase = GetInventoryUseCaseImpl(FakePantryRepository(items = dtos), fixedClock)
+
+        val groups = (useCase.execute(Unit) as GetInventoryUseCase.Output.Success).productGroups
+
+        assertEquals(2, groups.size)
+        // Soonest-expiring product first; the undated one last.
+        assertEquals(listOf("milk", "bread"), groups.map { it.productId })
+        val milk = groups.first()
+        assertEquals(listOf("old", "new"), milk.lots.map { it.id })
+        assertEquals(4, milk.totalQuantity)
+        assertEquals(2, milk.earliestExpiresInDays)
+    }
 
     @Test
     fun `execute returns an empty list when the repository has no items`() = runTest {
@@ -153,7 +178,7 @@ class GetInventoryUseCaseTest {
         val output = useCase.execute(Unit)
 
         assertTrue(output is GetInventoryUseCase.Output.Success)
-        assertTrue((output as GetInventoryUseCase.Output.Success).inventoryItems.isEmpty())
+        assertTrue((output as GetInventoryUseCase.Output.Success).productGroups.isEmpty())
     }
 
     @Test

@@ -39,6 +39,14 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
 /**
+ * A group of mutually-exclusive filters. An item can satisfy at most one filter in
+ * a group (it lives in one location, has one stock status), so filters sharing a
+ * category OR-join — combining them widens the result rather than emptying it.
+ * Filters with no category ([PantryDashboardFilter.category] null) stand alone.
+ */
+enum class PantryFilterCategory { Stock, Location }
+
+/**
  * The categories surfaced by the pantry mini dashboard. Each renders as a square
  * card showing an icon, a count, and a short label. Tapping a card toggles it as
  * a filter over the pantry list.
@@ -52,18 +60,23 @@ enum class PantryDashboardFilter(
     },
     RunningLow(R.drawable.ic_running_low, R.string.pantry_dashboard_running_low) {
         override val predicate: (InventoryItem) -> Boolean = { it.isLowStock() }
+        override val category: PantryFilterCategory = PantryFilterCategory.Stock
     },
     Out(R.drawable.ic_out_of_stock, R.string.pantry_dashboard_out) {
         override val predicate: (InventoryItem) -> Boolean = { it.isOutOfStock() }
+        override val category: PantryFilterCategory = PantryFilterCategory.Stock
     },
     Freezer(R.drawable.ic_freezer, R.string.pantry_dashboard_freezer) {
         override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Freezer }
+        override val category: PantryFilterCategory = PantryFilterCategory.Location
     },
     Fridge(R.drawable.ic_fridge, R.string.pantry_dashboard_fridge) {
         override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Fridge }
+        override val category: PantryFilterCategory = PantryFilterCategory.Location
     },
     Pantry(R.drawable.ic_pantry, R.string.pantry_dashboard_pantry) {
         override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Pantry }
+        override val category: PantryFilterCategory = PantryFilterCategory.Location
     },
     ;
 
@@ -72,6 +85,13 @@ enum class PantryDashboardFilter(
      * or `null` while still a placeholder.
      */
     open val predicate: ((InventoryItem) -> Boolean)? = null
+
+    /**
+     * The mutually-exclusive group this filter belongs to, or `null` if it stands
+     * alone. Filters sharing a category OR-join; separate categories — and every
+     * solo filter — AND together. See [PantryFilterCategory].
+     */
+    open val category: PantryFilterCategory? = null
 }
 
 /** One card's view data: which filter it represents and its count. */

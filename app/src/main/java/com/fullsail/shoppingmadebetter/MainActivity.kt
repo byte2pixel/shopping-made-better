@@ -230,7 +230,7 @@ fun ShoppingMadeBetterApp(
                 ShoppingListCartScreen( listId = it.toRoute<Dest.ShoppingListCartScreen>().listId )
             }
             composable<Dest.ShoppingListItemsScreen>{
-                ShoppingListItemsScreen( listId = it.toRoute<Dest.ShoppingListItemsScreen>().listId )
+                ShoppingListItemsScreen( listId = it.toRoute<Dest.ShoppingListItemsScreen>().listId , onItemComparison = {navController.navigate(it)})
             }
             composable<Dest.ShoppingListItemComparison> {
                 ShoppingListItemComparisonScreen(onItemComparison = {
@@ -344,7 +344,20 @@ fun ShoppingMadeBetterApp(
             composable<Dest.History> { HistoryScreen() }
             composable<Dest.Meals> {
                 val mealsViewModel: MealsViewModel = hiltViewModel()
-                MealsScreen(viewModel = mealsViewModel)
+                MealsScreen(
+                    viewModel = mealsViewModel,
+                    onNavigateToDetails = { mealId ->
+                        navController.navigate(Dest.MealDetails(mealId))
+                    }
+                )
+            }
+
+            composable<Dest.MealDetails> { entry ->
+                val args = entry.toRoute<Dest.MealDetails>()
+                com.fullsail.shoppingmadebetter.feature.meals.ui.MealDetailsScreen(
+                    mealId = args.mealId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
             composable<Dest.Stores> { StoresScreen() }
         }

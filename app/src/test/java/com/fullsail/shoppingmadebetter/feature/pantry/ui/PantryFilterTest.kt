@@ -2,6 +2,7 @@ package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.groupInventoryByProduct
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -153,6 +154,64 @@ class PantryFilterTest {
         assertEquals(listOf(pantryB), result)
     }
 
+    @Test
+    fun `freezer and fridge OR-join to the union of both locations`() {
+        val result = applyPantryFilters(
+            locatedItems,
+            setOf(PantryDashboardFilter.Freezer, PantryDashboardFilter.Fridge),
+        )
+
+        // Locations are mutually exclusive, so combining them widens rather than
+        // empties the result. Order follows the input list, pantry items dropped.
+        assertEquals(listOf(freezerA, fridge, freezerB, fridgeB), result)
+    }
+
+    @Test
+    fun `selecting all three locations returns every located item`() {
+        val result = applyPantryFilters(
+            locatedItems,
+            setOf(
+                PantryDashboardFilter.Freezer,
+                PantryDashboardFilter.Fridge,
+                PantryDashboardFilter.Pantry,
+            ),
+        )
+
+        // The union of every location covers the whole list, order preserved.
+        assertEquals(locatedItems, result)
+    }
+
+    @Test
+    fun `expiring ANDs against the OR-joined cold-storage locations`() {
+        // Cross-category composition: the location group (Fridge OR Freezer) is
+        // intersected with Expiring, yielding cold items that are also expiring soon.
+        val result = applyPantryFilters(
+            locatedItems,
+            setOf(
+                PantryDashboardFilter.Expiring,
+                PantryDashboardFilter.Fridge,
+                PantryDashboardFilter.Freezer,
+            ),
+        )
+
+        // fridge (3 days) is cold and expiring soon; freezerA/freezerB/fridgeB are
+        // cold but not expiring soon; pantryB is expiring but not cold.
+        assertEquals(listOf(fridge), result)
+
+        // A freezer item that is also expiring soon joins the fridge item in the union.
+        val expiringFreezerItem =
+            item("freezerExpiring", expiresInDays = 1, location = PantryLocation.Freezer)
+        val withExpiring = applyPantryFilters(
+            locatedItems + expiringFreezerItem,
+            setOf(
+                PantryDashboardFilter.Expiring,
+                PantryDashboardFilter.Fridge,
+                PantryDashboardFilter.Freezer,
+            ),
+        )
+        assertEquals(listOf(fridge, expiringFreezerItem), withExpiring)
+    }
+
     // Low stock is opt-in per item: an item counts as low only when it has a
     // lowStockThreshold set and its quantity is between 1 and that threshold.
     private val low = item("low", expiresInDays = null, quantity = 2, lowStockThreshold = 3)
@@ -194,12 +253,136 @@ class PantryFilterTest {
     }
 
     @Test
-    fun `out and low stock are disjoint, so their intersection is empty`() {
-        // Quantity 0 is "out"; "low" is 1..threshold. No item can be both, so
-        // composing the two filters yields nothing.
+    fun `running low and out OR-join to the union of both`() {
+        // Stock statuses are mutually exclusive — quantity 0 is "out", "low" is
+        // 1..threshold — so combining them widens rather than empties the result.
         val result = applyPantryFilters(
             stockItems,
             setOf(PantryDashboardFilter.RunningLow, PantryDashboardFilter.Out),
+        )
+
+        // Low OR out, order preserved; well-stocked and no-threshold items drop.
+        assertEquals(listOf(low, lowBoundary, outWithThreshold, outNoThreshold), result)
+    }
+
+    // Items varying in both stock status and location, for cross-category tests.
+    private val outFreezer =
+        item("outFreezer", expiresInDays = null, location = PantryLocation.Freezer, quantity = 0)
+    private val lowFreezer = item(
+        "lowFreezer",
+        expiresInDays = null,
+        location = PantryLocation.Freezer,
+        quantity = 2,
+        lowStockThreshold = 3,
+    )
+    private val stockedFreezer = item(
+        "stockedFreezer",
+        expiresInDays = null,
+        location = PantryLocation.Freezer,
+        quantity = 5,
+        lowStockThreshold = 3,
+    )
+    private val outFridge =
+        item("outFridge", expiresInDays = null, location = PantryLocation.Fridge, quantity = 0)
+
+    private val mixedItems = listOf(outFreezer, lowFreezer, stockedFreezer, outFridge)
+
+    @Test
+    fun `stock filter ANDs against a location`() {
+        val result = applyPantryFilters(
+            mixedItems,
+            setOf(PantryDashboardFilter.Out, PantryDashboardFilter.Freezer),
+        )
+
+        // Out AND Freezer: only the out-of-stock freezer item; outFridge is out but
+        // in the wrong location, lowFreezer/stockedFreezer are freezer but not out.
+        assertEquals(listOf(outFreezer), result)
+    }
+
+    @Test
+    fun `OR-joined stock group ANDs against a location`() {
+        val result = applyPantryFilters(
+            mixedItems,
+            setOf(
+                PantryDashboardFilter.RunningLow,
+                PantryDashboardFilter.Out,
+                PantryDashboardFilter.Freezer,
+            ),
+        )
+
+        // (Low OR Out) AND Freezer: outFreezer and lowFreezer qualify; stockedFreezer
+        // is well stocked and outFridge is in the wrong location.
+        assertEquals(listOf(outFreezer, lowFreezer), result)
+    }
+
+    // The group overload: a product card stays visible when any of its lots matches,
+    // and it keeps every lot. Interim until SCRUM-180 reworks filters over groups.
+
+    private fun lot(
+        id: String,
+        productId: String,
+        expiresInDays: Int?,
+        location: PantryLocation = PantryLocation.Pantry,
+    ) = item(id, expiresInDays, location).copy(productId = productId)
+
+    @Test
+    fun `group overload with no filters returns every group unchanged`() {
+        val groups = groupInventoryByProduct(
+            listOf(
+                lot("a1", "pA", expiresInDays = 3),
+                lot("b1", "pB", expiresInDays = null),
+            ),
+        )
+
+        assertEquals(groups, applyPantryFilters(groups, emptySet()))
+    }
+
+    @Test
+    fun `group survives a location filter when any lot matches, keeping all its lots`() {
+        val groups = groupInventoryByProduct(
+            listOf(
+                lot("a1", "pA", expiresInDays = null, location = PantryLocation.Pantry),
+                lot("a2", "pA", expiresInDays = null, location = PantryLocation.Freezer),
+                lot("b1", "pB", expiresInDays = null, location = PantryLocation.Pantry),
+            ),
+        )
+
+        val result = applyPantryFilters(groups, setOf(PantryDashboardFilter.Freezer))
+
+        // pA shows because one lot is frozen; the card keeps both lots. pB drops.
+        assertEquals(listOf("pA"), result.map { it.productId })
+        assertEquals(2, result.single().lots.size)
+    }
+
+    @Test
+    fun `group survives the expiring filter when only one lot is expiring`() {
+        val groups = groupInventoryByProduct(
+            listOf(
+                lot("a1", "pA", expiresInDays = 1),
+                lot("a2", "pA", expiresInDays = 60),
+                lot("b1", "pB", expiresInDays = 60),
+            ),
+        )
+
+        val result = applyPantryFilters(groups, setOf(PantryDashboardFilter.Expiring))
+
+        assertEquals(listOf("pA"), result.map { it.productId })
+    }
+
+    @Test
+    fun `group drops when no single lot matches every filter category`() {
+        // pA has a freezer lot and an expiring lot, but no lot that is both —
+        // categories AND together per lot, so the card drops.
+        val groups = groupInventoryByProduct(
+            listOf(
+                lot("a1", "pA", expiresInDays = 60, location = PantryLocation.Freezer),
+                lot("a2", "pA", expiresInDays = 1, location = PantryLocation.Pantry),
+            ),
+        )
+
+        val result = applyPantryFilters(
+            groups,
+            setOf(PantryDashboardFilter.Freezer, PantryDashboardFilter.Expiring),
         )
 
         assertTrue(result.isEmpty())
