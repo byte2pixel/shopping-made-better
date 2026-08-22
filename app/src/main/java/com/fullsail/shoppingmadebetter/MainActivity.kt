@@ -60,7 +60,8 @@ import com.fullsail.shoppingmadebetter.navigation.NavEvent
 import com.fullsail.shoppingmadebetter.navigation.NavigationViewModel
 import com.fullsail.shoppingmadebetter.navigation.TopLevelDestination
 import com.fullsail.shoppingmadebetter.ui.screens.CartScreen
-import com.fullsail.shoppingmadebetter.ui.screens.HistoryScreen
+import com.fullsail.shoppingmadebetter.feature.history.ui.HistoryScreen
+import com.fullsail.shoppingmadebetter.feature.history.ui.PurchaseTripDetailScreen
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -341,7 +342,17 @@ fun ShoppingMadeBetterApp(
                     onTitleChange = navigationViewModel::setScreenTitle,
                 )
             }
-            composable<Dest.History> { HistoryScreen() }
+            composable<Dest.History> {
+                HistoryScreen(
+                    onTripClick = { id -> navController.navigate(Dest.PurchaseTripDetail(id)) },
+                )
+            }
+            composable<Dest.PurchaseTripDetail> { entry ->
+                PurchaseTripDetailScreen(
+                    purchaseId = entry.toRoute<Dest.PurchaseTripDetail>().purchaseId,
+                    onTitleChange = navigationViewModel::setScreenTitle,
+                )
+            }
             composable<Dest.Meals> {
                 val mealsViewModel: MealsViewModel = hiltViewModel()
                 MealsScreen(

@@ -59,6 +59,13 @@ sealed interface Dest {
     @Serializable
     data object History : Dest
 
+    /**
+     * A detail screen for one completed shopping trip.
+     * @param purchaseId The ID of the purchase_history row to show.
+     */
+    @Serializable
+    data class PurchaseTripDetail(val purchaseId: String) : Dest
+
     @Serializable
     data object Meals : Dest
 
