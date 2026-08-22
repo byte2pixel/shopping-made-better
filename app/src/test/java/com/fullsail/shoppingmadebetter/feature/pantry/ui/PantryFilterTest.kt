@@ -2,6 +2,7 @@ package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.groupInventoryByProduct
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -312,5 +313,78 @@ class PantryFilterTest {
         // (Low OR Out) AND Freezer: outFreezer and lowFreezer qualify; stockedFreezer
         // is well stocked and outFridge is in the wrong location.
         assertEquals(listOf(outFreezer, lowFreezer), result)
+    }
+
+    // The group overload: a product card stays visible when any of its lots matches,
+    // and it keeps every lot. Interim until SCRUM-180 reworks filters over groups.
+
+    private fun lot(
+        id: String,
+        productId: String,
+        expiresInDays: Int?,
+        location: PantryLocation = PantryLocation.Pantry,
+    ) = item(id, expiresInDays, location).copy(productId = productId)
+
+    @Test
+    fun `group overload with no filters returns every group unchanged`() {
+        val groups = groupInventoryByProduct(
+            listOf(
+                lot("a1", "pA", expiresInDays = 3),
+                lot("b1", "pB", expiresInDays = null),
+            ),
+        )
+
+        assertEquals(groups, applyPantryFilters(groups, emptySet()))
+    }
+
+    @Test
+    fun `group survives a location filter when any lot matches, keeping all its lots`() {
+        val groups = groupInventoryByProduct(
+            listOf(
+                lot("a1", "pA", expiresInDays = null, location = PantryLocation.Pantry),
+                lot("a2", "pA", expiresInDays = null, location = PantryLocation.Freezer),
+                lot("b1", "pB", expiresInDays = null, location = PantryLocation.Pantry),
+            ),
+        )
+
+        val result = applyPantryFilters(groups, setOf(PantryDashboardFilter.Freezer))
+
+        // pA shows because one lot is frozen; the card keeps both lots. pB drops.
+        assertEquals(listOf("pA"), result.map { it.productId })
+        assertEquals(2, result.single().lots.size)
+    }
+
+    @Test
+    fun `group survives the expiring filter when only one lot is expiring`() {
+        val groups = groupInventoryByProduct(
+            listOf(
+                lot("a1", "pA", expiresInDays = 1),
+                lot("a2", "pA", expiresInDays = 60),
+                lot("b1", "pB", expiresInDays = 60),
+            ),
+        )
+
+        val result = applyPantryFilters(groups, setOf(PantryDashboardFilter.Expiring))
+
+        assertEquals(listOf("pA"), result.map { it.productId })
+    }
+
+    @Test
+    fun `group drops when no single lot matches every filter category`() {
+        // pA has a freezer lot and an expiring lot, but no lot that is both —
+        // categories AND together per lot, so the card drops.
+        val groups = groupInventoryByProduct(
+            listOf(
+                lot("a1", "pA", expiresInDays = 60, location = PantryLocation.Freezer),
+                lot("a2", "pA", expiresInDays = 1, location = PantryLocation.Pantry),
+            ),
+        )
+
+        val result = applyPantryFilters(
+            groups,
+            setOf(PantryDashboardFilter.Freezer, PantryDashboardFilter.Expiring),
+        )
+
+        assertTrue(result.isEmpty())
     }
 }
