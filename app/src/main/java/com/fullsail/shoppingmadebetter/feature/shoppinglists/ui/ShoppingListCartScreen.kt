@@ -3,6 +3,7 @@ package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -54,18 +55,35 @@ fun ShoppingListCartScreen(
                 if (state.items.isEmpty()) {
                     Text("No items added to list", Modifier.align(Alignment.Center))
                 } else {
-                    LazyColumn(
-                        Modifier.fillMaxSize().padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
+                    Column(Modifier.fillMaxWidth()) {
+                        Text("Unchecked")
+                        LazyColumn(
+                            Modifier.weight(1f).padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
 
-                        items(state.items, key = { it.id }) { CartRow(it,viewModel, onItemCrossed = {
-                            viewModel.toggleItemCheck(it.id)
-                        }, onItemUncrossed = {
-                            viewModel.toggleItemCheck(it.id)
-                        }) }
+                            items(state.items.filter { !it.checked }, key = { it.id }) {
+
+                                CartRow(it, viewModel, onItemCrossed = {
+                                    viewModel.toggleItemCheck(it.id)
+                                }, onItemUncrossed = {
+                                    viewModel.toggleItemCheck(it.id)
+                                })
+                            }
+                        }
+                        Text("Checked")
+                        LazyColumn(Modifier.weight(1f).padding(16.dp)) {
+                            items(state.items.filter { it.checked }, key = { it.id }) {
+                                CartRow(it, viewModel, onItemCrossed = {
+                                    viewModel.toggleItemCheck(it.id)
+                                }, onItemUncrossed = {
+                                    viewModel.toggleItemCheck(it.id)
+                                })
+                            }
+                        }
                     }
                 }
+
 
 
             else -> {}
