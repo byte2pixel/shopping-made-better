@@ -71,10 +71,12 @@ fun ShoppingListCartScreen(
             else -> {}
         }
         FloatingActionButton(onClick = {
+            viewModel.markAllPurchased(listId)
             checkedItems.forEach { viewModel.deleteItems(it, listId) }
             viewModel.clearCheckedItems(listId)
 
-        }, Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding( 20.dp)) { Text("Complete List")}
+        }, Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding( 20.dp)
+        ) { Text("Complete List")}
     }
 }
 @Composable
