@@ -49,7 +49,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
-import com.fullsail.shoppingmadebetter.feature.pantry.domain.ProductGroup
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
@@ -58,77 +57,6 @@ private val filterSetSaver = listSaver<Set<PantryDashboardFilter>, String>(
     save = { selected -> selected.map { it.name } },
     restore = { names -> names.map { PantryDashboardFilter.valueOf(it) }.toSet() },
 )
-
-/**
- * Items with a known expiration date within this many days — including
- * already-expired ones — count as "expiring soon". Hard-coded for now; a future
- * task may let the user configure it (e.g. by long-pressing the dashboard card).
- */
-internal const val EXPIRING_SOON_DAYS = 5
-
-/**
- * Narrows [items] to those matching the active, wired-up dashboard filters in
- * [filters]. Filters without a [PantryDashboardFilter.predicate] yet are ignored;
- * when no active filter has a predicate, [items] is returned unchanged.
- *
- * Filters that share a [PantryDashboardFilter.category] — the mutually-exclusive
- * location and stock-status groups — OR-join: an item can only be in one location
- * or one stock state, so selecting Fridge + Freezer (or Running Low + Out) widens
- * the result to the union rather than emptying it. Distinct categories, and every
- * solo (category-less) filter such as Expiring, AND together. So Expiring + Fridge
- * + Freezer yields cold items expiring soon.
- */
-internal fun applyPantryFilters(
-    items: List<InventoryItem>,
-    filters: Set<PantryDashboardFilter>,
-): List<InventoryItem> {
-    // Group the active predicates by category; a null category keys on the filter
-    // itself so each solo filter forms its own group. OR within a group, AND across.
-    val predicateGroups = filters
-        .mapNotNull { filter -> filter.predicate?.let { predicate -> (filter.category ?: filter) to predicate } }
-        .groupBy(keySelector = { it.first }, valueTransform = { it.second })
-
-    if (predicateGroups.isEmpty()) return items
-
-    return items.filter { item ->
-        predicateGroups.values.all { group -> group.any { predicate -> predicate(item) } }
-    }
-}
-
-/**
- * Narrows [groups] to the product cards to show for the active dashboard filters:
- * a product stays visible when any of its lots matches, and the card keeps all of
- * its lots and true aggregates. Interim behavior — SCRUM-180 finishes the filter logic
- */
-@JvmName("applyPantryFiltersToGroups") // The item overload erases to the same JVM signature.
-internal fun applyPantryFilters(
-    groups: List<ProductGroup>,
-    filters: Set<PantryDashboardFilter>,
-): List<ProductGroup> = groups.filter { group ->
-    applyPantryFilters(group.lots, filters).isNotEmpty()
-}
-
-/**
- * Whether this item's expiry chip reads as a warning — red, orange, or yellow
- * rather than gray.
- */
-internal fun InventoryItem.isExpiringSoon(): Boolean =
-    expiresInDays != null && expiryBucket(expiresInDays) != ExpiryBucket.Later
-
-/**
- * Whether this item is running low: it has a per-item low threshold set and its
- * quantity sits between 1 and that threshold. Quantity 0 is "out", not "low".
- * Items without a threshold ([lowStockThreshold] null) are
- * never low.
- */
-internal fun InventoryItem.isLowStock(): Boolean =
-    stockLevel(quantity, lowStockThreshold) == StockLevel.Low
-
-/**
- * Whether this item is out of stock: nothing on hand ([quantity] 0).
- */
-internal fun InventoryItem.isOutOfStock(): Boolean =
-    stockLevel(quantity, lowStockThreshold) == StockLevel.Out
 
 @Composable
 fun PantryScreen(
@@ -257,10 +185,8 @@ private fun PantryContent(
             }
 
             is PantryUiState.Success -> {
-                // Dashboard cards still count individual lots; SCRUM-180 moves them
-                // (and the filters) onto the grouped model properly.
                 val dashboardCards = remember(uiState.productGroups) {
-                    pantryDashboardCards(uiState.productGroups.flatMap { it.lots })
+                    pantryDashboardCards(uiState.productGroups)
                 }
                 var selectedFilters by rememberSaveable(stateSaver = filterSetSaver) {
                     mutableStateOf(emptySet<PantryDashboardFilter>())
