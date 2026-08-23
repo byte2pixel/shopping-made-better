@@ -13,6 +13,7 @@
 --   * Replaces the demo user's inventory with a fresh mock pantry.
 --   * Replaces the demo user's shopping trips (summarized by the
 --     shopping_trip_summaries view from migration 20260708015853).
+--   * Replaces the demo user's purchase history with two completed trips.
 --
 -- Sign-in credentials (email confirmations are disabled in config.toml,
 -- so this works immediately from the app's sign-in screen):
@@ -142,3 +143,53 @@ join lateral (
   limit 5
 ) picked on true
 where sl.user_id = '11111111-1111-1111-1111-111111111111';
+
+-- 5) Demo purchase history: two completed trips, so the History tab has
+--    something to show on a fresh reset.
+--    Clear first for idempotent re-runs (items cascade with the header row).
+delete from public.purchase_history
+where user_id = '11111111-1111-1111-1111-111111111111';
+
+-- One trip per store, 4 currently-priced products each, dated relative to now()
+-- so they always read as recent and land newest-first.
+with trip_spec as (
+  select * from (values
+    -- store,     days ago, product offset, qty per line
+    ('ALDI',      3,        0,              2),
+    ('Publix',    10,       4,              1)
+  ) as t(store_name, days_ago, pick_offset, quantity)
+),
+picked as (
+  select
+    ts.days_ago,
+    ts.quantity,
+    s.id  as store_id,
+    pick.product_id,
+    pick.price
+  from trip_spec ts
+  join public.stores s on s.name = ts.store_name
+  join lateral (
+    select spp.product_id, spp.price
+    from public.store_product_pricing spp
+    where spp.store_id = s.id
+      and spp.is_current = true
+    order by spp.product_id
+    offset ts.pick_offset
+    limit 4
+  ) pick on true
+),
+trip as (
+  insert into public.purchase_history (user_id, store_id, purchased_at, total_amount)
+  select
+    '11111111-1111-1111-1111-111111111111',
+    p.store_id,
+    now() - make_interval(days => p.days_ago),
+    sum(p.quantity * p.price)
+  from picked p
+  group by p.store_id, p.days_ago
+  returning id, store_id
+)
+insert into public.purchase_history_items (purchase_id, product_id, quantity, price_paid)
+select t.id, p.product_id, p.quantity, p.price
+from trip t
+join picked p on p.store_id = t.store_id;
