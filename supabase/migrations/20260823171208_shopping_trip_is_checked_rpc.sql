@@ -30,7 +30,8 @@ BEGIN
 
   SELECT count(*) INTO v_item_count
   FROM public.shopping_list_items
-  WHERE shopping_list_id = p_list_id;
+  WHERE shopping_list_id = p_list_id
+    AND is_checked = true;
 
   IF v_item_count = 0 THEN
     RAISE EXCEPTION 'Shopping list % has no items to purchase', p_list_id;
@@ -49,6 +50,7 @@ BEGIN
    AND spp.store_id   = v_store_id
    AND spp.is_current = true
   WHERE sli.shopping_list_id = p_list_id
+    AND sli.is_checked = true
   RETURNING id INTO v_purchase_id;
 
   -- 2) Purchase-history line items (price_paid from current pricing, 0 if none).
@@ -65,7 +67,8 @@ BEGIN
     ON spp.product_id = sli.product_id
    AND spp.store_id   = v_store_id
    AND spp.is_current = true
-  WHERE sli.shopping_list_id = p_list_id;
+  WHERE sli.shopping_list_id = p_list_id
+    AND sli.is_checked = true;
 
   -- 3) Pantry rows for items flagged add_to_inventory. unit <- products.pricing_unit.
   --    expires_at + location are filled by existing BEFORE INSERT triggers.
@@ -80,12 +83,13 @@ BEGIN
   FROM public.shopping_list_items sli
   JOIN public.products p ON p.id = sli.product_id
   WHERE sli.shopping_list_id = p_list_id
-    AND sli.add_to_inventory = true;
+    AND sli.add_to_inventory = true
+    AND sli.is_checked = true;
 
   -- 4) Clear the list's items; keep the (reusable) list row.
   DELETE FROM public.shopping_list_items
-  WHERE shopping_list_id = p_list_id;
-
+  WHERE shopping_list_id = p_list_id
+    AND is_checked;
   RETURN v_purchase_id;
 END;
 $$;
