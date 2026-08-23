@@ -1,11 +1,17 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.test.espresso.Espresso
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
@@ -178,12 +184,25 @@ class PantryScreenTest {
     private fun string(resId: Int, vararg args: Any) =
         composeTestRule.activity.getString(resId, *args)
 
-    /** Content description of the "Expiring" dashboard card, used to tap it. */
-    private fun expiringCardDescription(count: Int) =
-        composeTestRule.activity.resources.getQuantityString(
+    private fun quantityString(resId: Int, quantity: Int, vararg args: Any) =
+        composeTestRule.activity.resources.getQuantityString(resId, quantity, *args)
+
+    /** Matches a node whose click action carries [label] (e.g. a lot row's "View lot details"). */
+    private fun hasClickLabel(label: String) = SemanticsMatcher("clickLabel = $label") { node ->
+        node.config.getOrNull(SemanticsActions.OnClick)?.label == label
+    }
+
+    /** Expands (or collapses) [productName]'s card by tapping its header. */
+    private fun toggleCard(productName: String) {
+        composeTestRule.onNodeWithText(productName).performClick()
+    }
+
+    /** Content description of a dashboard card, used to find and tap it. */
+    private fun cardDescription(filter: PantryDashboardFilter, count: Int) =
+        quantityString(
             R.plurals.pantry_dashboard_card_desc,
             count,
-            string(R.string.pantry_dashboard_expiring),
+            string(filter.labelRes),
             count,
         )
 
@@ -217,7 +236,7 @@ class PantryScreenTest {
     }
 
     @Test
-    fun rendersTheInventoryCard() {
+    fun rendersTheProductCard() {
         setScreen()
 
         composeTestRule.onNodeWithText("2% Milk").assertIsDisplayed()
@@ -225,26 +244,23 @@ class PantryScreenTest {
         composeTestRule.onNodeWithText("1 gal").assertIsDisplayed()
         composeTestRule
             .onNodeWithContentDescription(
-                composeTestRule.activity.resources.getQuantityString(
-                    R.plurals.pantry_card_quantity_desc, 2, 2,
-                )
+                quantityString(R.plurals.pantry_card_total_quantity_desc, 2, 2)
             )
             .assertIsDisplayed()
     }
 
     @Test
-    fun theExpiryChipStaysForItemsThatExpireFarOut() {
+    fun theExpiryChipStaysForLotsThatExpireFarOut() {
         setScreen(
             inventory = FakeGetInventoryUseCase(inventoryOf(milk.copy(expiresInDays = 30)))
         )
+        toggleCard("2% Milk")
 
-        // Well past the "expiring soon" threshold, but the chip is still there and
-        // still opens the editor, so a mistyped date can be corrected.
+        // Well past the "expiring soon" threshold, but the lot's chip is still there
+        // and still opens the editor, so a mistyped date can be corrected.
         composeTestRule
             .onNodeWithContentDescription(
-                composeTestRule.activity.resources.getQuantityString(
-                    R.plurals.pantry_detail_expires_in_days, 30, 30,
-                )
+                quantityString(R.plurals.pantry_detail_expires_in_days, 30, 30)
             )
             .performClick()
 
@@ -254,13 +270,122 @@ class PantryScreenTest {
     }
 
     @Test
-    fun tappingARowReportsTheItemId() {
+    fun tappingTheHeaderExpandsAndCollapsesTheLots() {
+        setScreen()
+        val lotQuantityDesc = quantityString(R.plurals.pantry_card_quantity_desc, 2, 2)
+
+        // Collapsed: only the header's total chip shows, no per-lot quantity chip.
+        composeTestRule.onNodeWithContentDescription(lotQuantityDesc).assertDoesNotExist()
+
+        toggleCard("2% Milk")
+        composeTestRule.onNodeWithContentDescription(lotQuantityDesc).assertIsDisplayed()
+
+        toggleCard("2% Milk")
+        composeTestRule.onNodeWithContentDescription(lotQuantityDesc).assertDoesNotExist()
+    }
+
+    @Test
+    fun multipleCardsCanBeExpandedAtOnce() {
+        setScreen(
+            inventory = FakeGetInventoryUseCase(inventoryOf(expiringYogurt, cannedBeans))
+        )
+
+        toggleCard("Yogurt")
+        toggleCard("Canned Beans")
+
+        // Both cards' lot rows are showing at the same time (no accordion).
+        composeTestRule
+            .onAllNodes(hasClickLabel(string(R.string.pantry_card_lot_details)))
+            .assertCountEquals(2)
+    }
+
+    @Test
+    fun repeatPurchasesShowOneCardWithAllLots() {
+        val secondLot = milk.copy(id = "i9", quantity = 3, expiresInDays = 5)
+        setScreen(inventory = FakeGetInventoryUseCase(inventoryOf(milk, secondLot)))
+
+        // One card for the product, with the header aggregating both lots.
+        composeTestRule.onAllNodesWithText("2% Milk").assertCountEquals(1)
+        composeTestRule
+            .onNodeWithContentDescription(
+                quantityString(R.plurals.pantry_card_total_quantity_desc, 5, 5)
+            )
+            .assertIsDisplayed()
+
+        // Expanding lists each lot with its own quantity.
+        toggleCard("2% Milk")
+        composeTestRule
+            .onNodeWithContentDescription(quantityString(R.plurals.pantry_card_quantity_desc, 2, 2))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithContentDescription(quantityString(R.plurals.pantry_card_quantity_desc, 3, 3))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun tappingALotRowReportsTheLotId() {
         var clickedId: String? = null
         setScreen(onItemClick = { clickedId = it })
 
-        composeTestRule.onNodeWithText("2% Milk").performClick()
+        toggleCard("2% Milk")
+        composeTestRule
+            .onNode(hasClickLabel(string(R.string.pantry_card_lot_details)))
+            .performClick()
 
         assertEquals("i1", clickedId)
+    }
+
+    @Test
+    fun lotQuantityEditsCommitAgainstThatLot() {
+        val updateQuantity = FakeUpdateInventoryQuantityUseCase()
+        val secondLot = milk.copy(id = "i9", quantity = 3, expiresInDays = 5)
+        setScreen(
+            inventory = FakeGetInventoryUseCase(inventoryOf(milk, secondLot)),
+            updateQuantity = updateQuantity,
+        )
+        toggleCard("2% Milk")
+
+        // Open the 3-quantity lot's stepper, bump it once, and dismiss to commit.
+        composeTestRule
+            .onNodeWithContentDescription(quantityString(R.plurals.pantry_card_quantity_desc, 3, 3))
+            .performClick()
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_quantity_increase))
+            .performClick()
+        Espresso.pressBack()
+        composeTestRule.waitForIdle()
+
+        assertEquals(UpdateInventoryQuantity(id = "i9", quantity = 4), updateQuantity.lastInput)
+    }
+
+    @Test
+    fun theTotalQuantityChipEditsOnlyTheProductThreshold() {
+        val updateThreshold = FakeUpdateInventoryLowStockThresholdUseCase()
+        setScreen(updateThreshold = updateThreshold)
+
+        composeTestRule
+            .onNodeWithContentDescription(
+                quantityString(R.plurals.pantry_card_total_quantity_desc, 2, 2)
+            )
+            .performClick()
+
+        // The popup offers only the low-stock threshold — no quantity stepper.
+        composeTestRule.onNodeWithText(string(R.string.pantry_low_stock_label)).assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_quantity_edit_label))
+            .assertDoesNotExist()
+
+        // Raising from Off sets 1; dismissing commits it against the product.
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_low_stock_increase))
+            .performClick()
+        Espresso.pressBack()
+        composeTestRule.waitForIdle()
+
+        assertEquals(
+            UpdateInventoryLowStockThreshold(productId = "p1", threshold = 1),
+            updateThreshold.lastInput,
+        )
     }
 
     @Test
@@ -317,13 +442,14 @@ class PantryScreenTest {
     }
 
     @Test
-    fun removingAnItemConfirmsThenDeletesIt() {
+    fun removingALotConfirmsThenDeletesIt() {
         val deleteInventory = FakeDeleteInventoryItemUseCase()
         setScreen(deleteInventory = deleteInventory)
+        toggleCard("2% Milk")
 
-        // Tapping the card's remove action opens a confirmation dialog.
+        // Tapping a lot row's remove action opens a confirmation dialog.
         composeTestRule
-            .onNodeWithContentDescription(string(R.string.pantry_remove_from_pantry))
+            .onNodeWithContentDescription(string(R.string.pantry_card_remove_lot))
             .performClick()
         composeTestRule
             .onNodeWithText(string(R.string.pantry_remove_confirm_title))
@@ -343,9 +469,10 @@ class PantryScreenTest {
     fun cancellingRemoveKeepsTheItem() {
         val deleteInventory = FakeDeleteInventoryItemUseCase()
         setScreen(deleteInventory = deleteInventory)
+        toggleCard("2% Milk")
 
         composeTestRule
-            .onNodeWithContentDescription(string(R.string.pantry_remove_from_pantry))
+            .onNodeWithContentDescription(string(R.string.pantry_card_remove_lot))
             .performClick()
         composeTestRule
             .onNodeWithText(string(R.string.pantry_remove_cancel))
@@ -364,10 +491,11 @@ class PantryScreenTest {
         val deleteInventory = FakeDeleteInventoryItemUseCase()
         val setSkip = FakeSetSkipRemoveConfirmationUseCase()
         setScreen(deleteInventory = deleteInventory, setSkip = setSkip)
+        toggleCard("2% Milk")
 
         // Open the dialog and toggle the "Don't ask again" checkbox.
         composeTestRule
-            .onNodeWithContentDescription(string(R.string.pantry_remove_from_pantry))
+            .onNodeWithContentDescription(string(R.string.pantry_card_remove_lot))
             .performClick()
         composeTestRule
             .onNodeWithText(string(R.string.pantry_remove_dont_ask_again))
@@ -391,9 +519,10 @@ class PantryScreenTest {
             deleteInventory = deleteInventory,
             getSkip = FakeGetSkipRemoveConfirmationUseCase(value = true),
         )
+        toggleCard("2% Milk")
 
         composeTestRule
-            .onNodeWithContentDescription(string(R.string.pantry_remove_from_pantry))
+            .onNodeWithContentDescription(string(R.string.pantry_card_remove_lot))
             .performClick()
 
         // No confirmation dialog appears; the item is removed directly.
@@ -417,7 +546,7 @@ class PantryScreenTest {
 
         // Turn the filter on: only the soon-to-expire item remains. The card counts
         // one item — the yogurt; the beans have no expiration date at all.
-        val expiringCard = expiringCardDescription(count = 1)
+        val expiringCard = cardDescription(PantryDashboardFilter.Expiring, count = 1)
         composeTestRule.onNodeWithContentDescription(expiringCard).performClick()
         composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
         composeTestRule.onNodeWithText("Canned Beans").assertDoesNotExist()
@@ -426,5 +555,55 @@ class PantryScreenTest {
         composeTestRule.onNodeWithContentDescription(expiringCard).performClick()
         composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
         composeTestRule.onNodeWithText("Canned Beans").assertIsDisplayed()
+    }
+
+    @Test
+    fun theRunningLowCardCountsProductsNotLots() {
+        // Two loaves in separate lots against a threshold of one: two on hand, so the
+        // product is not low even though every lot sits at the threshold.
+        val bread = milk.copy(
+            id = "b1",
+            productId = "bread",
+            name = "Sourdough",
+            quantity = 1,
+            expiresInDays = 2,
+            lowStockThreshold = 1,
+        )
+        setScreen(
+            inventory = FakeGetInventoryUseCase(
+                inventoryOf(bread, bread.copy(id = "b2", expiresInDays = 5))
+            )
+        )
+        composeTestRule.onNodeWithText("Sourdough").assertIsDisplayed()
+
+        // The card counts no low products, and turning it on filters the bread away.
+        composeTestRule
+            .onNodeWithContentDescription(cardDescription(PantryDashboardFilter.RunningLow, 0))
+            .performClick()
+        composeTestRule.onNodeWithText("Sourdough").assertDoesNotExist()
+    }
+
+    @Test
+    fun theRunningLowCardCountsALowProductOnceAcrossItsLots() {
+        // The same two lots against a threshold of three: two on hand is low, and the
+        // product counts once however many lots it is spread over.
+        val bread = milk.copy(
+            id = "b1",
+            productId = "bread",
+            name = "Sourdough",
+            quantity = 1,
+            expiresInDays = 2,
+            lowStockThreshold = 3,
+        )
+        setScreen(
+            inventory = FakeGetInventoryUseCase(
+                inventoryOf(bread, bread.copy(id = "b2", expiresInDays = 5))
+            )
+        )
+
+        composeTestRule
+            .onNodeWithContentDescription(cardDescription(PantryDashboardFilter.RunningLow, 1))
+            .performClick()
+        composeTestRule.onAllNodesWithText("Sourdough").assertCountEquals(1)
     }
 }

@@ -91,6 +91,20 @@
     <string name="pantry_low_stock_decrease">Lower low stock threshold</string>
     <string name="pantry_low_stock_increase">Raise low stock threshold</string>
 
+    <!-- Pantry product card: header aggregates + expandable lot rows -->
+    <string name="pantry_card_expand_lots">Show lots</string>
+    <string name="pantry_card_collapse_lots">Hide lots</string>
+    <string name="pantry_card_total_quantity">Total %1$d</string>
+    <plurals name="pantry_card_total_quantity_desc">
+        <item quantity="one">%1$d in stock across all lots</item>
+        <item quantity="other">%1$d in stock across all lots</item>
+    </plurals>
+    <string name="pantry_location_mixed">Mixed</string>
+    <string name="pantry_card_location_mixed_desc">Stored in multiple locations</string>
+    <string name="pantry_card_expiry_soonest_desc">Soonest expiry: %1$s</string>
+    <string name="pantry_card_lot_details">View lot details</string>
+    <string name="pantry_card_remove_lot">Remove this lot</string>
+
     <!-- Pantry inventory card chip indicators - location -->
     <string name="pantry_card_location_desc">Stored in %1$s</string>
 
@@ -137,4 +151,24 @@
 
     <!-- Shopping list detail: mark the whole list as purchased -->
     <string name="mark_all_purchased">Mark all as purchased</string>
+
+    <!-- History tab: completed shopping trips -->
+    <string name="history_error">Couldn\'t load your purchase history</string>
+    <string name="history_retry">Retry</string>
+    <string name="history_empty">No purchases yet. Completed shopping trips show up here.</string>
+    <string name="history_unknown_store">Unknown store</string>
+    <string name="history_trip_open">Show trip details</string>
+    <plurals name="history_trip_item_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+
+    <!-- History: one completed trip and what was bought on it -->
+    <string name="history_detail_not_found">That trip is no longer available</string>
+    <string name="history_detail_store">Store</string>
+    <string name="history_detail_date">Purchased</string>
+    <string name="history_detail_total">Total</string>
+    <string name="history_detail_items">Items</string>
+    <!-- e.g. "Qty 1.5 × $2.00" -->
+    <string name="history_line_quantity_price">Qty %1$s × %2$s</string>
 </resources>

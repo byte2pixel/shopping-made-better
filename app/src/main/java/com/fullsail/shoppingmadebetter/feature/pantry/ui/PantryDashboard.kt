@@ -5,8 +5,6 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -36,13 +34,15 @@ import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ProductGroup
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
 /**
- * A group of mutually-exclusive filters. An item can satisfy at most one filter in
- * a group (it lives in one location, has one stock status), so filters sharing a
- * category OR-join — combining them widens the result rather than emptying it.
- * Filters with no category ([PantryDashboardFilter.category] null) stand alone.
+ * A group of mutually-exclusive filters. A lot lives in one location and a product
+ * has one stock status, so at most one filter in a group can be satisfied — filters
+ * sharing a category OR-join, and combining them widens the result rather than
+ * emptying it. Filters with no category ([PantryDashboardFilter.category] null)
+ * stand alone.
  */
 enum class PantryFilterCategory { Stock, Location }
 
@@ -56,35 +56,44 @@ enum class PantryDashboardFilter(
     @param:StringRes val labelRes: Int,
 ) {
     Expiring(R.drawable.ic_expiring, R.string.pantry_dashboard_expiring) {
-        override val predicate: (InventoryItem) -> Boolean = { it.isExpiringSoon() }
+        override val lotPredicate: (InventoryItem) -> Boolean = { it.isExpiringSoon() }
     },
     RunningLow(R.drawable.ic_running_low, R.string.pantry_dashboard_running_low) {
-        override val predicate: (InventoryItem) -> Boolean = { it.isLowStock() }
+        override val groupPredicate: (ProductGroup) -> Boolean = { it.isLowStock() }
         override val category: PantryFilterCategory = PantryFilterCategory.Stock
     },
     Out(R.drawable.ic_out_of_stock, R.string.pantry_dashboard_out) {
-        override val predicate: (InventoryItem) -> Boolean = { it.isOutOfStock() }
+        override val groupPredicate: (ProductGroup) -> Boolean = { it.isOutOfStock() }
         override val category: PantryFilterCategory = PantryFilterCategory.Stock
     },
     Freezer(R.drawable.ic_freezer, R.string.pantry_dashboard_freezer) {
-        override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Freezer }
+        override val lotPredicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Freezer }
         override val category: PantryFilterCategory = PantryFilterCategory.Location
     },
     Fridge(R.drawable.ic_fridge, R.string.pantry_dashboard_fridge) {
-        override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Fridge }
+        override val lotPredicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Fridge }
         override val category: PantryFilterCategory = PantryFilterCategory.Location
     },
     Pantry(R.drawable.ic_pantry, R.string.pantry_dashboard_pantry) {
-        override val predicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Pantry }
+        override val lotPredicate: (InventoryItem) -> Boolean = { it.location == PantryLocation.Pantry }
         override val category: PantryFilterCategory = PantryFilterCategory.Location
     },
     ;
 
     /**
-     * How this card decides whether an inventory item belongs to its category,
-     * or `null` while still a placeholder.
+     * How this card decides whether a single lot belongs to its category — for the
+     * things one lot owns, its expiry date and where it is stored.
+     * A filter sets this or [groupPredicate], never both; both are `null` while it is
+     * still a placeholder. See [ProductGroup.matchesFilters] for how the two combine.
      */
-    open val predicate: ((InventoryItem) -> Boolean)? = null
+    open val lotPredicate: ((InventoryItem) -> Boolean)? = null
+
+    /**
+     * How this card decides whether a whole product belongs to its category — for the
+     * things the product owns rather than any one lot, its total on hand and its
+     * low-stock threshold.
+     */
+    open val groupPredicate: ((ProductGroup) -> Boolean)? = null
 
     /**
      * The mutually-exclusive group this filter belongs to, or `null` if it stands
@@ -197,13 +206,17 @@ private fun DashboardCard(
 }
 
 /**
- * Builds the dashboard cards for [items]. Each card shows the real count of items
- * matching its filter's [PantryDashboardFilter.predicate]; a filter still awaiting
- * a predicate shows 0.
+ * Builds the dashboard cards for [groups]. Each card counts the product cards its
+ * filter matches, so the number on a card is exactly how many cards tapping it
+ * leaves in the list; a filter still awaiting a predicate shows 0.
  */
-internal fun pantryDashboardCards(items: List<InventoryItem>): List<PantryDashboardCard> =
+internal fun pantryDashboardCards(groups: List<ProductGroup>): List<PantryDashboardCard> =
     PantryDashboardFilter.entries.map { filter ->
-        val count = filter.predicate?.let { predicate -> items.count(predicate) } ?: 0
+        val count = if (filter.lotPredicate == null && filter.groupPredicate == null) {
+            0
+        } else {
+            groups.count { group -> group.matchesFilters(setOf(filter)) }
+        }
         PantryDashboardCard(filter, count)
     }
 

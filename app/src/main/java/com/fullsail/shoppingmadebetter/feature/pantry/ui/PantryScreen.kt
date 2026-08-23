@@ -58,64 +58,6 @@ private val filterSetSaver = listSaver<Set<PantryDashboardFilter>, String>(
     restore = { names -> names.map { PantryDashboardFilter.valueOf(it) }.toSet() },
 )
 
-/**
- * Items with a known expiration date within this many days — including
- * already-expired ones — count as "expiring soon". Hard-coded for now; a future
- * task may let the user configure it (e.g. by long-pressing the dashboard card).
- */
-internal const val EXPIRING_SOON_DAYS = 5
-
-/**
- * Narrows [items] to those matching the active, wired-up dashboard filters in
- * [filters]. Filters without a [PantryDashboardFilter.predicate] yet are ignored;
- * when no active filter has a predicate, [items] is returned unchanged.
- *
- * Filters that share a [PantryDashboardFilter.category] — the mutually-exclusive
- * location and stock-status groups — OR-join: an item can only be in one location
- * or one stock state, so selecting Fridge + Freezer (or Running Low + Out) widens
- * the result to the union rather than emptying it. Distinct categories, and every
- * solo (category-less) filter such as Expiring, AND together. So Expiring + Fridge
- * + Freezer yields cold items expiring soon.
- */
-internal fun applyPantryFilters(
-    items: List<InventoryItem>,
-    filters: Set<PantryDashboardFilter>,
-): List<InventoryItem> {
-    // Group the active predicates by category; a null category keys on the filter
-    // itself so each solo filter forms its own group. OR within a group, AND across.
-    val predicateGroups = filters
-        .mapNotNull { filter -> filter.predicate?.let { predicate -> (filter.category ?: filter) to predicate } }
-        .groupBy(keySelector = { it.first }, valueTransform = { it.second })
-
-    if (predicateGroups.isEmpty()) return items
-
-    return items.filter { item ->
-        predicateGroups.values.all { group -> group.any { predicate -> predicate(item) } }
-    }
-}
-
-/**
- * Whether this item's expiry chip reads as a warning — red, orange, or yellow
- * rather than gray.
- */
-internal fun InventoryItem.isExpiringSoon(): Boolean =
-    expiresInDays != null && expiryBucket(expiresInDays) != ExpiryBucket.Later
-
-/**
- * Whether this item is running low: it has a per-item low threshold set and its
- * quantity sits between 1 and that threshold. Quantity 0 is "out", not "low".
- * Items without a threshold ([lowStockThreshold] null) are
- * never low.
- */
-internal fun InventoryItem.isLowStock(): Boolean =
-    stockLevel(quantity, lowStockThreshold) == StockLevel.Low
-
-/**
- * Whether this item is out of stock: nothing on hand ([quantity] 0).
- */
-internal fun InventoryItem.isOutOfStock(): Boolean =
-    stockLevel(quantity, lowStockThreshold) == StockLevel.Out
-
 @Composable
 fun PantryScreen(
     onItemClick: (String) -> Unit,
@@ -243,15 +185,15 @@ private fun PantryContent(
             }
 
             is PantryUiState.Success -> {
-                val dashboardCards = remember(uiState.inventoryItems) {
-                    pantryDashboardCards(uiState.inventoryItems)
+                val dashboardCards = remember(uiState.productGroups) {
+                    pantryDashboardCards(uiState.productGroups)
                 }
                 var selectedFilters by rememberSaveable(stateSaver = filterSetSaver) {
                     mutableStateOf(emptySet<PantryDashboardFilter>())
                 }
 
-                val visibleItems = remember(uiState.inventoryItems, selectedFilters) {
-                    applyPantryFilters(uiState.inventoryItems, selectedFilters)
+                val visibleGroups = remember(uiState.productGroups, selectedFilters) {
+                    applyPantryFilters(uiState.productGroups, selectedFilters)
                 }
 
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -272,24 +214,23 @@ private fun PantryContent(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        items(visibleItems, key = { it.id }) { inventoryItem ->
-                            InventoryItemCard(
-                                item = inventoryItem,
-                                onClick = { onItemClick(inventoryItem.id) },
-                                onAddToList = { onAddToListClick(inventoryItem) },
-                                onRemove = { onRemoveClick(inventoryItem) },
-                                onQuantityChange = { newQty ->
-                                    onQuantityChange(inventoryItem, newQty)
-                                },
-                                onLocationChange = { newLocation ->
-                                    onLocationChange(inventoryItem, newLocation)
-                                },
-                                onExpiryChange = { newDays ->
-                                    onExpiryChange(inventoryItem, newDays)
-                                },
+                        items(visibleGroups, key = { it.productId }) { group ->
+                            // UI-only state, keyed by the item key, survives scrolling away and config changes.
+                            var isExpanded by rememberSaveable { mutableStateOf(false) }
+                            ProductCard(
+                                group = group,
+                                isExpanded = isExpanded,
+                                onExpandedChange = { isExpanded = it },
+                                onLotClick = { lot -> onItemClick(lot.id) },
+                                onAddToList = { onAddToListClick(group.lots.first()) },
+                                onRemoveLot = onRemoveClick,
+                                onQuantityChange = onQuantityChange,
+                                onLocationChange = onLocationChange,
+                                onExpiryChange = onExpiryChange,
                                 onLowStockThresholdChange = { newThreshold ->
-                                    onLowStockThresholdChange(inventoryItem, newThreshold)
+                                    onLowStockThresholdChange(group.lots.first(), newThreshold)
                                 },
+                                modifier = Modifier.animateItem(),
                             )
                         }
                     }
