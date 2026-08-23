@@ -14,9 +14,9 @@ import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
 /**
- * Temporary placeholder screens for the five top-level tabs. Each real screen will replace
- * its placeholder in a later ticket; for now they exist so navigation between tabs can be
- * exercised and verified.
+ * Temporary placeholder screens for top-level tabs that don't have a real screen yet.
+ * Each is replaced by its feature screen in a later ticket; only Cart is still a
+ * placeholder.
  */
 @Composable
 private fun PlaceholderScreen(@StringRes titleRes: Int, modifier: Modifier = Modifier) {
@@ -33,10 +33,6 @@ private fun PlaceholderScreen(@StringRes titleRes: Int, modifier: Modifier = Mod
 @Composable
 fun CartScreen(modifier: Modifier = Modifier) =
     PlaceholderScreen(titleRes = R.string.tab_cart, modifier = modifier)
-
-@Composable
-fun HistoryScreen(modifier: Modifier = Modifier) =
-    PlaceholderScreen(titleRes = R.string.tab_history, modifier = modifier)
 
 
 @Preview(showBackground = true)

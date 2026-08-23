@@ -151,4 +151,24 @@
 
     <!-- Shopping list detail: mark the whole list as purchased -->
     <string name="mark_all_purchased">Mark all as purchased</string>
+
+    <!-- History tab: completed shopping trips -->
+    <string name="history_error">Couldn\'t load your purchase history</string>
+    <string name="history_retry">Retry</string>
+    <string name="history_empty">No purchases yet. Completed shopping trips show up here.</string>
+    <string name="history_unknown_store">Unknown store</string>
+    <string name="history_trip_open">Show trip details</string>
+    <plurals name="history_trip_item_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+
+    <!-- History: one completed trip and what was bought on it -->
+    <string name="history_detail_not_found">That trip is no longer available</string>
+    <string name="history_detail_store">Store</string>
+    <string name="history_detail_date">Purchased</string>
+    <string name="history_detail_total">Total</string>
+    <string name="history_detail_items">Items</string>
+    <!-- e.g. "Qty 1.5 × $2.00" -->
+    <string name="history_line_quantity_price">Qty %1$s × %2$s</string>
 </resources>
