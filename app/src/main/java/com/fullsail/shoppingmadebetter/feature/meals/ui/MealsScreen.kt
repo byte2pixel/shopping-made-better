@@ -25,7 +25,7 @@ import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 @Composable
 fun MealsScreen(
     viewModel: MealsViewModel,
-    onNavigateToDetails: (String) -> Unit,
+    onNavigateToDetails: (String, Int, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -47,7 +47,7 @@ private fun MealsContent(
     uiState: MealsUiState,
     onSearchQueryChanged: (String) -> Unit,
     onFilterSelected: (String) -> Unit,
-    onSelectMeal: (String) -> Unit,
+    onSelectMeal: (String, Int, String) -> Unit,
     onQuickAddIngredient: (String, String) -> Unit,
     onAddMealToList: (String) -> Unit,
     onRetry: () -> Unit,
@@ -119,7 +119,13 @@ private fun MealsContent(
                                 MealRecipeCard(
                                     meal = meal,
                                     isSelected = meal.id == uiState.selectedMealId,
-                                    onDetailsClick = { onSelectMeal(meal.id) },
+                                    onDetailsClick = {
+
+                                        val matchInt = meal.matchPercentage.filter { it.isDigit() }.toIntOrNull() ?: 0
+
+
+                                        onSelectMeal(meal.id, matchInt, meal.category)
+                                    },
                                     onQuickAddIngredient = onQuickAddIngredient,
                                     onAddMealToList = onAddMealToList
                                 )
@@ -419,7 +425,7 @@ private fun MealsScreenPreview() {
             ),
             onSearchQueryChanged = {},
             onFilterSelected = {},
-            onSelectMeal = {},
+            onSelectMeal = { _, _, _ -> },
             onQuickAddIngredient = { _, _ -> },
             onAddMealToList = {},
             onRetry = {}

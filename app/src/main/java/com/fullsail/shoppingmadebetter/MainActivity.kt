@@ -357,8 +357,14 @@ fun ShoppingMadeBetterApp(
                 val mealsViewModel: MealsViewModel = hiltViewModel()
                 MealsScreen(
                     viewModel = mealsViewModel,
-                    onNavigateToDetails = { mealId ->
-                        navController.navigate(Dest.MealDetails(mealId))
+                    onNavigateToDetails = { mealId, matchPercentage, categoryName ->
+                        navController.navigate(
+                            Dest.MealDetails(
+                                mealId = mealId,
+                                matchPercentage = matchPercentage,
+                                categoryName = categoryName
+                            )
+                        )
                     }
                 )
             }
@@ -370,6 +376,7 @@ fun ShoppingMadeBetterApp(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
+
             composable<Dest.Stores> { StoresScreen() }
         }
     }
