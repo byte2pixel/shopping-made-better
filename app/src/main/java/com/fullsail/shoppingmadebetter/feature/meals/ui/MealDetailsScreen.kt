@@ -2,7 +2,9 @@ package com.fullsail.shoppingmadebetter.feature.meals.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -43,7 +45,8 @@ fun MealDetailsScreen(
         Column(
             modifier = modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
@@ -115,9 +118,43 @@ fun MealDetailsScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Instructions and ingredients will populate here.",
-                style = MaterialTheme.typography.bodyMedium
+                text = "Ingredients",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.Start)
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            meal?.ingredients?.forEach { ingredient ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(text = "${ingredient.quantity} ${ingredient.name}")
+                    Text(text = ingredient.price, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Instructions",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.Start)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            meal?.instructions?.forEachIndexed { index, step ->
+                Text(
+                    text = "${index + 1}. $step",
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
+                )
+            }
         }
     }
 }
