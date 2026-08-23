@@ -362,8 +362,6 @@ fun ShoppingMadeBetterApp(
                 val args = entry.toRoute<Dest.MealDetails>()
                 com.fullsail.shoppingmadebetter.feature.meals.ui.MealDetailsScreen(
                     mealId = args.mealId,
-                    matchPercentage = args.matchPercentage, // Pass the newly routed data
-                    categoryName = args.categoryName,       // Pass the newly routed data
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
