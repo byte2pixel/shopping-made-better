@@ -23,7 +23,8 @@ class GetShoppingListItemsUseCaseImpl @Inject constructor(
          shoppingListId = shoppingListId,
          productId = productId,
          quantity = quantity,
-         title = title
+         title = title,
+         checked = checked
 
     )
 
