@@ -22,87 +22,11 @@ import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 @Composable
 fun MealDetailsScreen(
     mealId: String,
-    matchPercentage: Int,
-    categoryName: String,
-    onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-
-    if (mealId.isBlank() || mealId == "error") {
-        MealNotFoundState(onNavigateBack = onNavigateBack, modifier = modifier)
-    } else {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.LightGray),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = "Recipe Image Placeholder", color = Color.DarkGray)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "$matchPercentage% Match",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFF2E5A44),
-                    fontWeight = FontWeight.Bold
-                )
-
-                Surface(
-                    color = Color(0xFFE8F5E9),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Text(
-                        text = categoryName,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color(0xFF2E5A44),
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Loading recipe for Meal: $mealId",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Instructions and ingredients will populate here.",
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
-    }
-}
-
-
-@Composable
-private fun MealNotFoundState(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val matchPercentage = 0
     val categoryName = "Loading..."
-
     var isFavorite by remember { mutableStateOf(false) }
 
     if (mealId.isBlank() || mealId == "error") {
@@ -114,7 +38,6 @@ private fun MealNotFoundState(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
@@ -175,7 +98,7 @@ private fun MealNotFoundState(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Loading recipe for Meal: $mealId",
+                text = "Loading recipe...",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -222,7 +145,7 @@ private fun MealNotFoundState(
 
         Button(
             onClick = onNavigateBack,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E5A44))
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             Text("Go Back")
         }
@@ -235,21 +158,6 @@ private fun MealDetailsScreenPreview() {
     ShoppingMadeBetterTheme {
         MealDetailsScreen(
             mealId = "12345",
-            matchPercentage = 85,
-            categoryName = "Almost There",
-            onNavigateBack = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun MealNotFoundPreview() {
-    ShoppingMadeBetterTheme {
-        MealDetailsScreen(
-            mealId = "",
-            matchPercentage = 0,
-            categoryName = "",
             onNavigateBack = {}
         )
     }
