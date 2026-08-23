@@ -27,7 +27,6 @@ fun MealDetailsScreen(
 ) {
     val matchPercentage = 0
     val categoryName = "Loading..."
-
     var isFavorite by remember { mutableStateOf(false) }
 
     if (mealId.isBlank() || mealId == "error") {
@@ -39,7 +38,6 @@ fun MealDetailsScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
@@ -147,7 +145,7 @@ private fun MealNotFoundState(
 
         Button(
             onClick = onNavigateBack,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E5A44))
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             Text("Go Back")
         }
