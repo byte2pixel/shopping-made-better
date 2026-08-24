@@ -126,13 +126,18 @@ fun MealDetailsScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            meal?.ingredients?.forEach { ingredient ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(text = "${ingredient.quantity} ${ingredient.name}")
-                    Text(text = ingredient.price, fontWeight = FontWeight.Bold)
+            val ingredients = meal?.ingredients ?: emptyList()
+            if (ingredients.isEmpty()) {
+                MealEmptyState(message = "No ingredients listed for this recipe.")
+            } else {
+                ingredients.forEach { ingredient ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = "${ingredient.quantity} ${ingredient.name}")
+                        Text(text = ingredient.price, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
 
@@ -148,13 +153,46 @@ fun MealDetailsScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            meal?.instructions?.forEachIndexed { index, step ->
-                Text(
-                    text = "${index + 1}. $step",
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
-                )
+            val instructions = meal?.instructions ?: emptyList()
+            if (instructions.isEmpty()) {
+                MealEmptyState(message = "No instructions provided for this recipe.")
+            } else {
+                instructions.forEachIndexed { index, step ->
+                    Text(
+                        text = "${index + 1}. $step",
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun MealEmptyState(
+    message: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Nothing here yet!",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.Gray
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.LightGray,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
