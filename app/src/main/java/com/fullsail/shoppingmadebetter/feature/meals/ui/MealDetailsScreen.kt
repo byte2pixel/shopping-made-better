@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -17,16 +18,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
 @Composable
 fun MealDetailsScreen(
     mealId: String,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: MealsViewModel = hiltViewModel()
 ) {
-    val matchPercentage = 0
-    val categoryName = "Loading..."
+    val uiState by viewModel.uiState.collectAsState()
+
+    val meal = (uiState as? MealsUiState.Success)?.meals?.find { it.id == mealId }
+
+    val matchPercentage = meal?.matchPercentage ?: 0
+    val categoryName = meal?.category ?: "Loading..."
+
     var isFavorite by remember { mutableStateOf(false) }
 
     if (mealId.isBlank() || mealId == "error") {
@@ -98,7 +106,7 @@ fun MealDetailsScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Loading recipe for Meal: $mealId",
+                text = meal?.title ?: "Loading recipe...",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )

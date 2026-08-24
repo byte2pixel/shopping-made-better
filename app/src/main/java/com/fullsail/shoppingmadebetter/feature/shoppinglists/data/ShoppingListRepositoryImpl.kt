@@ -115,4 +115,16 @@ class ShoppingListRepositoryImpl @Inject constructor(
 
         Log.d("CompleteTrip", "List: $listId marked purchased")
     }
+
+    override suspend fun toggleCheckBox(id: String, value: Boolean) {
+        postgrest.from("shopping_list_items").update(
+            {
+                set("is_checked",value)
+            }
+
+        ){
+            filter { eq("id",id) }
+        }
+    }
+
 }
