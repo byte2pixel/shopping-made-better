@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetShoppingListItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListItems
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isChecked
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isCheckedUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CompleteShoppingTripUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +26,8 @@ sealed interface ShoppingListItemsState {
 class ShoppingListItemsViewModel @Inject constructor(
     private val getShoppingListItemsUseCase: GetShoppingListItemsUseCase,
     private val getDeleteItemsUseCase: DeleteItemsUseCase,
-    private val completeShoppingTripUseCase: CompleteShoppingTripUseCase
+    private val completeShoppingTripUseCase: CompleteShoppingTripUseCase,
+    private val getIsCheckedUseCase : isCheckedUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ShoppingListItemsState>(ShoppingListItemsState.Loading)
@@ -60,6 +63,22 @@ class ShoppingListItemsViewModel @Inject constructor(
             }
         }
     }
+
+    fun checkItem(id : String, state : Boolean){
+        viewModelScope.launch{
+            when (val out = getIsCheckedUseCase.execute(isChecked(id, state))) {
+                is isCheckedUseCase.Output.Success ->
+                {
+
+                }
+                is isCheckedUseCase.Output.Failure ->
+                    ShoppingListItemsState.Error
+
+
+            }
+        }
+    }
+
     fun deleteItems(input : String, listId : String? = null)
     {
         _uiState.value = ShoppingListItemsState.Loading

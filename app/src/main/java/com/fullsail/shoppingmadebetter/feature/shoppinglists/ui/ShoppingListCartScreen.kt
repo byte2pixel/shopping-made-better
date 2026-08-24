@@ -105,6 +105,7 @@ fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onI
         clicked = !clicked
         if (clicked)
         onItemCrossed()
+
         else {
         onItemUncrossed()
         }
