@@ -31,12 +31,9 @@ fun MealDetailsScreen(
     viewModel: MealsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
     val meal = (uiState as? MealsUiState.Success)?.meals?.find { it.id == mealId }
-
     val matchPercentage = meal?.matchPercentage ?: 0
     val categoryName = meal?.category ?: "Loading..."
-
     var isFavorite by remember { mutableStateOf(false) }
 
     if (mealId.isBlank() || mealId == "error") {
@@ -45,19 +42,30 @@ fun MealDetailsScreen(
         Column(
             modifier = modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(modifier = Modifier.height(16.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Button(
+                    onClick = onNavigateBack,
+                    colors = ButtonDefaults.textButtonColors(),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text("← Back", style = MaterialTheme.typography.labelLarge)
+                }
+
                 IconButton(
                     onClick = { isFavorite = !isFavorite },
                     colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.primary
+                        containerColor = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = if (isFavorite) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 ) {
                     Text(
@@ -67,18 +75,20 @@ fun MealDetailsScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(12.dp))
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.LightGray),
+                    .height(220.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "Recipe Image Placeholder", color = Color.DarkGray)
+                Text(text = "Recipe Image Placeholder", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -93,50 +103,61 @@ fun MealDetailsScreen(
                 )
 
                 Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text(
                         text = categoryName,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Text(
                 text = meal?.title ?: "Loading recipe...",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.align(Alignment.Start)
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
                 text = "Ingredients",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.align(Alignment.Start)
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             val ingredients = meal?.ingredients ?: emptyList()
             if (ingredients.isEmpty()) {
                 MealEmptyState(message = "No ingredients listed for this recipe.")
             } else {
-                ingredients.forEach { ingredient ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(text = "${ingredient.quantity} ${ingredient.name}")
-                        Text(text = ingredient.price, fontWeight = FontWeight.Bold)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        ingredients.forEach { ingredient ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(text = "• ${ingredient.quantity} ${ingredient.name}")
+                                Text(text = ingredient.price, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
                     }
                 }
             }
@@ -145,25 +166,47 @@ fun MealDetailsScreen(
 
             Text(
                 text = "Instructions",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.align(Alignment.Start)
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             val instructions = meal?.instructions ?: emptyList()
             if (instructions.isEmpty()) {
                 MealEmptyState(message = "No instructions provided for this recipe.")
             } else {
                 instructions.forEachIndexed { index, step ->
-                    Text(
-                        text = "${index + 1}. $step",
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "${index + 1}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = step,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
                 }
             }
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
