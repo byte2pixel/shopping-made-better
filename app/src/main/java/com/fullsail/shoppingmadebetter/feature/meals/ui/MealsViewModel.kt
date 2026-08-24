@@ -52,7 +52,7 @@ class MealsViewModel @Inject constructor(
                     Meal(
                         id = dto.id,
                         title = dto.title,
-                        matchPercentage = dto.matchPercentage,
+                        matchPercentage = dto.matchPercentage.filter { it.isDigit() }.toIntOrNull() ?: 0,
                         itemCount = dto.itemCount,
                         totalPrice = dto.totalPrice,
                         category = dto.category,
@@ -61,6 +61,13 @@ class MealsViewModel @Inject constructor(
                             Ingredient("2", "Fettuccine Pasta", "16 oz", "$2.59"),
                             Ingredient("3", "Butter", "1 Lbs", "$4.32"),
                             Ingredient("4", "Parmesan cheese", "8 oz", "$4.50")
+                        ),
+                        instructions = listOf(
+                            "Boil water in a large pot.",
+                            "Add fettuccine and cook for 10 minutes.",
+                            "In a separate pan, melt butter and add sliced chicken breast.",
+                            "Cook chicken until golden brown, then add heavy cream and parmesan.",
+                            "Toss pasta in the sauce and serve hot."
                         )
                     )
                 }

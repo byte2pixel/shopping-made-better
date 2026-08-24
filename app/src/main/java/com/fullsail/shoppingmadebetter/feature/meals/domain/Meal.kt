@@ -10,9 +10,10 @@ data class Ingredient(
 data class Meal(
     val id: String,
     val title: String,
-    val matchPercentage: String,
+    val matchPercentage: Int,
     val itemCount: Int,
     val totalPrice: String,
     val category: String,
-    val ingredients: List<Ingredient> = emptyList()
+    val ingredients: List<Ingredient> = emptyList(),
+    val instructions: List<String> = emptyList()
 )

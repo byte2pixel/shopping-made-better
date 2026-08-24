@@ -71,7 +71,10 @@ sealed interface Dest {
 
 
     @Serializable
-    data class MealDetails( val mealId: String,  val matchPercentage: Int,  val categoryName: String ) : Dest
+    data class MealDetails(
+        val mealId: String
+    )
+
     /** Dev-only example screen listing stores from Supabase (SCRUM-79). */
     @Serializable
     data object Stores : Dest

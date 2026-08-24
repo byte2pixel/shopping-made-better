@@ -357,12 +357,10 @@ fun ShoppingMadeBetterApp(
                 val mealsViewModel: MealsViewModel = hiltViewModel()
                 MealsScreen(
                     viewModel = mealsViewModel,
-                    onNavigateToDetails = { mealId, matchPercentage, categoryName ->
+                    onNavigateToDetails = { mealId: String ->
                         navController.navigate(
-                            Dest.MealDetails(
-                                mealId = mealId,
-                                matchPercentage = matchPercentage,
-                                categoryName = categoryName
+                            route = Dest.MealDetails(
+                                mealId = mealId
                             )
                         )
                     }

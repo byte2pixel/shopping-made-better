@@ -25,7 +25,7 @@ import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 @Composable
 fun MealsScreen(
     viewModel: MealsViewModel,
-    onNavigateToDetails: (String, Int, String) -> Unit,
+    onNavigateToDetails: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -47,7 +47,7 @@ private fun MealsContent(
     uiState: MealsUiState,
     onSearchQueryChanged: (String) -> Unit,
     onFilterSelected: (String) -> Unit,
-    onSelectMeal: (String, Int, String) -> Unit,
+    onSelectMeal: (String) -> Unit,
     onQuickAddIngredient: (String, String) -> Unit,
     onAddMealToList: (String) -> Unit,
     onRetry: () -> Unit,
@@ -119,13 +119,7 @@ private fun MealsContent(
                                 MealRecipeCard(
                                     meal = meal,
                                     isSelected = meal.id == uiState.selectedMealId,
-                                    onDetailsClick = {
-
-                                        val matchInt = meal.matchPercentage.filter { it.isDigit() }.toIntOrNull() ?: 0
-
-
-                                        onSelectMeal(meal.id, matchInt, meal.category)
-                                    },
+                                    onDetailsClick = { onSelectMeal(meal.id) },
                                     onQuickAddIngredient = onQuickAddIngredient,
                                     onAddMealToList = onAddMealToList
                                 )
@@ -328,7 +322,7 @@ private fun MealRecipeCard(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = meal.matchPercentage,
+                        text = "${meal.matchPercentage}% Match",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -412,9 +406,9 @@ private fun MealsScreenPreview() {
         MealsContent(
             uiState = MealsUiState.Success(
                 meals = listOf(
-                    Meal("1", "Chicken Alfredo", "95% Match", 4, "$34.19", "Recommended"),
-                    Meal("2", "Veggie Stir Fry", "88% Match", 3, "$12.50", "Can Make"),
-                    Meal("3", "Tomato Soup", "80% Match", 2, "$8.99", "Expiring")
+                    Meal("1", "Chicken Alfredo", 95, 4, "$34.19", "Recommended"),
+                    Meal("2", "Veggie Stir Fry", 88, 3, "$12.50", "Can Make"),
+                    Meal("3", "Tomato Soup", 80, 2, "$8.99", "Expiring")
                 ),
                 selectedFilter = "All",
                 searchQuery = "",
@@ -425,7 +419,7 @@ private fun MealsScreenPreview() {
             ),
             onSearchQueryChanged = {},
             onFilterSelected = {},
-            onSelectMeal = { _, _, _ -> },
+            onSelectMeal = { _ -> },
             onQuickAddIngredient = { _, _ -> },
             onAddMealToList = {},
             onRetry = {}
