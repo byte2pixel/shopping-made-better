@@ -9,10 +9,16 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.I
  * fails loudly rather than passing silently.
  *
  * The point of the defaults is maintenance. Adding a method to [ShoppingListRepository]
- * used to break every hand-written fake at compile time — the whole unit test source set
- * stopped compiling more than once. Overriding here keeps that to a single edit.
+ * used to break every hand-written fake at compile time, which took down the whole unit
+ * test source set more than once. Now only this class fails to compile, and one override
+ * here fixes every subclass.
+ *
+ * Deliberately `open` rather than `abstract`: an abstract class is allowed to leave an
+ * interface member unimplemented, which pushes the compile error down into every
+ * subclass and defeats the point. Keeping it concrete forces the error to surface here,
+ * in the one file that should absorb it.
  */
-internal abstract class FakeShoppingListRepository : ShoppingListRepository {
+internal open class FakeShoppingListRepository : ShoppingListRepository {
     override suspend fun getTrips(): List<ShoppingTripDto> = notStubbed("getTrips")
 
     override suspend fun getStores(productName: String): List<StoreProductPricingDto> =
