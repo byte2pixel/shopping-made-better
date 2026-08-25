@@ -1,12 +1,7 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem
 
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.FakeShoppingListRepository
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.InsertItemResultDto
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ProductSearchDto
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListItemsDto
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingTripDto
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.StoreProductPricingDto
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
@@ -19,52 +14,13 @@ class InsertItemUseCaseTest {
     private class FakeRepo(
         private val error: Throwable? = null,
         private val insertedId: String = "new-item-1",
-    ) : ShoppingListRepository {
+    ) : FakeShoppingListRepository() {
         var added: InsertItem? = null
-        override suspend fun getTrips(): List<ShoppingTripDto> {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun getStores(productName: String): List<StoreProductPricingDto> {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun getProduct(searchName: String): List<ProductSearchDto> {
-            TODO("Not yet implemented")
-        }
 
         override suspend fun addItem(item: InsertItem): InsertItemResultDto {
             error?.let { throw it }
             added = item
             return InsertItemResultDto(insertedId)
-        }
-
-        override suspend fun addList(list: ShoppingList): ShoppingList {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun getItems(list: String): List<ShoppingListItemsDto> {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun deleteItem(itemId: String) {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun removeList(listId: String) {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun renameList(listId: String, newName: String) {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun completeShoppingTrip(listId: String) {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun toggleCheckBox(id: String, value: Boolean) {
-            TODO("Not yet implemented")
         }
     }
 
