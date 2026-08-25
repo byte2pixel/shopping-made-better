@@ -2,6 +2,8 @@ package com.fullsail.shoppingmadebetter.feature.history.di
 
 import com.fullsail.shoppingmadebetter.feature.history.data.HistoryRepository
 import com.fullsail.shoppingmadebetter.feature.history.data.HistoryRepositoryImpl
+import com.fullsail.shoppingmadebetter.feature.history.domain.AddTripToListUseCase
+import com.fullsail.shoppingmadebetter.feature.history.domain.AddTripToListUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.history.domain.GetPurchaseHistoryUseCase
 import com.fullsail.shoppingmadebetter.feature.history.domain.GetPurchaseHistoryUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.history.domain.GetPurchaseTripUseCase
@@ -27,4 +29,9 @@ abstract class HistoryModule {
     abstract fun bindGetPurchaseTripUseCase(
         impl: GetPurchaseTripUseCaseImpl,
     ): GetPurchaseTripUseCase
+
+    @Binds
+    abstract fun bindAddTripToListUseCase(
+        impl: AddTripToListUseCaseImpl,
+    ): AddTripToListUseCase
 }
