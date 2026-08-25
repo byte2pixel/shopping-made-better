@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
+import com.fullsail.shoppingmadebetter.core.ui.ShoppingListPickerState
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
@@ -42,7 +43,7 @@ private val PantryUiState.Success.lots: List<InventoryItem>
 /**
  * Unit tests for [PantryViewModel]. Each collaborator is a hand-written fake, and
  * [MainDispatcherRule] backs `viewModelScope` with an unconfined test dispatcher
- * so launched work runs eagerly to its first suspension point — making the state
+ * so launched work runs eagerly to its first suspension point â€” making the state
  * observable synchronously after each call.
  */
 class PantryViewModelTest {
@@ -255,10 +256,10 @@ class PantryViewModelTest {
         assertTrue(sheet is AddToListSheetState.Visible)
         sheet as AddToListSheetState.Visible
         assertEquals(sampleItem, sheet.item)
-        assertTrue(sheet.lists is AddToListSheetState.Lists.Loaded)
+        assertTrue(sheet.lists is ShoppingListPickerState.Loaded)
         assertEquals(
             listOf(sampleTrip),
-            (sheet.lists as AddToListSheetState.Lists.Loaded).trips,
+            (sheet.lists as ShoppingListPickerState.Loaded).trips,
         )
     }
 
@@ -273,7 +274,7 @@ class PantryViewModelTest {
         viewModel.onAddToListClicked(sampleItem)
 
         val sheet = viewModel.addToListSheet.value as AddToListSheetState.Visible
-        assertTrue(sheet.lists is AddToListSheetState.Lists.Empty)
+        assertTrue(sheet.lists is ShoppingListPickerState.Empty)
     }
 
     @Test
@@ -287,7 +288,7 @@ class PantryViewModelTest {
         viewModel.onAddToListClicked(sampleItem)
 
         val sheet = viewModel.addToListSheet.value as AddToListSheetState.Visible
-        assertTrue(sheet.lists is AddToListSheetState.Lists.Error)
+        assertTrue(sheet.lists is ShoppingListPickerState.Error)
     }
 
     @Test
@@ -303,7 +304,7 @@ class PantryViewModelTest {
         viewModel.onAddToListClicked(sampleItem)
         // The trips call is parked on the gate; the sheet is up but still loading.
         val loading = viewModel.addToListSheet.value as AddToListSheetState.Visible
-        assertTrue(loading.lists is AddToListSheetState.Lists.Loading)
+        assertTrue(loading.lists is ShoppingListPickerState.Loading)
 
         viewModel.dismissAddToListSheet()
         gate.complete(Unit) // Resume the load; its result should be discarded.
@@ -328,7 +329,7 @@ class PantryViewModelTest {
 
         val sheet = viewModel.addToListSheet.value as AddToListSheetState.Visible
         assertEquals(secondItem, sheet.item)
-        assertTrue(sheet.lists is AddToListSheetState.Lists.Loaded)
+        assertTrue(sheet.lists is ShoppingListPickerState.Loaded)
     }
 
     @Test
