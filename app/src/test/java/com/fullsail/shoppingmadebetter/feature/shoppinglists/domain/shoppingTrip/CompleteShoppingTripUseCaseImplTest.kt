@@ -31,6 +31,10 @@ class CompleteShoppingTripUseCaseImplTest {
             TODO("Not yet implemented")
         }
 
+        override suspend fun toggleCheckBox(id: String, value: Boolean) {
+            TODO("Not yet implemented")
+        }
+
         override suspend fun getStores(productName: String): List<StoreProductPricingDto> {
             TODO("Not yet implemented")
         }

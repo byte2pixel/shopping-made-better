@@ -2,6 +2,8 @@ package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
 
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetShoppingListItemsUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isChecked
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isCheckedUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CompleteShoppingTripUseCase
 import com.fullsail.shoppingmadebetter.testing.MainDispatcherRule
 import kotlinx.coroutines.test.runTest
@@ -46,11 +48,16 @@ class ShoppingListItemsViewModelTest {
         }
     }
 
+    private class FakeIsChecked : isCheckedUseCase {
+        override suspend fun execute(input: isChecked): isCheckedUseCase.Output =
+            isCheckedUseCase.Output.Success
+    }
+
     @Test
     fun `markAllPurchased success refreshes to the now-empty list`() = runTest {
         val getItems = FakeGetItems(GetShoppingListItemsUseCase.Output.Success(emptyList()))
         val complete = FakeComplete(CompleteShoppingTripUseCase.Output.Success)
-        val viewModel = ShoppingListItemsViewModel(getItems, FakeDelete(), complete)
+        val viewModel = ShoppingListItemsViewModel(getItems, FakeDelete(), complete, FakeIsChecked())
 
         viewModel.markAllPurchased("l1")
 
@@ -65,7 +72,7 @@ class ShoppingListItemsViewModelTest {
     fun `markAllPurchased exposes Error and skips the refresh when completion fails`() = runTest {
         val getItems = FakeGetItems(GetShoppingListItemsUseCase.Output.Success(emptyList()))
         val complete = FakeComplete(CompleteShoppingTripUseCase.Output.Failure(RuntimeException("boom")))
-        val viewModel = ShoppingListItemsViewModel(getItems, FakeDelete(), complete)
+        val viewModel = ShoppingListItemsViewModel(getItems, FakeDelete(), complete, FakeIsChecked())
 
         viewModel.markAllPurchased("l1")
 

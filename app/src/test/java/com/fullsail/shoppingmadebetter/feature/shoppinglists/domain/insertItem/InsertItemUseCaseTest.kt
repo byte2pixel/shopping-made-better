@@ -62,6 +62,10 @@ class InsertItemUseCaseTest {
         override suspend fun completeShoppingTrip(listId: String) {
             TODO("Not yet implemented")
         }
+
+        override suspend fun toggleCheckBox(id: String, value: Boolean) {
+            TODO("Not yet implemented")
+        }
     }
 
     private val sampleItem = InsertItem(
