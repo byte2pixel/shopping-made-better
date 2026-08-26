@@ -18,13 +18,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -48,13 +52,27 @@ fun ShoppingListItemsScreen(
 
     LaunchedEffect(listId) { viewModel.getItems(listId) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val resources = LocalResources.current
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            val message = when (event) {
+                ShoppingListItemsEvent.ListPurchased -> R.string.mark_all_purchased_success
+                ShoppingListItemsEvent.PurchaseFailed -> R.string.mark_all_purchased_failed
+            }
+            snackbarHostState.showSnackbar(resources.getString(message))
+        }
+    }
+
     Scaffold(
         modifier = modifier,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             val state = uiState
             if (state is ShoppingListItemsState.Success && state.items.isNotEmpty()) {
                 Button(
-                    onClick = { viewModel.markAllPurchased(listId) },
+                    onClick = { viewModel.purchaseWholeList(listId) },
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                 ) {
                     Text(stringResource(R.string.mark_all_purchased))

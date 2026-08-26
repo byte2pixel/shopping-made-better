@@ -45,6 +45,8 @@ internal open class FakeShoppingListRepository : ShoppingListRepository {
     override suspend fun toggleCheckBox(id: String, value: Boolean): Unit =
         notStubbed("toggleCheckBox")
 
+    override suspend fun checkAllItems(listId: String): Unit = notStubbed("checkAllItems")
+
     private fun notStubbed(method: String): Nothing =
         throw NotImplementedError("$method was called but this fake does not stub it")
 }

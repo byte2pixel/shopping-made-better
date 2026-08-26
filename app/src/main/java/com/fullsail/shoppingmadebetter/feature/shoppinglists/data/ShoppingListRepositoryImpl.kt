@@ -127,4 +127,21 @@ class ShoppingListRepositoryImpl @Inject constructor(
         }
     }
 
+    /**
+     * Flags every item on the list as checked in a single filtered UPDATE, rather than
+     * one request per item. Used by "mark all as purchased", since complete_shopping_trip
+     * only buys rows where is_checked = true.
+     */
+    override suspend fun checkAllItems(listId: String): Unit = withContext(Dispatchers.IO) {
+        postgrest.from("shopping_list_items").update(
+            {
+                set("is_checked", true)
+            }
+        ) {
+            filter { eq("shopping_list_id", listId) }
+        }
+
+        Log.d("CheckAllItems", "List: $listId items all checked")
+    }
+
 }

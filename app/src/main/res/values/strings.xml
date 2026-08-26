@@ -151,6 +151,8 @@
 
     <!-- Shopping list detail: mark the whole list as purchased -->
     <string name="mark_all_purchased">Mark all as purchased</string>
+    <string name="mark_all_purchased_success">Added to your pantry and purchase history</string>
+    <string name="mark_all_purchased_failed">Couldn\'t complete this purchase. Your list is unchanged.</string>
 
     <!-- History tab: completed shopping trips -->
     <string name="history_error">Couldn\'t load your purchase history</string>

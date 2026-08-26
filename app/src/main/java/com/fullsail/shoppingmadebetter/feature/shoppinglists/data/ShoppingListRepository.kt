@@ -15,4 +15,7 @@ interface ShoppingListRepository {
     suspend fun renameList(listId : String, newName : String)
     suspend fun completeShoppingTrip(listId : String)
     suspend fun toggleCheckBox(id : String, value: Boolean)
+
+    /** Flags every item on [listId] as checked in one request. */
+    suspend fun checkAllItems(listId : String)
 }

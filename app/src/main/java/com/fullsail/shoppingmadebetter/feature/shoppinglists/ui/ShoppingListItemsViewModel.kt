@@ -7,11 +7,14 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetShoppingL
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListItems
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isChecked
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isCheckedUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CheckAllItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CompleteShoppingTripUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,12 +25,29 @@ sealed interface ShoppingListItemsState {
     data object DeleteSuccess : ShoppingListItemsState
 }
 
+/**
+ * One-shot outcomes surfaced to the user as a snackbar.
+ *
+ * The bottom-bar "mark all as purchased" button is rendered from [ShoppingListItemsState],
+ * so reporting a failure by setting [ShoppingListItemsState.Error] just made the button
+ * disappear with no explanation. These events are separate from the list state for that
+ * reason, minor fix so it is clear an error happened.
+ */
+sealed interface ShoppingListItemsEvent {
+    /** The whole list was purchased: it is now in purchase history and the pantry. */
+    data object ListPurchased : ShoppingListItemsEvent
+
+    /** Purchasing the list failed. Nothing was bought and the list is untouched. */
+    data object PurchaseFailed : ShoppingListItemsEvent
+}
+
 @HiltViewModel
 class ShoppingListItemsViewModel @Inject constructor(
     private val getShoppingListItemsUseCase: GetShoppingListItemsUseCase,
     private val getDeleteItemsUseCase: DeleteItemsUseCase,
     private val completeShoppingTripUseCase: CompleteShoppingTripUseCase,
-    private val getIsCheckedUseCase : isCheckedUseCase
+    private val getIsCheckedUseCase : isCheckedUseCase,
+    private val checkAllItemsUseCase: CheckAllItemsUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ShoppingListItemsState>(ShoppingListItemsState.Loading)
@@ -35,6 +55,9 @@ class ShoppingListItemsViewModel @Inject constructor(
 
     private val _checkedItems = MutableStateFlow<List<String>>(emptyList())
     val checkedItems: StateFlow<List<String>> = _checkedItems.asStateFlow()
+
+    private val _events = Channel<ShoppingListItemsEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
 
 
     init { }
@@ -108,6 +131,43 @@ class ShoppingListItemsViewModel @Inject constructor(
                     getItems(listId) // refresh the list since now it should be empty.
                 is CompleteShoppingTripUseCase.Output.Failure ->
                     _uiState.value = ShoppingListItemsState.Error
+            }
+        }
+    }
+
+    /**
+     * Buys the whole list: flags every item as checked, then completes the trip.
+
+     * Deliberately separate from [markAllPurchased], which the cart screen uses now for
+     * partial completion: checking everything there would silently buy the items the
+     * user chose to leave behind.
+     *
+     * Nothing is deleted client-side. The RPC removes the purchased rows itself in one
+     * transaction, so a failure anywhere leaves the list exactly as it was.
+     */
+    fun purchaseWholeList(listId: String) {
+        val items = (_uiState.value as? ShoppingListItemsState.Success)?.items.orEmpty()
+        // An empty list would only make the RPC raise; there is nothing to buy.
+        if (items.isEmpty()) return
+
+        _uiState.value = ShoppingListItemsState.Loading
+        viewModelScope.launch {
+            if (checkAllItemsUseCase.execute(listId) is CheckAllItemsUseCase.Output.Failure) {
+                _events.send(ShoppingListItemsEvent.PurchaseFailed)
+                getItems(listId)
+                return@launch
+            }
+
+            when (completeShoppingTripUseCase.execute(listId)) {
+                is CompleteShoppingTripUseCase.Output.Success -> {
+                    _events.send(ShoppingListItemsEvent.ListPurchased)
+                    getItems(listId) // refresh the list since now it should be empty.
+                }
+
+                is CompleteShoppingTripUseCase.Output.Failure -> {
+                    _events.send(ShoppingListItemsEvent.PurchaseFailed)
+                    getItems(listId) // nothing was bought; show the list as it still is.
+                }
             }
         }
     }
