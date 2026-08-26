@@ -1,9 +1,9 @@
 package com.fullsail.shoppingmadebetter.feature.history.domain
 
-import com.fullsail.shoppingmadebetter.feature.history.data.PurchaseHistoryRowDto
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -12,134 +12,145 @@ import java.io.IOException
 
 /**
  * Unit tests for [GetPurchaseHistoryUseCaseImpl] using a hand-written
- * [FakeHistoryRepository].
+ * [FakeHistoryRepository] that really slices its rows by offset and limit.
  */
 class GetPurchaseHistoryUseCaseTest {
 
-    private fun useCase(vararg rows: PurchaseHistoryRowDto) =
-        GetPurchaseHistoryUseCaseImpl(FakeHistoryRepository(rows = rows.toList()))
+    private fun useCase(repository: FakeHistoryRepository) =
+        GetPurchaseHistoryUseCaseImpl(repository)
 
-    /** The trips from a successful run; fails the test when the output was not a success. */
-    private fun GetPurchaseHistoryUseCase.Output.trips(): List<PurchaseTrip> {
-        assertTrue("expected Success but was $this", this is GetPurchaseHistoryUseCase.Output.Success)
-        return (this as GetPurchaseHistoryUseCase.Output.Success).trips
+    /** The success output; fails the test when the output was not a success. */
+    private fun GetPurchaseHistoryUseCase.Output.success():
+        GetPurchaseHistoryUseCase.Output.Success {
+        assertTrue(
+            "expected Success but was $this",
+            this is GetPurchaseHistoryUseCase.Output.Success,
+        )
+        return this as GetPurchaseHistoryUseCase.Output.Success
     }
 
+    private suspend fun GetPurchaseHistoryUseCaseImpl.page(offset: Int, limit: Int) =
+        execute(GetPurchaseHistoryUseCase.Input(offset = offset, limit = limit))
+
     @Test
-    fun `execute maps a row onto a trip and its line item`() = runTest {
-        val useCase = useCase(
-            row(
-                purchaseId = "trip-1",
-                id = "line-1",
-                purchasedOn = LocalDate(2026, 8, 19),
-                storeName = "ALDI",
-                totalAmount = 10.44,
-                productId = "prod-1",
-                productName = "Havarti Cheese Slices",
-                brand = "Happy Farms",
-                size = "200 g",
-                imageUrl = "https://example.test/havarti.png",
-                quantity = 2.0,
-                pricePaid = 5.22,
+    fun `execute maps a summary row onto a trip`() = runTest {
+        val repository = FakeHistoryRepository(
+            summaries = listOf(
+                summaryRow(
+                    id = "trip-1",
+                    purchasedOn = LocalDate(2026, 8, 19),
+                    purchasedAtEpoch = 1_787_109_229L,
+                    storeName = "ALDI",
+                    totalAmount = 42.32,
+                    lineTotal = 40.00,
+                    itemCount = 4,
+                ),
             ),
         )
 
-        val trip = useCase.execute(Unit).trips().single()
+        val trip = useCase(repository).page(offset = 0, limit = 20).success().trips.single()
 
         assertEquals("trip-1", trip.id)
         assertEquals(LocalDate(2026, 8, 19), trip.purchasedOn)
+        assertEquals(1_787_109_229L, trip.purchasedAtEpoch)
         assertEquals("ALDI", trip.storeName)
-        assertEquals(1, trip.itemCount)
-
-        val item = trip.items.single()
-        assertEquals("line-1", item.id)
-        assertEquals("prod-1", item.productId)
-        assertEquals("Havarti Cheese Slices", item.productName)
-        assertEquals("Happy Farms", item.brand)
-        assertEquals("200 g", item.size)
-        assertEquals("https://example.test/havarti.png", item.imageUrl)
-        assertEquals(2.0, item.quantity, DELTA)
-        assertEquals(5.22, item.pricePaid, DELTA)
-        assertEquals(10.44, item.lineTotal, DELTA)
+        assertEquals(42.32, trip.recordedTotal!!, DELTA)
+        assertEquals(40.00, trip.lineTotal, DELTA)
+        assertEquals(4, trip.itemCount)
     }
 
     @Test
-    fun `execute groups rows into one trip per purchase, keeping line order`() = runTest {
-        val useCase = useCase(
-            row(purchaseId = "trip-1", id = "a"),
-            row(purchaseId = "trip-1", id = "b"),
-            row(purchaseId = "trip-1", id = "c"),
-            row(purchaseId = "trip-2", id = "d", purchasedAtEpoch = 100L),
-            row(purchaseId = "trip-2", id = "e", purchasedAtEpoch = 100L),
-        )
+    fun `execute passes offset and limit straight through to the repository`() = runTest {
+        val repository = FakeHistoryRepository(summaries = summaryRows(50))
 
-        val trips = useCase.execute(Unit).trips().associateBy { it.id }
+        useCase(repository).page(offset = 20, limit = 20)
 
-        assertEquals(2, trips.size)
-        assertEquals(3, trips.getValue("trip-1").itemCount)
-        assertEquals(2, trips.getValue("trip-2").itemCount)
-        assertEquals(listOf("a", "b", "c"), trips.getValue("trip-1").items.map { it.id })
-        assertEquals(listOf("d", "e"), trips.getValue("trip-2").items.map { it.id })
+        assertEquals(listOf(20 to 20), repository.requestedPages)
     }
 
     @Test
-    fun `execute returns trips newest first even when rows arrive oldest first`() = runTest {
-        val useCase = useCase(
-            row(purchaseId = "oldest", purchasedAtEpoch = 100L),
-            row(purchaseId = "newest", purchasedAtEpoch = 300L),
-            row(purchaseId = "middle", purchasedAtEpoch = 200L),
-        )
+    fun `execute returns the requested window, newest first`() = runTest {
+        val repository = FakeHistoryRepository(summaries = summaryRows(50))
+
+        val trips = useCase(repository).page(offset = 20, limit = 5).success().trips
 
         assertEquals(
-            listOf("newest", "middle", "oldest"),
-            useCase.execute(Unit).trips().map { it.id },
+            listOf("trip-20", "trip-21", "trip-22", "trip-23", "trip-24"),
+            trips.map { it.id },
         )
     }
 
     @Test
-    fun `execute breaks a same-day tie by timestamp`() = runTest {
-        val sameDay = LocalDate(2026, 8, 19)
-        val useCase = useCase(
-            row(purchaseId = "morning", purchasedOn = sameDay, purchasedAtEpoch = 1_000L),
-            row(purchaseId = "evening", purchasedOn = sameDay, purchasedAtEpoch = 40_000L),
-        )
+    fun `execute reports more to load when the page comes back full`() = runTest {
+        val repository = FakeHistoryRepository(summaries = summaryRows(50))
 
-        assertEquals(listOf("evening", "morning"), useCase.execute(Unit).trips().map { it.id })
+        val output = useCase(repository).page(offset = 0, limit = 20).success()
+
+        assertEquals(20, output.trips.size)
+        assertFalse(output.endReached)
     }
 
     @Test
-    fun `execute keeps repository order for trips recorded at the same instant`() = runTest {
-        val useCase = useCase(
-            row(purchaseId = "first", purchasedAtEpoch = 500L),
-            row(purchaseId = "second", purchasedAtEpoch = 500L),
-        )
+    fun `execute reports the end when the page comes back short`() = runTest {
+        val repository = FakeHistoryRepository(summaries = summaryRows(25))
 
-        assertEquals(listOf("first", "second"), useCase.execute(Unit).trips().map { it.id })
+        val output = useCase(repository).page(offset = 20, limit = 20).success()
+
+        assertEquals(5, output.trips.size)
+        assertTrue(output.endReached)
+    }
+
+    @Test
+    fun `execute does not call the last exactly-full page the end`() = runTest {
+        // 40 trips read 20 at a time: the second page is full, so there is no way to
+        // know it was the last one. Claiming the end here would hide a 41st trip.
+        val useCase = useCase(FakeHistoryRepository(summaries = summaryRows(40)))
+
+        val secondPage = useCase.page(offset = 20, limit = 20).success()
+
+        assertEquals(20, secondPage.trips.size)
+        assertFalse(secondPage.endReached)
+    }
+
+    @Test
+    fun `execute ends on the empty page after an exactly-full last page`() = runTest {
+        val useCase = useCase(FakeHistoryRepository(summaries = summaryRows(40)))
+
+        val pastTheEnd = useCase.page(offset = 40, limit = 20).success()
+
+        assertTrue(pastTheEnd.trips.isEmpty())
+        assertTrue(pastTheEnd.endReached)
+    }
+
+    @Test
+    fun `execute returns an empty end-reached page when there is no history`() = runTest {
+        val output = useCase(FakeHistoryRepository()).page(offset = 0, limit = 20).success()
+
+        assertTrue(output.trips.isEmpty())
+        assertTrue(output.endReached)
     }
 
     @Test
     fun `execute prefers the recorded total over the sum of the lines`() = runTest {
         // A recorded total that disagrees with the lines must survive: it is what the
         // user actually paid, and recomputing it silently would hide the mismatch.
-        val useCase = useCase(
-            row(purchaseId = "trip-1", id = "a", totalAmount = 99.0, quantity = 1.0, pricePaid = 2.0),
-            row(purchaseId = "trip-1", id = "b", totalAmount = 99.0, quantity = 1.0, pricePaid = 3.0),
+        val repository = FakeHistoryRepository(
+            summaries = listOf(summaryRow(id = "trip-1", totalAmount = 99.0, lineTotal = 5.0)),
         )
 
-        val trip = useCase.execute(Unit).trips().single()
+        val trip = useCase(repository).page(offset = 0, limit = 20).success().trips.single()
 
         assertEquals(99.0, trip.total, DELTA)
         assertEquals(99.0, trip.recordedTotal!!, DELTA)
     }
 
     @Test
-    fun `execute falls back to the line sum when no total was recorded`() = runTest {
-        val useCase = useCase(
-            row(purchaseId = "trip-1", id = "a", totalAmount = null, quantity = 2.0, pricePaid = 3.50),
-            row(purchaseId = "trip-1", id = "b", totalAmount = null, quantity = 1.5, pricePaid = 2.00),
+    fun `execute falls back to the line total when no total was recorded`() = runTest {
+        val repository = FakeHistoryRepository(
+            summaries = listOf(summaryRow(id = "trip-1", totalAmount = null, lineTotal = 10.0)),
         )
 
-        val trip = useCase.execute(Unit).trips().single()
+        val trip = useCase(repository).page(offset = 0, limit = 20).success().trips.single()
 
         assertNull(trip.recordedTotal)
         assertEquals(10.0, trip.total, DELTA)
@@ -147,24 +158,35 @@ class GetPurchaseHistoryUseCaseTest {
 
     @Test
     fun `execute maps a deleted store to a null store name`() = runTest {
-        val useCase = useCase(row(purchaseId = "trip-1", storeName = null))
+        val repository = FakeHistoryRepository(
+            summaries = listOf(summaryRow(id = "trip-1", storeName = null)),
+        )
 
-        assertNull(useCase.execute(Unit).trips().single().storeName)
+        val trip = useCase(repository).page(offset = 0, limit = 20).success().trips.single()
+
+        assertNull(trip.storeName)
     }
 
     @Test
-    fun `execute returns an empty success when there is no history`() = runTest {
-        val useCase = GetPurchaseHistoryUseCaseImpl(FakeHistoryRepository())
+    fun `execute maps a trip recorded without items to an empty card`() = runTest {
+        val repository = FakeHistoryRepository(
+            summaries = listOf(
+                summaryRow(id = "trip-1", totalAmount = null, lineTotal = 0.0, itemCount = 0),
+            ),
+        )
 
-        assertTrue(useCase.execute(Unit).trips().isEmpty())
+        val trip = useCase(repository).page(offset = 0, limit = 20).success().trips.single()
+
+        assertEquals(0, trip.itemCount)
+        assertEquals(0.0, trip.total, DELTA)
     }
 
     @Test
     fun `execute returns failure carrying the repository error`() = runTest {
         val boom = IOException("network down")
-        val useCase = GetPurchaseHistoryUseCaseImpl(FakeHistoryRepository(error = boom))
+        val useCase = useCase(FakeHistoryRepository(error = boom))
 
-        val output = useCase.execute(Unit)
+        val output = useCase.page(offset = 0, limit = 20)
 
         assertTrue(
             "expected Failure but was $output",

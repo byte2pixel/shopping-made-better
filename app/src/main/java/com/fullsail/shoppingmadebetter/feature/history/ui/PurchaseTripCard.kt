@@ -24,6 +24,7 @@ import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.LabelChip
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseLineItem
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTrip
+import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTripSummary
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import kotlinx.datetime.LocalDate
 
@@ -34,7 +35,7 @@ import kotlinx.datetime.LocalDate
  */
 @Composable
 fun PurchaseTripCard(
-    trip: PurchaseTrip,
+    trip: PurchaseTripSummary,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -97,6 +98,23 @@ fun PurchaseTripCard(
 
 private const val CHEVRON_RIGHT_ROTATION = -90f
 
+/** A list card's trip; the detail screen's [previewTrip] carries items instead. */
+internal fun previewTripSummary(
+    id: String = "trip-1",
+    storeName: String? = "ALDI",
+    recordedTotal: Double? = 42.32,
+    lineTotal: Double = 42.32,
+    itemCount: Int = 4,
+) = PurchaseTripSummary(
+    id = id,
+    purchasedOn = LocalDate(2026, 8, 19),
+    purchasedAtEpoch = 1_787_109_229L,
+    storeName = storeName,
+    recordedTotal = recordedTotal,
+    lineTotal = lineTotal,
+    itemCount = itemCount,
+)
+
 internal fun previewLineItem(
     id: String,
     productName: String = "Havarti Cheese Slices",
@@ -137,7 +155,7 @@ internal fun previewTrip(
 private fun PurchaseTripCardPreview() {
     ShoppingMadeBetterTheme {
         PurchaseTripCard(
-            trip = previewTrip(),
+            trip = previewTripSummary(),
             onClick = {},
             modifier = Modifier.padding(16.dp),
         )
@@ -149,10 +167,11 @@ private fun PurchaseTripCardPreview() {
 private fun PurchaseTripCardUnknownStorePreview() {
     ShoppingMadeBetterTheme {
         PurchaseTripCard(
-            trip = previewTrip(
+            trip = previewTripSummary(
                 storeName = null,
                 recordedTotal = null,
-                items = listOf(previewLineItem("1", quantity = 1.5)),
+                lineTotal = 7.83,
+                itemCount = 1,
             ),
             onClick = {},
             modifier = Modifier.padding(16.dp),

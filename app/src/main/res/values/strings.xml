@@ -158,6 +158,8 @@
     <string name="history_empty">No purchases yet. Completed shopping trips show up here.</string>
     <string name="history_unknown_store">Unknown store</string>
     <string name="history_trip_open">Show trip details</string>
+    <!-- Shown under the last card when the next page of trips fails to load. -->
+    <string name="history_load_more_error">Couldn\'t load more. Tap to retry.</string>
     <plurals name="history_trip_item_count">
         <item quantity="one">%1$d item</item>
         <item quantity="other">%1$d items</item>

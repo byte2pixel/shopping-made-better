@@ -2,56 +2,49 @@ package com.fullsail.shoppingmadebetter.feature.history.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.fullsail.shoppingmadebetter.feature.history.domain.GetPurchaseHistoryUseCase
-import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTrip
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseHistoryPagingSource
+import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTripSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
-
-sealed interface HistoryUiState {
-    data object Loading : HistoryUiState
-
-    /** Trips newest first; an empty list is the "no purchases yet" case. */
-    data class Success(val trips: List<PurchaseTrip>) : HistoryUiState
-    data object Error : HistoryUiState
-}
+import javax.inject.Provider
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
-    private val getPurchaseHistoryUseCase: GetPurchaseHistoryUseCase,
+    /**
+     * A fresh source per generation: a PagingSource is single-use, so Paging asks
+     * again after every invalidation (including a pull-to-refresh from the screen).
+     */
+    private val pagingSourceProvider: Provider<PurchaseHistoryPagingSource>,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<HistoryUiState>(HistoryUiState.Loading)
-    val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
-
-    init {
-        load()
-    }
 
     /**
-     * Loads the user's completed trips. Safe to call as a background refresh: the
-     * History tab keeps its own back stack, so this ViewModel survives tab switches
-     * and has to re-fetch after a trip is completed elsewhere. When trips are already
-     * on screen it keeps them visible instead of flashing the spinner, and a failed
-     * refresh leaves them in place — Loading and Error only show when there is
-     * nothing to display yet.
+     * The user's completed trips, newest first, one page at a time.
+     *
+     * `cachedIn` keeps the loaded pages across configuration changes and tab
+     * switches — the History tab keeps its own back stack, so this ViewModel
+     * outlives the screen and re-paging from scratch on every return would undo
+     * the point of paging. The screen still calls `refresh()` on entry so a trip
+     * completed on the shopping-list tab shows up.
      */
-    fun load() {
-        if (_uiState.value !is HistoryUiState.Success) {
-            _uiState.value = HistoryUiState.Loading
-        }
-        viewModelScope.launch {
-            when (val out = getPurchaseHistoryUseCase.execute(Unit)) {
-                is GetPurchaseHistoryUseCase.Output.Success ->
-                    _uiState.value = HistoryUiState.Success(out.trips)
+    val trips: Flow<PagingData<PurchaseTripSummary>> = Pager(
+        config = PagingConfig(
+            pageSize = PAGE_SIZE,
+            // Pin the first load to one page. The default asks for 3x, which for a
+            // new user is three times the rows to render one screen of cards.
+            initialLoadSize = PAGE_SIZE,
+            enablePlaceholders = false,
+        ),
+        pagingSourceFactory = { pagingSourceProvider.get() },
+    ).flow.cachedIn(viewModelScope)
 
-                is GetPurchaseHistoryUseCase.Output.Failure ->
-                    if (_uiState.value !is HistoryUiState.Success) {
-                        _uiState.value = HistoryUiState.Error
-                    }
-            }
-        }
+    private companion object {
+        /** Comfortably more than one screen of trip cards, so the next page is
+         *  already loading by the time the user reaches the bottom. */
+        const val PAGE_SIZE = 20
     }
 }
