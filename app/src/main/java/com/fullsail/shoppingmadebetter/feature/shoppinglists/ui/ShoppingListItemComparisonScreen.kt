@@ -176,11 +176,12 @@ fun ShoppingListItemComparisonScreen(
                 },
                 confirmButton = {
                 },
+                dismissButton = {
+                    TextButton(onClick = {  pickList = false }) {
+                        Text(text = "Back")
+                    }
+                },
                 )
-
-
-
-
         }
 
         if (showDialog)
@@ -200,10 +201,13 @@ fun ShoppingListItemComparisonScreen(
                         Text(text = "Ok")
                     }
                 },
-
+                dismissButton = {
+                    TextButton(onClick = {  showDialog = false }) {
+                        Text(text = "Back")
+                    }
+                },
             )
         }
-
 
         OutlinedCard(
             onClick = {
