@@ -67,21 +67,6 @@ class ShoppingListItemsViewModel @Inject constructor(
         }
     }
 
-    fun checkItem(id : String, state : Boolean){
-        viewModelScope.launch{
-            when (val out = getIsCheckedUseCase.execute(isChecked(id, state))) {
-                is isCheckedUseCase.Output.Success ->
-                {
-
-                }
-                is isCheckedUseCase.Output.Failure ->
-                    ShoppingListItemsState.Error
-
-
-            }
-        }
-    }
-
     fun deleteItems(input : String, listId : String? = null)
     {
         _uiState.value = ShoppingListItemsState.Loading
