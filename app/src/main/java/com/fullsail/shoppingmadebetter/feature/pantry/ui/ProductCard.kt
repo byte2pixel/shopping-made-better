@@ -160,7 +160,7 @@ private fun <T> expandSpring() = spring<T>(
  *
  * @param isExpanded whether the lot rows are showing; hoisted so the caller owns it.
  * @param onExpandedChange requests the new expanded state after a header tap.
- * @param onLotClick opens the tapped lot's detail screen.
+ * @param onLotClick opens the detail screen for the tapped lot's product.
  * @param onAddToList opens the "add to shopping list" flow for this product.
  * @param onRemoveLot requests removal of one lot from the pantry.
  * @param onQuantityChange requests persisting a new on-hand quantity for one lot.
@@ -305,7 +305,7 @@ private fun ProductCardHeader(
 /**
  * One lot of the expanded card: the same quantity/location/expiry quick-action
  * chips as before, each committing against this lot, plus a per-lot remove.
- * Tapping the row itself (outside the chips) opens the lot's detail screen.
+ * Tapping the row itself (outside the chips) opens the product's detail screen.
  */
 @Composable
 private fun LotRow(

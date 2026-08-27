@@ -1,4 +1,4 @@
-package com.fullsail.shoppingmadebetter.feature.pantry.ui
+package com.fullsail.shoppingmadebetter.feature.product.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,41 +28,48 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
-import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.ui.LowStockThresholdStepper
+import com.fullsail.shoppingmadebetter.feature.product.domain.ProductDetail
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
+/**
+ * One product's full record: what it is, how much of it the user has on hand, and the
+ * settings that follow the product rather than any one pantry lot.
+ * @param productId the `products.id` to show.
+ * @param onTitleChange supplies the top-bar title once the product is known.
+ */
 @Composable
-fun PantryItemDetailScreen(
-    itemId: String,
+fun ProductDetailScreen(
+    productId: String,
     modifier: Modifier = Modifier,
     onTitleChange: (String) -> Unit = {},
-    viewModel: PantryItemDetailViewModel = hiltViewModel(),
+    viewModel: ProductDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    LaunchedEffect(itemId) { viewModel.load(itemId) }
+    LaunchedEffect(productId) { viewModel.load(productId) }
 
     val state = uiState
-    if (state is PantryItemDetailUiState.Success) {
-        LaunchedEffect(state.item.name) { onTitleChange(state.item.name) }
+    if (state is ProductDetailUiState.Success) {
+        LaunchedEffect(state.product.name) { onTitleChange(state.product.name) }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
         when (state) {
-            PantryItemDetailUiState.Loading -> CircularProgressIndicator(
+            ProductDetailUiState.Loading -> CircularProgressIndicator(
                 modifier = Modifier.align(
                     Alignment.Center
                 )
             )
 
-            PantryItemDetailUiState.Error -> CenteredMessage(
+            ProductDetailUiState.Error -> CenteredMessage(
                 message = stringResource(R.string.pantry_error),
                 actionLabel = stringResource(R.string.pantry_retry),
-                onAction = { viewModel.load(itemId) },
+                onAction = { viewModel.load(productId) },
             )
 
-            PantryItemDetailUiState.NotFound -> CenteredMessage(message = stringResource(R.string.pantry_detail_not_found))
-            is PantryItemDetailUiState.Success -> PantryItemDetailContent(
-                item = state.item,
+            ProductDetailUiState.NotFound -> CenteredMessage(message = stringResource(R.string.pantry_detail_not_found))
+            is ProductDetailUiState.Success -> ProductDetailContent(
+                product = state.product,
                 onLowStockThresholdChange = viewModel::onLowStockThresholdChanged,
             )
         }
@@ -70,8 +77,8 @@ fun PantryItemDetailScreen(
 }
 
 @Composable
-private fun PantryItemDetailContent(
-    item: InventoryItem,
+private fun ProductDetailContent(
+    product: ProductDetail,
     onLowStockThresholdChange: (Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -82,28 +89,28 @@ private fun PantryItemDetailContent(
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        DetailField(label = stringResource(R.string.pantry_detail_brand), value = item.brand)
-        DetailField(label = stringResource(R.string.pantry_detail_size), value = item.size)
-        // Stock is how many of this item are in the pantry (adjustment UI comes later).
+        DetailField(label = stringResource(R.string.pantry_detail_brand), value = product.brand)
+        DetailField(label = stringResource(R.string.pantry_detail_size), value = product.size)
+        // Stock is how many of this product are in the pantry, across every lot of it.
         DetailField(
             label = stringResource(R.string.pantry_detail_stock),
-            value = item.quantity.toString(),
+            value = product.quantityOnHand.toString(),
         )
-        if (item.description.isNotBlank()) {
+        if (product.description.isNotBlank()) {
             DetailField(
                 label = stringResource(R.string.pantry_detail_description),
-                value = item.description,
+                value = product.description,
             )
         }
 
         HorizontalDivider()
 
         LowStockRow(
-            threshold = item.lowStockThreshold,
+            threshold = product.lowStockThreshold,
             onThresholdChange = onLowStockThresholdChange,
         )
         DetailStubRow(label = stringResource(R.string.pantry_detail_stores))
-        ExpirationRow(expiresInDays = item.expiresInDays)
+        ExpirationRow(expiresInDays = product.expiresInDays)
     }
 }
 
@@ -134,6 +141,7 @@ private fun LowStockRow(
     }
 }
 
+/** The soonest expiry across the product's lots, or that there is none to show. */
 @Composable
 private fun ExpirationRow(expiresInDays: Int?, modifier: Modifier = Modifier) {
     // Negative = overdue, 0 = due today, positive = days remaining, null = no known date.
@@ -222,33 +230,54 @@ private fun CenteredMessage(
     }
 }
 
-private fun previewItem(expiresInDays: Int?, lowStockThreshold: Int? = 3) = InventoryItem(
-    id = "1",
-    productId = "p1",
+private fun previewProduct(
+    expiresInDays: Int?,
+    lowStockThreshold: Int? = 3,
+    quantityOnHand: Int = 2,
+) = ProductDetail(
+    id = "p1",
     name = "2% Milk",
     brand = "Great Value",
     description = "Reduced-fat milk, one gallon.",
     size = "1 gal",
     imageUrl = "",
-    quantity = 2,
+    quantityOnHand = quantityOnHand,
     expiresInDays = expiresInDays,
     lowStockThreshold = lowStockThreshold,
 )
 
 @Preview(showBackground = true, name = "5 days left")
 @Composable
-private fun PantryItemDetailPreview() {
+private fun ProductDetailPreview() {
     ShoppingMadeBetterTheme {
-        PantryItemDetailContent(item = previewItem(expiresInDays = 5), onLowStockThresholdChange = {})
+        ProductDetailContent(
+            product = previewProduct(expiresInDays = 5),
+            onLowStockThresholdChange = {},
+        )
     }
 }
 
 @Preview(showBackground = true, name = "Expired")
 @Composable
-private fun PantryItemDetailExpiredPreview() {
+private fun ProductDetailExpiredPreview() {
     ShoppingMadeBetterTheme {
-        PantryItemDetailContent(
-            item = previewItem(expiresInDays = -3, lowStockThreshold = null),
+        ProductDetailContent(
+            product = previewProduct(expiresInDays = -3, lowStockThreshold = null),
+            onLowStockThresholdChange = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Bought before, no longer in the pantry")
+@Composable
+private fun ProductDetailNotHeldPreview() {
+    ShoppingMadeBetterTheme {
+        ProductDetailContent(
+            product = previewProduct(
+                expiresInDays = null,
+                lowStockThreshold = null,
+                quantityOnHand = 0,
+            ),
             onLowStockThresholdChange = {},
         )
     }
