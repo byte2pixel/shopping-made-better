@@ -18,6 +18,8 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isCheckedUse
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isCheckedUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch.ProductSearchUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch.ProductSearchUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CheckAllItemsUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CheckAllItemsUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CompleteShoppingTripUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CompleteShoppingTripUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
@@ -92,5 +94,10 @@ abstract class ShoppingListsModule {
     abstract fun bindCompleteShoppingTripUseCase(
         impl: CompleteShoppingTripUseCaseImpl,
     ): CompleteShoppingTripUseCase
+
+    @Binds
+    abstract fun bindCheckAllItemsUseCase(
+        impl: CheckAllItemsUseCaseImpl,
+    ): CheckAllItemsUseCase
 }
 
