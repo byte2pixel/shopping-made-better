@@ -165,6 +165,28 @@
          semantics with these, so they have to name the store too. -->
     <string name="history_filter_store_desc">%1$s, filter by store</string>
     <string name="history_filter_store_selected_desc">%1$s, filtering by store</string>
+    <!-- Date filter chips. The presets resolve against today; the last chip opens a
+         range picker and then reads back the range it picked. -->
+    <string name="history_filter_date_30d">Last 30 days</string>
+    <string name="history_filter_date_3mo">Last 3 months</string>
+    <string name="history_filter_date_year">This year</string>
+    <string name="history_filter_date_custom">Custom…</string>
+    <!-- The custom chip once a range is set. %1$s is the first day, %2$s the last. -->
+    <string name="history_filter_date_range">%1$s – %2$s</string>
+    <!-- %1$s is the chip's own label; it replaces its semantics, so these name it too. -->
+    <string name="history_filter_date_desc">%1$s, filter by date</string>
+    <string name="history_filter_date_selected_desc">%1$s, filtering by date</string>
+    <string name="history_filter_date_apply">Apply</string>
+    <string name="history_filter_date_cancel">Cancel</string>
+    <!-- Range picker header. The title tracks the calendar/keyboard mode toggle, and
+         the headline reuses history_filter_date_range with these placeholders until
+         both ends are picked. -->
+    <string name="history_filter_date_title">Select dates</string>
+    <string name="history_filter_date_title_input">Enter dates</string>
+    <string name="history_filter_date_start">Start date</string>
+    <string name="history_filter_date_end">End date</string>
+    <!-- Drops every filter at once; only shown while at least one is on. -->
+    <string name="history_filter_clear">Clear filters</string>
     <string name="history_unknown_store">Unknown store</string>
     <string name="history_trip_open">Show trip details</string>
     <!-- Shown under the last card when the next page of trips fails to load. -->

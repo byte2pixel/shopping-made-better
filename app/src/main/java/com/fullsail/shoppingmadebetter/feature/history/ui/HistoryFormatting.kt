@@ -12,6 +12,8 @@ import java.util.Locale
 private val currencyFormat: NumberFormat by lazy { NumberFormat.getCurrencyInstance(Locale.US) }
 private val tripDateFormat: DateTimeFormatter =
     DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+private val filterDateFormat: DateTimeFormatter =
+    DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)
 
 /**
  * Money as US dollars, e.g. `$5.22`. The seeded pricing is in dollars, so the
@@ -30,3 +32,10 @@ internal fun formatQuantity(quantity: Double): String =
 /** A trip's date in the device's medium localized form, e.g. "Aug 19, 2026". */
 internal fun formatTripDate(date: LocalDate): String =
     date.toJavaLocalDate().format(tripDateFormat)
+
+/**
+ * A filter bound in the device's short form, e.g. "8/19/26" — two of these and a
+ * dash have to fit on one chip, which the medium form does not.
+ */
+internal fun formatFilterDate(date: LocalDate): String =
+    date.toJavaLocalDate().format(filterDateFormat)

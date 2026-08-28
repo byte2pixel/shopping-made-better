@@ -1,6 +1,10 @@
 package com.fullsail.shoppingmadebetter.feature.history.domain
 
 import com.fullsail.shoppingmadebetter.feature.history.data.HistoryQuery
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateRange
+import kotlinx.datetime.minus
 
 /**
  * Turning a [HistoryFilter] into the query that answers it.
@@ -21,7 +25,7 @@ import com.fullsail.shoppingmadebetter.feature.history.data.HistoryQuery
  * purchases simply do not match.
  */
 internal val HistoryFilter.isActive: Boolean
-    get() = storeIds.isNotEmpty()
+    get() = storeIds.isNotEmpty() || from != null || to != null
 
 /**
  * This filter as the summary view's query.
@@ -31,4 +35,46 @@ internal val HistoryFilter.isActive: Boolean
  */
 internal fun HistoryFilter.toQuery(): HistoryQuery = HistoryQuery(
     storeIds = storeIds.toList(),
+    from = from,
+    to = to,
 )
+
+/** The date ranges offered as one-tap chips, in the order they are shown. */
+enum class HistoryDatePreset { Last30Days, Last3Months, ThisYear }
+
+/**
+ * This preset resolved against [today], both ends inclusive.
+ *
+ * [today] is a parameter rather than a clock read in here so the rules stay
+ * deterministic in tests; the ViewModel supplies the real one.
+ */
+internal fun HistoryDatePreset.rangeFrom(today: LocalDate): LocalDateRange = when (this) {
+    // 29, not 30: the window is 30 days long and today is one of them.
+    HistoryDatePreset.Last30Days -> today.minus(DatePeriod(days = 29))..today
+    HistoryDatePreset.Last3Months -> today.minus(DatePeriod(months = 3))..today
+    HistoryDatePreset.ThisYear -> LocalDate(today.year, 1, 1)..today
+}
+
+/**
+ * Which preset chip this filter's dates came from, or null for a hand-picked range.
+ */
+internal fun HistoryFilter.selectedPreset(today: LocalDate): HistoryDatePreset? =
+    HistoryDatePreset.entries.firstOrNull { preset ->
+        val range = preset.rangeFrom(today)
+        from == range.start && to == range.endInclusive
+    }
+
+/** Whether the dates in force were picked by hand rather than by [preset]. */
+internal fun HistoryFilter.hasCustomRange(preset: HistoryDatePreset?): Boolean =
+    (from != null || to != null) && preset == null
+
+/** A day as the UTC start-of-day milliseconds the M3 date pickers work in. */
+internal fun LocalDate.toUtcMillis(): Long = toEpochDays() * MILLIS_PER_DAY
+
+/**
+ * The day [millis] falls on, reading it as UTC.
+ */
+internal fun localDateFromUtcMillis(millis: Long): LocalDate =
+    LocalDate.fromEpochDays(Math.floorDiv(millis, MILLIS_PER_DAY))
+
+private const val MILLIS_PER_DAY = 24L * 60 * 60 * 1000

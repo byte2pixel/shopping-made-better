@@ -291,6 +291,101 @@ class GetPurchaseHistoryUseCaseTest {
         assertTrue(output.endReached)
     }
 
+    @Test
+    fun `a date range reaches the repository as a query`() = runTest {
+        val repository = FakeHistoryRepository(summaries = summaryRows(3))
+
+        useCase(repository).execute(
+            GetPurchaseHistoryUseCase.Input(
+                offset = 0,
+                limit = 20,
+                filter = HistoryFilter(
+                    from = LocalDate(2026, 8, 1),
+                    to = LocalDate(2026, 8, 28),
+                ),
+            ),
+        )
+
+        val query = repository.requestedQueries.single()
+        assertEquals(LocalDate(2026, 8, 1), query.from)
+        assertEquals(LocalDate(2026, 8, 28), query.to)
+    }
+
+    @Test
+    fun `a date-filtered read returns only trips in range`() = runTest {
+        val repository = FakeHistoryRepository(
+            summaries = listOf(
+                summaryRow(id = "before", purchasedOn = LocalDate(2026, 7, 31)),
+                summaryRow(id = "first-day", purchasedOn = LocalDate(2026, 8, 1)),
+                summaryRow(id = "last-day", purchasedOn = LocalDate(2026, 8, 28)),
+                summaryRow(id = "after", purchasedOn = LocalDate(2026, 8, 29)),
+            ),
+        )
+
+        val output = useCase(repository).execute(
+            GetPurchaseHistoryUseCase.Input(
+                offset = 0,
+                limit = 20,
+                filter = HistoryFilter(
+                    from = LocalDate(2026, 8, 1),
+                    to = LocalDate(2026, 8, 28),
+                ),
+            ),
+        ).success()
+
+        // Both ends inclusive: a trip made on the first or last day of the range is
+        // in it, which is what a user picking those days means.
+        assertEquals(listOf("first-day", "last-day"), output.trips.map { it.id })
+    }
+
+    @Test
+    fun `a store and a date range narrow together`() = runTest {
+        val repository = FakeHistoryRepository(
+            summaries = listOf(
+                summaryRow(id = "aldi-in", storeId = "store-aldi", purchasedOn = LocalDate(2026, 8, 12)),
+                summaryRow(id = "aldi-out", storeId = "store-aldi", purchasedOn = LocalDate(2026, 7, 1)),
+                summaryRow(id = "publix-in", storeId = "store-publix", purchasedOn = LocalDate(2026, 8, 12)),
+            ),
+        )
+
+        val output = useCase(repository).execute(
+            GetPurchaseHistoryUseCase.Input(
+                offset = 0,
+                limit = 20,
+                filter = HistoryFilter(
+                    storeIds = setOf("store-aldi"),
+                    from = LocalDate(2026, 8, 1),
+                ),
+            ),
+        ).success()
+
+        // Filter kinds AND: the ALDI trip outside the range and the in-range Publix
+        // trip each fail one half.
+        assertEquals(listOf("aldi-in"), output.trips.map { it.id })
+    }
+
+    @Test
+    fun `endReached is judged on the date-filtered result`() = runTest {
+        val repository = FakeHistoryRepository(
+            summaries = listOf(
+                summaryRow(id = "in-range", purchasedOn = LocalDate(2026, 8, 12)),
+                summaryRow(id = "older-1", purchasedOn = LocalDate(2026, 1, 5)),
+                summaryRow(id = "older-2", purchasedOn = LocalDate(2026, 1, 4)),
+            ),
+        )
+
+        val output = useCase(repository).execute(
+            GetPurchaseHistoryUseCase.Input(
+                offset = 0,
+                limit = 2,
+                filter = HistoryFilter(from = LocalDate(2026, 8, 1)),
+            ),
+        ).success()
+
+        assertEquals(1, output.trips.size)
+        assertTrue(output.endReached)
+    }
+
     private companion object {
         /** Money and quantities are Doubles; compare them with a tolerance. */
         const val DELTA = 0.0001

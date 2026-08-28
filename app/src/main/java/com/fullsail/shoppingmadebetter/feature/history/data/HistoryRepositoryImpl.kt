@@ -2,9 +2,45 @@ package com.fullsail.shoppingmadebetter.feature.history.data
 
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.query.Order
+import io.github.jan.supabase.postgrest.query.filter.PostgrestFilterBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+
+/**
+ * Narrows a summary-view read to [query].
+ *
+ * Its own function so the parameters it builds can be asserted without a server —
+ * the rules below are about how this client encodes a filter, which a fake
+ * repository cannot exercise.
+ */
+internal fun PostgrestFilterBuilder.applyHistoryQuery(query: HistoryQuery) {
+    // Omitted entirely when empty — `isIn` on no values matches nothing, which
+    // would read as "you have no history".
+    if (query.storeIds.isNotEmpty()) {
+        isIn("storeId", query.storeIds)
+    }
+
+    // Both bounds inclusive, and each omitted when absent so a one-sided range
+    // stays one-sided. `toString()` is the ISO form the `date` column compares
+    // against.
+    //
+    // A full range goes inside `and` because only the *first* filter per column
+    // survives — the client collapses its parameters with `mapToFirstValue` — so a
+    // plain gte/lte pair on "purchasedOn" loses the lte and the range silently runs
+    // open-ended. The group travels as one parameter, so both bounds arrive.
+    val from = query.from
+    val to = query.to
+    when {
+        from != null && to != null -> and {
+            gte("purchasedOn", from.toString())
+            lte("purchasedOn", to.toString())
+        }
+
+        from != null -> gte("purchasedOn", from.toString())
+        to != null -> lte("purchasedOn", to.toString())
+    }
+}
 
 class HistoryRepositoryImpl @Inject constructor(
     private val postgrest: Postgrest,
@@ -26,13 +62,7 @@ class HistoryRepositoryImpl @Inject constructor(
                 // Filtering runs on the server, before the range: the list is paged,
                 // so narrowing the loaded page instead would only ever search the
                 // trips already on screen and call the rest a miss.
-                filter {
-                    // Omitted entirely when empty — `isIn` on no values matches
-                    // nothing, which would read as "you have no history".
-                    if (query.storeIds.isNotEmpty()) {
-                        isIn("storeId", query.storeIds)
-                    }
-                }
+                filter { applyHistoryQuery(query) }
                 order("purchasedAtEpoch", Order.DESCENDING)
                 order("id", Order.DESCENDING)
                 range(offset.toLong(), (offset + limit - 1).toLong())

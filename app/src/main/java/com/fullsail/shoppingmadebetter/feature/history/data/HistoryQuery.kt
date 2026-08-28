@@ -1,5 +1,7 @@
 package com.fullsail.shoppingmadebetter.feature.history.data
 
+import kotlinx.datetime.LocalDate
+
 /**
  * The narrowing to apply to a page of `purchase_history_summary`, in the shape the
  * view is queried in rather than the shape the user picked it in.
@@ -17,4 +19,12 @@ data class HistoryQuery(
      * OR-join, so adding one widens the result rather than narrowing it.
      */
     val storeIds: List<String> = emptyList(),
+    /**
+     * Match trips on or after this date; null sends no lower bound. A `LocalDate`
+     * rather than a string because that is the type `"purchasedOn"` decodes as —
+     * this file is shaped like the DTO it narrows.
+     */
+    val from: LocalDate? = null,
+    /** Match trips on or before this date; null sends no upper bound. */
+    val to: LocalDate? = null,
 )

@@ -8,9 +8,12 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.fullsail.shoppingmadebetter.feature.history.domain.GetPurchaseHistoryUseCase
+import com.fullsail.shoppingmadebetter.feature.history.domain.HistoryDatePreset
 import com.fullsail.shoppingmadebetter.feature.history.domain.HistoryFilter
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseHistoryPagingSource
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTripSummary
+import com.fullsail.shoppingmadebetter.feature.history.domain.rangeFrom
+import com.fullsail.shoppingmadebetter.feature.history.domain.selectedPreset
 import com.fullsail.shoppingmadebetter.feature.stores.domain.GetStoresUseCase
 import com.fullsail.shoppingmadebetter.feature.stores.domain.Store
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,10 +23,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
+import kotlin.time.Clock
 import javax.inject.Inject
 
 @HiltViewModel
@@ -31,6 +39,7 @@ class HistoryViewModel @Inject constructor(
     private val getPurchaseHistoryUseCase: GetPurchaseHistoryUseCase,
     private val getStoresUseCase: GetStoresUseCase,
     private val savedStateHandle: SavedStateHandle,
+    private val clock: Clock,
 ) : ViewModel() {
 
     /**
@@ -52,14 +61,32 @@ class HistoryViewModel @Inject constructor(
      * the pager is built from it, so it has to live where the pager does, and this
      * way it survives the process being killed in the background as well as a
      * rotation.
+     *
+     * The dates go in as ISO strings, which `SavedStateHandle` holds directly; a
+     * null key is "no bound" rather than any particular date.
      */
-    val filter: StateFlow<HistoryFilter> = savedStateHandle
-        .getStateFlow(KEY_STORE_IDS, emptyList<String>())
-        .map { HistoryFilter(storeIds = it.toSet()) }
+    val filter: StateFlow<HistoryFilter> = combine(
+        savedStateHandle.getStateFlow(KEY_STORE_IDS, emptyList<String>()),
+        savedStateHandle.getStateFlow<String?>(KEY_FROM, null),
+        savedStateHandle.getStateFlow<String?>(KEY_TO, null),
+    ) { ids, from, to ->
+        HistoryFilter(ids.toSet(), from?.let(LocalDate::parse), to?.let(LocalDate::parse))
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = currentFilter(),
+    )
+
+    /**
+     * Which date chip reads as selected, derived rather than stored so it can never
+     * disagree with the dates actually being filtered on.
+     */
+    val selectedDatePreset: StateFlow<HistoryDatePreset?> = filter
+        .map { it.selectedPreset(today()) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
-            initialValue = HistoryFilter(storeIds = storeIds().toSet()),
+            initialValue = filter.value.selectedPreset(today()),
         )
 
     /**
@@ -115,6 +142,45 @@ class HistoryViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Applies [preset], or clears the date range when it is already the active one.
+     *
+     * Single-select, unlike the stores: a trip falls in one range, so a second
+     * preset replaces the first rather than widening anything.
+     */
+    fun selectDatePreset(preset: HistoryDatePreset) {
+        val today = today()
+        if (filter.value.selectedPreset(today) == preset) {
+            setDates(from = null, to = null)
+            return
+        }
+        val range = preset.rangeFrom(today)
+        setDates(from = range.start, to = range.endInclusive)
+    }
+
+    /** Applies a hand-picked range; both ends inclusive. */
+    fun setCustomRange(from: LocalDate, to: LocalDate) = setDates(from, to)
+
+    /** Drops every filter at once, returning the tab to the full history. */
+    fun clearFilters() {
+        savedStateHandle[KEY_STORE_IDS] = emptyList<String>()
+        setDates(from = null, to = null)
+    }
+
+    private fun setDates(from: LocalDate?, to: LocalDate?) {
+        savedStateHandle[KEY_FROM] = from?.toString()
+        savedStateHandle[KEY_TO] = to?.toString()
+    }
+
+    private fun today(): LocalDate = clock.todayIn(TimeZone.currentSystemDefault())
+
+    /** The saved filter read straight through, for a StateFlow's initial value. */
+    private fun currentFilter() = HistoryFilter(
+        storeIds = storeIds().toSet(),
+        from = savedStateHandle.get<String?>(KEY_FROM)?.let(LocalDate::parse),
+        to = savedStateHandle.get<String?>(KEY_TO)?.let(LocalDate::parse),
+    )
+
     private fun storeIds(): List<String> =
         savedStateHandle.get<List<String>>(KEY_STORE_IDS).orEmpty()
 
@@ -134,5 +200,9 @@ class HistoryViewModel @Inject constructor(
 
         /** Saved-state key. A `List` because `SavedStateHandle` cannot hold a `Set`. */
         const val KEY_STORE_IDS = "history-filter-store-ids"
+
+        /** Saved-state keys for the date range, as ISO strings; null means unbounded. */
+        const val KEY_FROM = "history-filter-from"
+        const val KEY_TO = "history-filter-to"
     }
 }
