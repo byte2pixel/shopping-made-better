@@ -171,4 +171,23 @@
     <string name="history_detail_items">Items</string>
     <!-- e.g. "Qty 1.5 × $2.00" -->
     <string name="history_line_quantity_price">Qty %1$s × %2$s</string>
+
+    <!-- History: copy a past trip's items onto a shopping list -->
+    <string name="history_buy_again">Buy again</string>
+    <string name="history_buy_again_select">Include %1$s</string>
+    <plurals name="history_buy_again_title">
+        <item quantity="one">Add %1$d item to…</item>
+        <item quantity="other">Add %1$d items to…</item>
+    </plurals>
+    <plurals name="history_buy_again_added">
+        <item quantity="one">Added %1$d item to %2$s</item>
+        <item quantity="other">Added %1$d items to %2$s</item>
+    </plurals>
+    <!-- Selected products that have since left the catalog and couldn't be re-added -->
+    <plurals name="history_buy_again_skipped">
+        <item quantity="one">Added %1$d item to %2$s, %3$d no longer available</item>
+        <item quantity="other">Added %1$d items to %2$s, %3$d no longer available</item>
+    </plurals>
+    <string name="history_buy_again_partial">Added %1$d, but %2$d couldn\'t be added</string>
+    <string name="history_buy_again_failed">Couldn\'t add these items</string>
 </resources>

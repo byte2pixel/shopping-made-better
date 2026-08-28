@@ -2,6 +2,7 @@ package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.fullsail.shoppingmadebetter.core.ui.ShoppingListPickerState
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
@@ -40,15 +41,10 @@ sealed interface PantryUiState {
 /** State of the "add to shopping list" bottom sheet. */
 sealed interface AddToListSheetState {
     data object Hidden : AddToListSheetState
-    data class Visible(val item: InventoryItem, val lists: Lists) : AddToListSheetState
-
-    /** The user's shopping lists loaded for the picker. */
-    sealed interface Lists {
-        data object Loading : Lists
-        data class Loaded(val trips: List<ShoppingTrip>) : Lists
-        data object Empty : Lists
-        data object Error : Lists
-    }
+    data class Visible(
+        val item: InventoryItem,
+        val lists: ShoppingListPickerState,
+    ) : AddToListSheetState
 }
 
 /** One-shot outcomes surfaced to the user as a snackbar. */
@@ -132,13 +128,13 @@ class PantryViewModel @Inject constructor(
 
     /** Opens the sheet for [item] and loads the user's shopping lists to pick from. */
     fun onAddToListClicked(item: InventoryItem) {
-        _addToListSheet.value = AddToListSheetState.Visible(item, AddToListSheetState.Lists.Loading)
+        _addToListSheet.value = AddToListSheetState.Visible(item, ShoppingListPickerState.Loading)
         viewModelScope.launch {
             val lists = when (val out = getShoppingTripsUseCase.execute(Unit)) {
-                is GetShoppingTripsUseCase.Output.Success -> if (out.trips.isEmpty()) AddToListSheetState.Lists.Empty
-                else AddToListSheetState.Lists.Loaded(out.trips)
+                is GetShoppingTripsUseCase.Output.Success -> if (out.trips.isEmpty()) ShoppingListPickerState.Empty
+                else ShoppingListPickerState.Loaded(out.trips)
 
-                is GetShoppingTripsUseCase.Output.Failure -> AddToListSheetState.Lists.Error
+                is GetShoppingTripsUseCase.Output.Failure -> ShoppingListPickerState.Error
             }
             // Only apply if the sheet is still open for the same item.
             val current = _addToListSheet.value
