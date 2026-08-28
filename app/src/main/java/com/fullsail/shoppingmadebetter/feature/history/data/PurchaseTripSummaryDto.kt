@@ -12,6 +12,12 @@ data class PurchaseTripSummaryDto(
     val purchasedOn: LocalDate,
     /** Sort key: the trip's `purchased_at` as epoch seconds. Never displayed. */
     val purchasedAtEpoch: Long,
+    /**
+     * The store's id, for the store filter. Not shown — the card reads
+     * [storeName] — but decoded because the view selects every column.
+     * `null` for the same reason [storeName] is.
+     */
+    val storeId: String? = null,
     /** `null` when the store the trip was made at has since been deleted. */
     val storeName: String? = null,
     /** `purchase_history.total_amount` as recorded; `null` when none was. */

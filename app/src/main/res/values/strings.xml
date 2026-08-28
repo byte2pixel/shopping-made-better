@@ -158,6 +158,13 @@
     <string name="history_error">Couldn\'t load your purchase history</string>
     <string name="history_retry">Retry</string>
     <string name="history_empty">No purchases yet. Completed shopping trips show up here.</string>
+    <!-- Shown instead of history_empty when a filter is on: the user has trips, just
+         none matching. Telling them "no purchases yet" here would read as data loss. -->
+    <string name="history_no_matches">No trips match your filters. Try clearing one.</string>
+    <!-- Store filter chips. %1$s is the store name; the chip replaces its own
+         semantics with these, so they have to name the store too. -->
+    <string name="history_filter_store_desc">%1$s, filter by store</string>
+    <string name="history_filter_store_selected_desc">%1$s, filtering by store</string>
     <string name="history_unknown_store">Unknown store</string>
     <string name="history_trip_open">Show trip details</string>
     <!-- Shown under the last card when the next page of trips fails to load. -->

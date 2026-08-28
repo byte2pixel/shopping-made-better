@@ -195,6 +195,102 @@ class GetPurchaseHistoryUseCaseTest {
         assertSame(boom, (output as GetPurchaseHistoryUseCase.Output.Failure).error)
     }
 
+    @Test
+    fun `the filter reaches the repository as a query`() = runTest {
+        val repository = FakeHistoryRepository(summaries = summaryRows(3))
+
+        useCase(repository).execute(
+            GetPurchaseHistoryUseCase.Input(
+                offset = 0,
+                limit = 20,
+                filter = HistoryFilter(storeIds = setOf("store-aldi")),
+            ),
+        )
+
+        // The narrowing has to travel all the way down. Stopping short and filtering
+        // the returned page would only ever search the trips already loaded.
+        assertEquals(listOf("store-aldi"), repository.requestedQueries.single().storeIds)
+    }
+
+    @Test
+    fun `an unfiltered read sends an empty query`() = runTest {
+        val repository = FakeHistoryRepository(summaries = summaryRows(3))
+
+        useCase(repository).page(offset = 0, limit = 20)
+
+        // Empty rather than every id: the repository leaves the filter off the
+        // request entirely, which is not the same as asking for all known stores.
+        assertEquals(emptyList<String>(), repository.requestedQueries.single().storeIds)
+    }
+
+    @Test
+    fun `a filtered read returns only matching trips`() = runTest {
+        val repository = FakeHistoryRepository(
+            summaries = listOf(
+                summaryRow(id = "aldi-1", storeId = "store-aldi"),
+                summaryRow(id = "publix-1", storeId = "store-publix"),
+                summaryRow(id = "aldi-2", storeId = "store-aldi"),
+            ),
+        )
+
+        val output = useCase(repository).execute(
+            GetPurchaseHistoryUseCase.Input(
+                offset = 0,
+                limit = 20,
+                filter = HistoryFilter(storeIds = setOf("store-aldi")),
+            ),
+        ).success()
+
+        assertEquals(listOf("aldi-1", "aldi-2"), output.trips.map { it.id })
+    }
+
+    @Test
+    fun `two stores widen the result to both`() = runTest {
+        val repository = FakeHistoryRepository(
+            summaries = listOf(
+                summaryRow(id = "aldi-1", storeId = "store-aldi"),
+                summaryRow(id = "publix-1", storeId = "store-publix"),
+                summaryRow(id = "wf-1", storeId = "store-wf"),
+            ),
+        )
+
+        val output = useCase(repository).execute(
+            GetPurchaseHistoryUseCase.Input(
+                offset = 0,
+                limit = 20,
+                filter = HistoryFilter(storeIds = setOf("store-aldi", "store-publix")),
+            ),
+        ).success()
+
+        // A trip happens at one store, so selecting a second can only ever widen the
+        // list. AND-joining them would empty it every time.
+        assertEquals(listOf("aldi-1", "publix-1"), output.trips.map { it.id })
+    }
+
+    @Test
+    fun `endReached is judged on the filtered result, not the whole history`() = runTest {
+        val repository = FakeHistoryRepository(
+            summaries = listOf(
+                summaryRow(id = "aldi-1", storeId = "store-aldi"),
+                summaryRow(id = "publix-1", storeId = "store-publix"),
+                summaryRow(id = "publix-2", storeId = "store-publix"),
+            ),
+        )
+
+        val output = useCase(repository).execute(
+            GetPurchaseHistoryUseCase.Input(
+                offset = 0,
+                limit = 2,
+                filter = HistoryFilter(storeIds = setOf("store-aldi")),
+            ),
+        ).success()
+
+        // One ALDI trip against a limit of 2: the filtered history is exhausted even
+        // though two unfiltered trips remain behind it.
+        assertEquals(1, output.trips.size)
+        assertTrue(output.endReached)
+    }
+
     private companion object {
         /** Money and quantities are Doubles; compare them with a tolerance. */
         const val DELTA = 0.0001

@@ -17,8 +17,10 @@ import java.io.IOException
  */
 class PurchaseHistoryPagingSourceTest {
 
-    private fun pagingSource(repository: FakeHistoryRepository) =
-        PurchaseHistoryPagingSource(GetPurchaseHistoryUseCaseImpl(repository))
+    private fun pagingSource(
+        repository: FakeHistoryRepository,
+        filter: HistoryFilter = HistoryFilter(),
+    ) = PurchaseHistoryPagingSource(GetPurchaseHistoryUseCaseImpl(repository), filter)
 
     private fun refresh(loadSize: Int) = PagingSource.LoadParams.Refresh<Int>(
         key = null,
@@ -167,5 +169,49 @@ class PurchaseHistoryPagingSourceTest {
         // Advances by what arrived, not by the page size, so the next append does
         // not re-read rows this load already delivered.
         assertEquals(60, page.nextKey)
+    }
+
+    @Test
+    fun `the source carries its filter into every page it requests`() = runTest {
+        val repository = FakeHistoryRepository(summaries = summaryRows(60))
+        val filter = HistoryFilter(storeIds = setOf("store-aldi"))
+        val source = pagingSource(repository, filter)
+
+        source.load(refresh(loadSize = 20))
+        source.load(append(key = 20, loadSize = 20))
+
+        // Every page, not just the first: a source's offsets are positions within its
+        // own filter's results, so dropping the filter on append would page a
+        // different list than the one the first page came from.
+        assertEquals(2, repository.requestedQueries.size)
+        assertTrue(repository.requestedQueries.all { it.storeIds == listOf("store-aldi") })
+    }
+
+    @Test
+    fun `paging walks the filtered history and nothing else`() = runTest {
+        // Two stores interleaved: ALDI on the even ids, Publix on the odd ones.
+        val repository = FakeHistoryRepository(
+            summaries = List(50) { index ->
+                summaryRow(
+                    id = "trip-$index",
+                    storeId = if (index % 2 == 0) "store-aldi" else "store-publix",
+                    purchasedAtEpoch = (50 - index).toLong(),
+                )
+            },
+        )
+        val source = pagingSource(repository, HistoryFilter(storeIds = setOf("store-aldi")))
+
+        val seen = mutableListOf<String>()
+        var key: Int? = null
+        do {
+            val page = (key?.let { source.load(append(it, loadSize = 20)) }
+                ?: source.load(refresh(loadSize = 20))).page()
+            seen += page.data.map { it.id }
+            key = page.nextKey
+        } while (key != null)
+
+        // Every ALDI trip exactly once, in order, across page boundaries — the case
+        // that breaks when filtering happens after paging instead of before it.
+        assertEquals(List(25) { "trip-${it * 2}" }, seen)
     }
 }
