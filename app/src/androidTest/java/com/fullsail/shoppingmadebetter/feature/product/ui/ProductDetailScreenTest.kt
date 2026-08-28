@@ -1,4 +1,4 @@
-package com.fullsail.shoppingmadebetter.feature.pantry.ui
+package com.fullsail.shoppingmadebetter.feature.product.ui
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -8,10 +8,10 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.fullsail.shoppingmadebetter.R
-import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryItemUseCase
-import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
+import com.fullsail.shoppingmadebetter.feature.product.domain.GetProductDetailUseCase
+import com.fullsail.shoppingmadebetter.feature.product.domain.ProductDetail
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
@@ -20,9 +20,9 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * Compose UI tests for [PantryItemDetailScreen].
+ * Compose UI tests for [ProductDetailScreen].
  */
-class PantryItemDetailScreenTest {
+class ProductDetailScreenTest {
     @get:Rule
     val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
@@ -30,11 +30,11 @@ class PantryItemDetailScreenTest {
      * Fake use case. An optional [gate] lets a test hold [execute] suspended so
      * the screen stays in its Loading state for as long as needed to inspect it.
      */
-    private class FakeGetInventoryItemUseCase(
-        var output: GetInventoryItemUseCase.Output,
+    private class FakeGetProductDetailUseCase(
+        var output: GetProductDetailUseCase.Output,
         private val gate: CompletableDeferred<Unit>? = null,
-    ) : GetInventoryItemUseCase {
-        override suspend fun execute(input: String): GetInventoryItemUseCase.Output {
+    ) : GetProductDetailUseCase {
+        override suspend fun execute(input: String): GetProductDetailUseCase.Output {
             gate?.await()
             return output
         }
@@ -48,15 +48,14 @@ class PantryItemDetailScreenTest {
             UpdateInventoryLowStockThresholdUseCase.Output.Success
     }
 
-    private val milk = InventoryItem(
-        id = "i1",
-        productId = "p1",
+    private val milk = ProductDetail(
+        id = "p1",
         name = "2% Milk",
         brand = "Great Value",
         description = "Reduced-fat milk",
         size = "1 gal",
         imageUrl = "",
-        quantity = 2,
+        quantityOnHand = 2,
         expiresInDays = null,
     )
 
@@ -68,12 +67,12 @@ class PantryItemDetailScreenTest {
     private var reportedTitle: String? = null
 
     /** Renders the screen wired to [useCase], inside the app theme. */
-    private fun setScreen(useCase: GetInventoryItemUseCase) {
-        val viewModel = PantryItemDetailViewModel(useCase, FakeUpdateThresholdUseCase())
+    private fun setScreen(useCase: GetProductDetailUseCase) {
+        val viewModel = ProductDetailViewModel(useCase, FakeUpdateThresholdUseCase())
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
-                PantryItemDetailScreen(
-                    itemId = "i1",
+                ProductDetailScreen(
+                    productId = "p1",
                     onTitleChange = { reportedTitle = it },
                     viewModel = viewModel,
                 )
@@ -85,51 +84,71 @@ class PantryItemDetailScreenTest {
     fun showsSpinnerWhileLoading() {
         // A gate that we never complete keeps the load suspended -> Loading state.
         setScreen(
-            FakeGetInventoryItemUseCase(
-                GetInventoryItemUseCase.Output.Success(milk),
+            FakeGetProductDetailUseCase(
+                GetProductDetailUseCase.Output.Success(milk),
                 gate = CompletableDeferred(),
             )
         )
-        
+
         composeTestRule
             .onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("2% Milk").assertDoesNotExist()
-        // No title is reported until the item loads.
+        // No title is reported until the product loads.
         assertNull(reportedTitle)
     }
 
     @Test
-    fun showsItemDetailsOnSuccess() {
-        setScreen(FakeGetInventoryItemUseCase(GetInventoryItemUseCase.Output.Success(milk)))
+    fun showsProductDetailsOnSuccess() {
+        setScreen(FakeGetProductDetailUseCase(GetProductDetailUseCase.Output.Success(milk)))
 
         composeTestRule.waitForIdle()
         assertEquals("2% Milk", reportedTitle)
         composeTestRule.onNodeWithText(string(R.string.pantry_detail_brand)).assertIsDisplayed()
         composeTestRule.onNodeWithText("Great Value").assertIsDisplayed()
         composeTestRule.onNodeWithText("1 gal").assertIsDisplayed()
-        // Stock renders the quantity as text.
+        // Stock renders the on-hand total as text.
         composeTestRule.onNodeWithText("2").assertIsDisplayed()
     }
 
     @Test
+    fun aProductNoLongerInThePantryStillRenders() {
+        // The History case: bought on a past trip, none on hand, no expiry to show.
+        setScreen(
+            FakeGetProductDetailUseCase(
+                GetProductDetailUseCase.Output.Success(
+                    milk.copy(quantityOnHand = 0, expiresInDays = null),
+                )
+            )
+        )
+
+        composeTestRule.waitForIdle()
+        assertEquals("2% Milk", reportedTitle)
+        composeTestRule.onNodeWithText("Great Value").assertIsDisplayed()
+        composeTestRule.onNodeWithText("0").assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_detail_expires_unknown))
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun showsNotFoundMessage() {
-        setScreen(FakeGetInventoryItemUseCase(GetInventoryItemUseCase.Output.NotFound))
+        setScreen(FakeGetProductDetailUseCase(GetProductDetailUseCase.Output.NotFound))
 
         composeTestRule.onNodeWithText(string(R.string.pantry_detail_not_found)).assertIsDisplayed()
     }
 
     @Test
-    fun errorStateRetriesAndThenShowsTheItem() {
+    fun errorStateRetriesAndThenShowsTheProduct() {
         // Start failing so the screen lands on the Error state...
-        val useCase = FakeGetInventoryItemUseCase(
-            GetInventoryItemUseCase.Output.Failure(RuntimeException("boom"))
+        val useCase = FakeGetProductDetailUseCase(
+            GetProductDetailUseCase.Output.Failure(RuntimeException("boom"))
         )
         setScreen(useCase)
 
         composeTestRule.onNodeWithText(string(R.string.pantry_error)).assertIsDisplayed()
 
-        useCase.output = GetInventoryItemUseCase.Output.Success(milk)
+        useCase.output = GetProductDetailUseCase.Output.Success(milk)
         composeTestRule.onNodeWithText(string(R.string.pantry_retry)).performClick()
 
         composeTestRule.onNodeWithText("Great Value").assertIsDisplayed()

@@ -32,9 +32,6 @@ class GetInventoryUseCaseTest {
         override suspend fun getInventoryItems(): List<InventoryItemDto> =
             error?.let { throw it } ?: items
 
-        override suspend fun getInventoryItem(id: String): InventoryItemDto? =
-            error?.let { throw it } ?: items.firstOrNull { it.id == id }
-
         override suspend fun deleteInventoryItem(id: String) = Unit
 
         override suspend fun updateQuantity(id: String, quantity: Int) = Unit
@@ -43,7 +40,7 @@ class GetInventoryUseCaseTest {
 
         override suspend fun updateExpiry(id: String, expiresAt: LocalDate) = Unit
 
-        override suspend fun updateLowStockThreshold(id: String, threshold: Int?) = Unit
+        override suspend fun updateLowStockThreshold(productId: String, threshold: Int?) = Unit
     }
 
     private val fixedClock = object : Clock {

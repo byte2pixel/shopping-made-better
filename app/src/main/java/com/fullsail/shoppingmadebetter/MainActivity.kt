@@ -50,8 +50,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.fullsail.shoppingmadebetter.feature.auth.ui.LoginScreen
 import com.fullsail.shoppingmadebetter.feature.auth.ui.SignUpScreen
-import com.fullsail.shoppingmadebetter.feature.pantry.ui.PantryItemDetailScreen
 import com.fullsail.shoppingmadebetter.feature.pantry.ui.PantryScreen
+import com.fullsail.shoppingmadebetter.feature.product.ui.ProductDetailScreen
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListItemComparisonScreen
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListsScreen
 import com.fullsail.shoppingmadebetter.feature.stores.ui.StoresScreen
@@ -334,11 +334,13 @@ fun ShoppingMadeBetterApp(
 
             composable<Dest.Cart> { CartScreen() }
             composable<Dest.Pantry> {
-                PantryScreen(onItemClick = { id -> navController.navigate(Dest.PantryItemDetail(id)) })
+                PantryScreen(
+                    onProductClick = { id -> navController.navigate(Dest.ProductDetail(id)) },
+                )
             }
-            composable<Dest.PantryItemDetail> { entry ->
-                PantryItemDetailScreen(
-                    itemId = entry.toRoute<Dest.PantryItemDetail>().id,
+            composable<Dest.ProductDetail> { entry ->
+                ProductDetailScreen(
+                    productId = entry.toRoute<Dest.ProductDetail>().productId,
                     onTitleChange = navigationViewModel::setScreenTitle,
                 )
             }
@@ -351,6 +353,7 @@ fun ShoppingMadeBetterApp(
                 PurchaseTripDetailScreen(
                     purchaseId = entry.toRoute<Dest.PurchaseTripDetail>().purchaseId,
                     onTitleChange = navigationViewModel::setScreenTitle,
+                    onProductClick = { id -> navController.navigate(Dest.ProductDetail(id)) },
                 )
             }
             composable<Dest.Meals> {

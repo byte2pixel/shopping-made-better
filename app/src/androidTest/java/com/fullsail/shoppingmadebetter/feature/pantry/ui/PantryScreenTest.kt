@@ -206,7 +206,7 @@ class PantryScreenTest {
             count,
         )
 
-    /** Builds the screen; callers can pre-configure the fakes and observe [onItemClick]. */
+    /** Builds the screen; callers can pre-configure the fakes and observe [onProductClick]. */
     private fun setScreen(
         inventory: GetInventoryUseCase = FakeGetInventoryUseCase(inventoryOf(milk)),
         trips: GetShoppingTripsUseCase = FakeGetShoppingTripsUseCase(
@@ -222,7 +222,7 @@ class PantryScreenTest {
         updateExpiry: UpdateInventoryExpiryUseCase = FakeUpdateInventoryExpiryUseCase(),
         updateThreshold: UpdateInventoryLowStockThresholdUseCase =
             FakeUpdateInventoryLowStockThresholdUseCase(),
-        onItemClick: (String) -> Unit = {},
+        onProductClick: (String) -> Unit = {},
     ) {
         val viewModel = PantryViewModel(
             inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, updateQuantity,
@@ -230,7 +230,7 @@ class PantryScreenTest {
         )
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
-                PantryScreen(onItemClick = onItemClick, viewModel = viewModel)
+                PantryScreen(onProductClick = onProductClick, viewModel = viewModel)
             }
         }
     }
@@ -323,16 +323,17 @@ class PantryScreenTest {
     }
 
     @Test
-    fun tappingALotRowReportsTheLotId() {
+    fun tappingALotRowReportsTheProductId() {
+        // The detail screen is per-product, not per-lot: every lot of a product opens it.
         var clickedId: String? = null
-        setScreen(onItemClick = { clickedId = it })
+        setScreen(onProductClick = { clickedId = it })
 
         toggleCard("2% Milk")
         composeTestRule
             .onNode(hasClickLabel(string(R.string.pantry_card_lot_details)))
             .performClick()
 
-        assertEquals("i1", clickedId)
+        assertEquals("p1", clickedId)
     }
 
     @Test

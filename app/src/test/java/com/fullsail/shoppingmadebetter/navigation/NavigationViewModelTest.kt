@@ -107,7 +107,7 @@ class NavigationViewModelTest {
         val viewModel = buildViewModel()
 
         // The listener fires first (tab = null for a detail route), then the screen loads.
-        viewModel.onDestinationChanged(routeName = "PantryItemDetail", tab = null, showChrome = true)
+        viewModel.onDestinationChanged(routeName = "ProductDetail", tab = null, showChrome = true)
         viewModel.setScreenTitle("2% Milk")
 
         assertNull(viewModel.currentTab.value)

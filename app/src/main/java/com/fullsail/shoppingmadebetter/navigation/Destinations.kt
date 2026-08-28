@@ -50,11 +50,13 @@ sealed interface Dest {
     @Serializable
     data object ChangePassword : Dest
     /**
-     * A detail screen for an item in the pantry.
-     * @param id The ID of the item to show.
+     * A detail screen for one product, reached from a pantry lot row and from a past
+     * trip's line item on History. Keyed on the product rather than a pantry row, so a
+     * product that is no longer in the pantry still opens.
+     * @param productId The ID of the product to show.
      */
     @Serializable
-    data class PantryItemDetail(val id: String) : Dest
+    data class ProductDetail(val productId: String) : Dest
 
     @Serializable
     data object History : Dest

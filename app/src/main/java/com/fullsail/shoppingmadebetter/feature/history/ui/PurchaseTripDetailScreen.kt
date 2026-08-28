@@ -1,14 +1,18 @@
 package com.fullsail.shoppingmadebetter.feature.history.ui
 
 import android.content.res.Resources
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -52,11 +56,13 @@ import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
  * One completed trip: its date, store and total, followed by every line item bought
  * on it, each tickable so the whole basket — or part of it — can be put back on a
  * shopping list with "Buy again". Reached by tapping a card on the History tab.
+ * @param onProductClick opens the product behind a line item.
  * @param onTitleChange supplies the top-bar title once the trip is known.
  */
 @Composable
 fun PurchaseTripDetailScreen(
     purchaseId: String,
+    onProductClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     onTitleChange: (String) -> Unit = {},
     viewModel: PurchaseTripDetailViewModel = hiltViewModel(),
@@ -102,6 +108,7 @@ fun PurchaseTripDetailScreen(
                 trip = state.trip,
                 selectedProductIds = selectedProductIds,
                 onItemToggled = viewModel::onItemToggled,
+                onItemClick = onProductClick,
                 onBuyAgainClick = viewModel::onBuyAgainClicked,
             )
         }
@@ -146,6 +153,7 @@ private fun PurchaseTripDetailContent(
     trip: PurchaseTrip,
     selectedProductIds: Set<String>,
     onItemToggled: (String) -> Unit,
+    onItemClick: (String) -> Unit,
     onBuyAgainClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -166,6 +174,7 @@ private fun PurchaseTripDetailContent(
                 item = item,
                 isSelected = item.productId in selectedProductIds,
                 onToggle = { onItemToggled(item.productId) },
+                onClick = { onItemClick(item.productId) },
             )
         }
     }
@@ -230,63 +239,84 @@ private fun SummaryField(label: String, value: String, modifier: Modifier = Modi
 }
 
 /**
- * One purchased product: what it was, how many, and what the line cost. The whole
- * row toggles whether the item is included in the next "buy again", so the checkbox
- * itself stays non-clickable and the row is the single accessible target.
+ * One purchased product: what it was, how many, and what the line cost.
+ *
+ * The row carries two actions. Tapping it opens the product; the leading checkbox
+ * ticks the item into the next "buy again".
  */
 @Composable
 private fun PurchaseLineItemRow(
     item: PurchaseLineItem,
     isSelected: Boolean,
     onToggle: () -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val selectLabel = stringResource(R.string.history_buy_again_select, item.productName)
+    val openLabel = stringResource(R.string.history_line_item_open)
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .toggleable(
-                value = isSelected,
-                role = Role.Checkbox,
-                onValueChange = { onToggle() },
-            )
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            // Gives the toggle strip a bounded height to fill; without it fillMaxHeight
+            // is a no-op in a wrap-content Row.
+            .height(IntrinsicSize.Min)
+            .clickable(onClickLabel = openLabel, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Checkbox(
-            checked = isSelected,
-            onCheckedChange = null,
-            modifier = Modifier.semantics {
-                contentDescription = selectLabel
-            },
-        )
-        ProductImage(imageUrl = item.imageUrl, contentDescription = null, size = 40.dp)
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .toggleable(
+                    value = isSelected,
+                    role = Role.Checkbox,
+                    onValueChange = { onToggle() },
+                )
+                .semantics { contentDescription = selectLabel }
+                // Applied after toggleable, so the padding is part of the touch target.
+                .padding(start = 16.dp, end = 8.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            Text(text = item.productName, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text = listOf(item.brand, item.size).filter { it.isNotBlank() }.joinToString(" · "),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Checkbox(checked = isSelected, onCheckedChange = null)
         }
-        Column(
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 16.dp, top = 8.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = formatPrice(item.lineTotal), style = MaterialTheme.typography.bodyMedium)
-            Text(
-                text = stringResource(
-                    R.string.history_line_quantity_price,
-                    formatQuantity(item.quantity),
-                    formatPrice(item.pricePaid),
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            ProductImage(imageUrl = item.imageUrl, contentDescription = null, size = 40.dp)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(text = item.productName, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = listOf(item.brand, item.size)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = formatPrice(item.lineTotal),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    text = stringResource(
+                        R.string.history_line_quantity_price,
+                        formatQuantity(item.quantity),
+                        formatPrice(item.pricePaid),
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -300,6 +330,7 @@ private fun PurchaseTripDetailContentPreview() {
             trip = trip,
             selectedProductIds = trip.items.map { it.productId }.toSet(),
             onItemToggled = {},
+            onItemClick = {},
             onBuyAgainClick = {},
         )
     }
@@ -322,6 +353,7 @@ private fun PurchaseTripDetailContentUnknownStorePreview() {
             // Only the first item ticked, to show both checkbox states.
             selectedProductIds = setOf(trip.items.first().productId),
             onItemToggled = {},
+            onItemClick = {},
             onBuyAgainClick = {},
         )
     }

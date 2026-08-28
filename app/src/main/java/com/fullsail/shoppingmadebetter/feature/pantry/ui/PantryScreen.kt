@@ -54,9 +54,13 @@ private val filterSetSaver = listSaver<Set<PantryDashboardFilter>, String>(
     restore = { names -> names.map { PantryDashboardFilter.valueOf(it) }.toSet() },
 )
 
+/**
+ * @param onProductClick opens the detail screen for the tapped lot's product. Lots of the
+ *   same product share one detail screen
+ */
 @Composable
 fun PantryScreen(
-    onItemClick: (String) -> Unit,
+    onProductClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PantryViewModel = hiltViewModel(),
 ) {
@@ -117,7 +121,7 @@ fun PantryScreen(
         PantryContent(
             uiState = uiState,
             onRetry = viewModel::loadInventory,
-            onItemClick = onItemClick,
+            onProductClick = onProductClick,
             onAddToListClick = viewModel::onAddToListClicked,
             onRemoveClick = viewModel::onRemoveClicked,
             onQuantityChange = viewModel::onQuantityChanged,
@@ -153,7 +157,7 @@ fun PantryScreen(
 private fun PantryContent(
     uiState: PantryUiState,
     onRetry: () -> Unit,
-    onItemClick: (String) -> Unit,
+    onProductClick: (String) -> Unit,
     onAddToListClick: (InventoryItem) -> Unit,
     onRemoveClick: (InventoryItem) -> Unit,
     onQuantityChange: (InventoryItem, Int) -> Unit,
@@ -218,7 +222,7 @@ private fun PantryContent(
                                 group = group,
                                 isExpanded = isExpanded,
                                 onExpandedChange = { isExpanded = it },
-                                onLotClick = { lot -> onItemClick(lot.id) },
+                                onLotClick = { lot -> onProductClick(lot.productId) },
                                 onAddToList = { onAddToListClick(group.lots.first()) },
                                 onRemoveLot = onRemoveClick,
                                 onQuantityChange = onQuantityChange,
@@ -285,6 +289,6 @@ private fun RemoveFromPantryDialog(
 @Composable
 private fun PantryScreenPreview() {
     ShoppingMadeBetterTheme {
-        PantryScreen(onItemClick = {})
+        PantryScreen(onProductClick = {})
     }
 }

@@ -102,7 +102,7 @@
     <string name="pantry_location_mixed">Mixed</string>
     <string name="pantry_card_location_mixed_desc">Stored in multiple locations</string>
     <string name="pantry_card_expiry_soonest_desc">Soonest expiry: %1$s</string>
-    <string name="pantry_card_lot_details">View lot details</string>
+    <string name="pantry_card_lot_details">View product details</string>
     <string name="pantry_card_remove_lot">Remove this lot</string>
 
     <!-- Pantry inventory card chip indicators - location -->
@@ -175,6 +175,8 @@
     <string name="history_detail_items">Items</string>
     <!-- e.g. "Qty 1.5 × $2.00" -->
     <string name="history_line_quantity_price">Qty %1$s × %2$s</string>
+    <!-- Click label on a line item; the checkbox beside it keeps its own label. -->
+    <string name="history_line_item_open">Show product details</string>
 
     <!-- History: copy a past trip's items onto a shopping list -->
     <string name="history_buy_again">Buy again</string>

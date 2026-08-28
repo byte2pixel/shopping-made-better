@@ -27,7 +27,6 @@ class UpdateInventoryExpiryUseCaseImplTest {
         var lastExpiresAt: LocalDate? = null
 
         override suspend fun getInventoryItems(): List<InventoryItemDto> = emptyList()
-        override suspend fun getInventoryItem(id: String): InventoryItemDto? = null
         override suspend fun deleteInventoryItem(id: String) = Unit
         override suspend fun updateQuantity(id: String, quantity: Int) = Unit
         override suspend fun updateLocation(id: String, location: String) = Unit
@@ -37,7 +36,7 @@ class UpdateInventoryExpiryUseCaseImplTest {
             lastExpiresAt = expiresAt
         }
 
-        override suspend fun updateLowStockThreshold(id: String, threshold: Int?) = Unit
+        override suspend fun updateLowStockThreshold(productId: String, threshold: Int?) = Unit
     }
 
     private val fixedClock = object : Clock {
