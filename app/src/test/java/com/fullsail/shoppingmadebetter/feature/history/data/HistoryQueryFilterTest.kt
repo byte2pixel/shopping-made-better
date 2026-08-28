@@ -75,6 +75,40 @@ class HistoryQueryFilterTest {
     }
 
     @Test
+    fun `a search is sent as a wrapped ilike`() {
+        val sent = sentParams(HistoryQuery(productSearch = "oats"))
+
+        // Wildcards belong to the repository; the term itself arrives escaped.
+        assertEquals("ilike.%oats%", sent.getValue("productSearch"))
+    }
+
+    @Test
+    fun `an escaped search term keeps its escapes on the wire`() {
+        // The escaping is only worth anything if it survives encoding.
+        val sent = sentParams(HistoryQuery(productSearch = "100\\% oats"))
+
+        assertEquals("ilike.%100\\% oats%", sent.getValue("productSearch"))
+    }
+
+    @Test
+    fun `all three filters are sent together`() {
+        val sent = sentParams(
+            HistoryQuery(
+                storeIds = listOf("store-aldi"),
+                from = LocalDate(2026, 8, 18),
+                to = LocalDate(2026, 8, 20),
+                productSearch = "oats",
+            ),
+        )
+
+        assertTrue(sent.getValue("storeId").contains("store-aldi"))
+        assertEquals("ilike.%oats%", sent.getValue("productSearch"))
+        val encoded = sent.values.joinToString(" ")
+        assertTrue(encoded, encoded.contains("gte.2026-08-18"))
+        assertTrue(encoded, encoded.contains("lte.2026-08-20"))
+    }
+
+    @Test
     fun `a store and a date range are both sent`() {
         // Different columns, so these cannot collapse into each other — asserted so
         // that stays true if the date bounds are ever re-encoded.

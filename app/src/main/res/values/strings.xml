@@ -187,6 +187,10 @@
     <string name="history_filter_date_end">End date</string>
     <!-- Drops every filter at once; only shown while at least one is on. -->
     <string name="history_filter_clear">Clear filters</string>
+    <!-- Product search over past trips. Shorter than two characters is ignored, so
+         the hint says what the field matches rather than promising instant results. -->
+    <string name="history_search_label">Search what you bought</string>
+    <string name="history_search_clear">Clear search</string>
     <string name="history_unknown_store">Unknown store</string>
     <string name="history_trip_open">Show trip details</string>
     <!-- Shown under the last card when the next page of trips fails to load. -->

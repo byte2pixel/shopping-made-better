@@ -18,4 +18,10 @@ data class HistoryFilter(
     val from: LocalDate? = null,
     /** Newest trip date to keep, inclusive; null means no upper bound. */
     val to: LocalDate? = null,
+    /**
+     * Raw text to match against what was bought, exactly as typed. Blank means no
+     * search, and so does anything shorter than two characters once trimmed — see
+     * [searchTerm], which is the only thing that should read this.
+     */
+    val search: String = "",
 )

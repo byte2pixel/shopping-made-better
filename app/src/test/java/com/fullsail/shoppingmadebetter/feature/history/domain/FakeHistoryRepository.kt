@@ -49,11 +49,21 @@ internal class FakeHistoryRepository(
     private fun PurchaseTripSummaryDto.matches(query: HistoryQuery): Boolean {
         val from = query.from
         val to = query.to
+        val search = query.productSearch
         if (query.storeIds.isNotEmpty() && storeId !in query.storeIds) return false
         if (from != null && purchasedOn < from) return false
         if (to != null && purchasedOn > to) return false
+        // `ilike("%term%")` over an escaped term is a case-insensitive substring
+        // match on the literal text, so unescape before comparing.
+        if (search != null && !productSearch.contains(search.unescapeLike(), ignoreCase = true)) {
+            return false
+        }
         return true
     }
+
+    /** Undoes the `LIKE` escaping so the fake compares the text the user typed. */
+    private fun String.unescapeLike(): String =
+        replace("\\%", "%").replace("\\_", "_").replace("\\\\", "\\")
 
     override suspend fun getPurchase(purchaseId: String): List<PurchaseHistoryRowDto> =
         error?.let { throw it } ?: rows.filter { it.purchaseId == purchaseId }
@@ -100,6 +110,7 @@ internal fun summaryRow(
     totalAmount: Double? = 10.0,
     lineTotal: Double = 10.0,
     itemCount: Int = 2,
+    productSearch: String = "",
 ) = PurchaseTripSummaryDto(
     id = id,
     purchasedOn = purchasedOn,
@@ -109,6 +120,7 @@ internal fun summaryRow(
     totalAmount = totalAmount,
     lineTotal = lineTotal,
     itemCount = itemCount,
+    productSearch = productSearch,
 )
 
 /** [count] summary rows, ids `trip-0`..`trip-<count-1>`, newest first. */

@@ -27,4 +27,10 @@ data class HistoryQuery(
     val from: LocalDate? = null,
     /** Match trips on or before this date; null sends no upper bound. */
     val to: LocalDate? = null,
+    /**
+     * Match trips whose products contain this text, case-insensitively; null sends
+     * no search. Already trimmed, already long enough to be worth running, and
+     * already escaped for `LIKE` — the repository only wraps it in wildcards.
+     */
+    val productSearch: String? = null,
 )

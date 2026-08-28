@@ -25,4 +25,9 @@ data class PurchaseTripSummaryDto(
     /** `sum(quantity * price_paid)` over the trip's items; `0.0` when it has none. */
     val lineTotal: Double = 0.0,
     val itemCount: Int = 0,
+    /**
+     * Every item's title and brand for this trip, run together, for the product
+     * search to match on. Not shown — decoded because the view selects every column.
+     */
+    val productSearch: String = "",
 )
