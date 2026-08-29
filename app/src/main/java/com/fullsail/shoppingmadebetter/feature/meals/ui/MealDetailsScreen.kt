@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.meals.ui
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -16,11 +17,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
 @Composable
@@ -31,13 +35,11 @@ fun MealDetailsScreen(
     viewModel: MealsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
     val meal = (uiState as? MealsUiState.Success)?.meals?.find { it.id == mealId }
-
     val matchPercentage = meal?.matchPercentage ?: 0
     val categoryName = meal?.category ?: "Loading..."
-
     var isFavorite by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     if (mealId.isBlank() || mealId == "error") {
         MealNotFoundState(onNavigateBack = onNavigateBack, modifier = modifier)
@@ -51,32 +53,60 @@ fun MealDetailsScreen(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(
-                    onClick = { isFavorite = !isFavorite },
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.primary
-                    )
+                Button(
+                    onClick = onNavigateBack,
+                    colors = ButtonDefaults.textButtonColors(),
+                    contentPadding = PaddingValues(0.dp)
                 ) {
-                    Text(
-                        text = if (isFavorite) "♥" else "♡",
-                        style = MaterialTheme.typography.headlineSmall
-                    )
+                    Text("← Back", style = MaterialTheme.typography.labelLarge)
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = {
+                            val shareText = "Check out this recipe for ${meal?.title ?: "this meal"}: shoppingmadebetter.com/meal/$mealId"
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                            }
+                            context.startActivity(Intent.createChooser(intent, "Share Recipe"))
+                        }
+                    ) {
+                        Text("↗", style = MaterialTheme.typography.headlineSmall)
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    IconButton(
+                        onClick = { isFavorite = !isFavorite },
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Text(
+                            text = if (isFavorite) "♥" else "♡",
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                    }
                 }
             }
 
-            Box(
+            Spacer(modifier = Modifier.height(12.dp))
+
+            AsyncImage(
+                model = meal?.imageUrl ?: "https://via.placeholder.com/400",
+                contentDescription = "Recipe Image",
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color.LightGray),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = "Recipe Image Placeholder", color = Color.DarkGray)
-            }
+                    .background(Color.LightGray)
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -111,7 +141,8 @@ fun MealDetailsScreen(
             Text(
                 text = meal?.title ?: "Loading recipe...",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.Start)
             )
 
             Spacer(modifier = Modifier.height(16.dp))

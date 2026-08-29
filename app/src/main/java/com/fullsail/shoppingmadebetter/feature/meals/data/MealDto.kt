@@ -10,6 +10,6 @@ data class MealDto(
     @SerialName("match_percentage") val matchPercentage: String,
     @SerialName("item_count") val itemCount: Int,
     @SerialName("total_price") val totalPrice: String,
-    @SerialName("category") val category: String
-
+    @SerialName("category") val category: String,
+    @SerialName("image_url") val imageUrl: String? = null
 )
