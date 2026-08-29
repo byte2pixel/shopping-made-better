@@ -42,9 +42,18 @@ internal class FakeHistoryRepository(
         return matching.subList(offset, minOf(offset + limit, matching.size)).toList()
     }
 
-    /** The server's narrowing, in Kotlin: an empty store list matches everything. */
-    private fun PurchaseTripSummaryDto.matches(query: HistoryQuery): Boolean =
-        query.storeIds.isEmpty() || storeId in query.storeIds
+    /**
+     * The server's narrowing, in Kotlin: an absent store list or date bound matches
+     * everything, and both date bounds are inclusive. Filter kinds AND together.
+     */
+    private fun PurchaseTripSummaryDto.matches(query: HistoryQuery): Boolean {
+        val from = query.from
+        val to = query.to
+        if (query.storeIds.isNotEmpty() && storeId !in query.storeIds) return false
+        if (from != null && purchasedOn < from) return false
+        if (to != null && purchasedOn > to) return false
+        return true
+    }
 
     override suspend fun getPurchase(purchaseId: String): List<PurchaseHistoryRowDto> =
         error?.let { throw it } ?: rows.filter { it.purchaseId == purchaseId }

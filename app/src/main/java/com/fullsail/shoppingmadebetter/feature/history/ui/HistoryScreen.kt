@@ -31,12 +31,15 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fullsail.shoppingmadebetter.R
+import com.fullsail.shoppingmadebetter.feature.history.domain.HistoryDatePreset
+import com.fullsail.shoppingmadebetter.feature.history.domain.HistoryFilter
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTripSummary
 import com.fullsail.shoppingmadebetter.feature.history.domain.isActive
 import com.fullsail.shoppingmadebetter.feature.stores.domain.Store
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.datetime.LocalDate
 
 /**
  * The History tab: every completed shopping trip, newest first, a page at a time,
@@ -52,6 +55,7 @@ fun HistoryScreen(
     val trips = viewModel.trips.collectAsLazyPagingItems()
     val stores by viewModel.stores.collectAsStateWithLifecycle()
     val filter by viewModel.filter.collectAsStateWithLifecycle()
+    val selectedPreset by viewModel.selectedDatePreset.collectAsStateWithLifecycle()
 
     // Re-fetch on every entry so a trip completed on the shopping-list tab shows up
     // without restarting the app. Already-loaded pages stay on screen while the
@@ -61,11 +65,12 @@ fun HistoryScreen(
     HistoryContent(
         trips = trips,
         stores = stores,
-        selectedStoreIds = filter.storeIds,
-        // Asked of the filter itself, so the later date and search filters pick the
-        // same message up without this screen having to learn about them.
-        isFiltered = filter.isActive,
+        filter = filter,
+        selectedPreset = selectedPreset,
         onToggleStore = viewModel::toggleStore,
+        onSelectPreset = viewModel::selectDatePreset,
+        onCustomRange = viewModel::setCustomRange,
+        onClearFilters = viewModel::clearFilters,
         onTripClick = onTripClick,
         modifier = modifier,
     )
@@ -75,21 +80,35 @@ fun HistoryScreen(
 private fun HistoryContent(
     trips: LazyPagingItems<PurchaseTripSummary>,
     stores: List<Store>,
-    selectedStoreIds: Set<String>,
-    isFiltered: Boolean,
+    filter: HistoryFilter,
+    selectedPreset: HistoryDatePreset?,
     onToggleStore: (String) -> Unit,
+    onSelectPreset: (HistoryDatePreset) -> Unit,
+    onCustomRange: (LocalDate, LocalDate) -> Unit,
+    onClearFilters: () -> Unit,
     onTripClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         HistoryFilterRow(
             stores = stores,
-            selectedStoreIds = selectedStoreIds,
+            filter = filter,
+            selectedPreset = selectedPreset,
             onToggleStore = onToggleStore,
+            onSelectPreset = onSelectPreset,
+            onCustomRange = onCustomRange,
+            onClearFilters = onClearFilters,
         )
-        if (stores.isNotEmpty()) HorizontalDivider()
+        // Unconditional: the date row renders even when no store loaded.
+        HorizontalDivider()
 
-        HistoryList(trips = trips, isFiltered = isFiltered, onTripClick = onTripClick)
+        HistoryList(
+            trips = trips,
+            // Asked of the filter itself, so the later search filter picks the same
+            // message up without this screen having to learn about it.
+            isFiltered = filter.isActive,
+            onTripClick = onTripClick,
+        )
     }
 }
 
@@ -217,15 +236,19 @@ private fun previewPager(
 private fun HistoryContentPreviewHost(
     pager: Flow<PagingData<PurchaseTripSummary>>,
     stores: List<Store> = previewStores,
-    selectedStoreIds: Set<String> = emptySet(),
+    filter: HistoryFilter = HistoryFilter(),
+    selectedPreset: HistoryDatePreset? = null,
 ) {
     ShoppingMadeBetterTheme {
         HistoryContent(
             trips = pager.collectAsLazyPagingItems(),
             stores = stores,
-            selectedStoreIds = selectedStoreIds,
-            isFiltered = selectedStoreIds.isNotEmpty(),
+            filter = filter,
+            selectedPreset = selectedPreset,
             onToggleStore = {},
+            onSelectPreset = {},
+            onCustomRange = { _, _ -> },
+            onClearFilters = {},
             onTripClick = {},
         )
     }
@@ -280,7 +303,10 @@ private fun HistoryContentEmptyPreview() {
 @Preview(showBackground = true, name = "Filtered, no matches")
 @Composable
 private fun HistoryContentNoMatchesPreview() {
-    HistoryContentPreviewHost(previewPager(), selectedStoreIds = setOf("s-2"))
+    HistoryContentPreviewHost(
+        previewPager(),
+        filter = HistoryFilter(storeIds = setOf("s-2")),
+    )
 }
 
 @Preview(showBackground = true, name = "Filtered by store")
@@ -288,7 +314,17 @@ private fun HistoryContentNoMatchesPreview() {
 private fun HistoryContentFilteredPreview() {
     HistoryContentPreviewHost(
         previewPager(listOf(previewTripSummary(storeName = "ALDI"))),
-        selectedStoreIds = setOf("s-2"),
+        filter = HistoryFilter(storeIds = setOf("s-2")),
+    )
+}
+
+@Preview(showBackground = true, name = "Filtered by date")
+@Composable
+private fun HistoryContentDateFilteredPreview() {
+    HistoryContentPreviewHost(
+        previewPager(listOf(previewTripSummary())),
+        filter = HistoryFilter(from = LocalDate(2026, 7, 30), to = LocalDate(2026, 8, 28)),
+        selectedPreset = HistoryDatePreset.Last30Days,
     )
 }
 
