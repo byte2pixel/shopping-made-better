@@ -15,6 +15,7 @@ import com.fullsail.shoppingmadebetter.feature.history.domain.searchTerm
 import com.fullsail.shoppingmadebetter.feature.stores.domain.GetStoresUseCase
 import com.fullsail.shoppingmadebetter.feature.stores.domain.Store
 import com.fullsail.shoppingmadebetter.testing.MainDispatcherRule
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.toList
@@ -78,14 +79,21 @@ class HistoryViewModelTest {
         override suspend fun execute(input: Unit) = output
     }
 
-    /** These tests are about filter state; the insights only need to not blow up. */
+    /**
+     * These tests are about filter state; the insights only need to not blow up.
+     * [output] is a `var` so one instance can succeed and then fail, which is what a
+     * background refresh over loaded cards looks like. An optional [gate] holds the call
+     * suspended, so a test can look at the state a refresh passes through.
+     */
     private class FakeGetSpendSummaryUseCase(
-        private val output: GetSpendSummaryUseCase.Output =
+        var output: GetSpendSummaryUseCase.Output =
             GetSpendSummaryUseCase.Output.Failure(IOException("not under test")),
     ) : GetSpendSummaryUseCase {
         var callCount = 0
+        var gate: CompletableDeferred<Unit>? = null
         override suspend fun execute(input: Unit): GetSpendSummaryUseCase.Output {
             callCount++
+            gate?.await()
             return output
         }
     }
@@ -402,6 +410,83 @@ class HistoryViewModelTest {
         advanceUntilIdle()
 
         assertNull(viewModel.spendSummary.value)
+    }
+
+    @Test
+    fun `a failed first load warns about nothing`() = vmTest {
+        // There are no cards to go stale, so the section is simply absent.
+        val viewModel = viewModel(
+            spend = FakeGetSpendSummaryUseCase(
+                GetSpendSummaryUseCase.Output.Failure(IOException("no network")),
+            ),
+        )
+
+        advanceUntilIdle()
+
+        assertFalse(viewModel.summaryRefreshFailed.value)
+    }
+
+    @Test
+    fun `a failed refresh keeps the loaded insights and reports itself`() = vmTest {
+        val spend = FakeGetSpendSummaryUseCase(
+            GetSpendSummaryUseCase.Output.Success(summary(total = 100.0)),
+        )
+        val viewModel = viewModel(spend = spend)
+        advanceUntilIdle()
+
+        spend.output = GetSpendSummaryUseCase.Output.Failure(IOException("no network"))
+        viewModel.refreshSummary()
+        advanceUntilIdle()
+
+        // The cards stay put; the screen turns the flag into a snackbar.
+        assertEquals(100.0, viewModel.spendSummary.value?.thisMonth?.total ?: 0.0, 0.001)
+        assertTrue(viewModel.summaryRefreshFailed.value)
+    }
+
+    @Test
+    fun `a failed retry raises the warning again`() = vmTest {
+        val spend = FakeGetSpendSummaryUseCase(
+            GetSpendSummaryUseCase.Output.Success(summary(total = 100.0)),
+        )
+        val viewModel = viewModel(spend = spend)
+        advanceUntilIdle()
+        spend.output = GetSpendSummaryUseCase.Output.Failure(IOException("no network"))
+        viewModel.refreshSummary()
+        advanceUntilIdle()
+        assertTrue(viewModel.summaryRefreshFailed.value)
+
+        val gate = CompletableDeferred<Unit>()
+        spend.gate = gate
+        viewModel.refreshSummary()
+        advanceUntilIdle()
+
+        // Clear for the length of the call, so the screen's snackbar goes away...
+        assertFalse(viewModel.summaryRefreshFailed.value)
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        // ...and is raised again when the retry fails too, rather than left standing.
+        assertTrue(viewModel.summaryRefreshFailed.value)
+    }
+
+    @Test
+    fun `a successful retry clears the warning`() = vmTest {
+        val spend = FakeGetSpendSummaryUseCase(
+            GetSpendSummaryUseCase.Output.Success(summary(total = 100.0)),
+        )
+        val viewModel = viewModel(spend = spend)
+        advanceUntilIdle()
+        spend.output = GetSpendSummaryUseCase.Output.Failure(IOException("no network"))
+        viewModel.refreshSummary()
+        advanceUntilIdle()
+
+        spend.output = GetSpendSummaryUseCase.Output.Success(summary(total = 120.0))
+        viewModel.refreshSummary()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.summaryRefreshFailed.value)
+        assertEquals(120.0, viewModel.spendSummary.value?.thisMonth?.total ?: 0.0, 0.001)
     }
 
     @Test

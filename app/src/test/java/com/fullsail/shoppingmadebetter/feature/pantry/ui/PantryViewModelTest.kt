@@ -25,6 +25,7 @@ import com.fullsail.shoppingmadebetter.testing.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -240,6 +241,33 @@ class PantryViewModelTest {
         val state = viewModel.uiState.value
         assertTrue(state is PantryUiState.Success)
         assertEquals(listOf(sampleItem), (state as PantryUiState.Success).lots)
+    }
+
+    @Test
+    fun `a failed refresh keeps the items on screen and emits RefreshFailed`() = runTest {
+        val inventory = FakeGetInventoryUseCase(inventoryOf(sampleItem))
+        val viewModel = buildViewModel(inventory = inventory)
+
+        inventory.output = GetInventoryUseCase.Output.Failure(IOException("no network"))
+        viewModel.loadInventory()
+
+        val state = viewModel.uiState.value
+        assertTrue(state is PantryUiState.Success)
+        assertEquals(listOf(sampleItem), (state as PantryUiState.Success).lots)
+        assertEquals(PantryEvent.RefreshFailed, viewModel.events.first())
+    }
+
+    @Test
+    fun `a failed first load errors without emitting RefreshFailed`() = runTest {
+        // The error state already says it; a snackbar over it would be saying it twice.
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(
+                GetInventoryUseCase.Output.Failure(IOException("no network"))
+            )
+        )
+
+        assertTrue(viewModel.uiState.value is PantryUiState.Error)
+        assertNull(withTimeoutOrNull(1_000) { viewModel.events.first() })
     }
 
     @Test

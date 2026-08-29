@@ -55,6 +55,10 @@ class HistoryViewModel @Inject constructor(
     private val _spendSummary = MutableStateFlow<SpendSummary?>(null)
     val spendSummary: StateFlow<SpendSummary?> = _spendSummary.asStateFlow()
 
+    /** True while the insights on screen are stale: a refresh failed over loaded cards. */
+    private val _summaryRefreshFailed = MutableStateFlow(false)
+    val summaryRefreshFailed: StateFlow<Boolean> = _summaryRefreshFailed.asStateFlow()
+
     /**
      * The stores offered as filter chips.
      *
@@ -160,12 +164,20 @@ class HistoryViewModel @Inject constructor(
         refreshSummary()
     }
 
-    /** Re-reads the insights; called again on entry so a new trip is counted. */
+    /**
+     * Re-reads the insights; called again on entry so a new trip is counted. A failure
+     * keeps the cards already on screen and sets [summaryRefreshFailed]; before the
+     * first success there are none to keep and nothing is reported.
+     *
+     * The flag clears for the length of the call, so a second failure raises it again.
+     */
     fun refreshSummary() {
         viewModelScope.launch {
+            _summaryRefreshFailed.value = false
             when (val output = getSpendSummaryUseCase.execute(Unit)) {
                 is GetSpendSummaryUseCase.Output.Success -> _spendSummary.value = output.summary
-                is GetSpendSummaryUseCase.Output.Failure -> _spendSummary.value = null
+                is GetSpendSummaryUseCase.Output.Failure ->
+                    _summaryRefreshFailed.value = _spendSummary.value != null
             }
         }
     }

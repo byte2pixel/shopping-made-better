@@ -71,6 +71,9 @@ sealed interface PantryEvent {
 
     /** A quick-action edit to an item (quantity/location/expiry) failed to save. */
     data class UpdateFailed(val itemName: String) : PantryEvent
+
+    /** A background refresh failed while items were already on screen. */
+    data object RefreshFailed : PantryEvent
 }
 
 @HiltViewModel
@@ -106,8 +109,9 @@ class PantryViewModel @Inject constructor(
     /**
      * Loads the user's pantry inventory. Safe to call as a background refresh: when
      * items are already on screen it keeps them visible instead of flashing the
-     * spinner, and a failed refresh leaves the existing list in place. Only shows
-     * Loading/Error when there is nothing to display yet (e.g. the first load).
+     * spinner, and a failed refresh leaves the existing list in place and says so with
+     * a [PantryEvent.RefreshFailed]. Only shows Loading/Error when there is nothing to
+     * display yet (e.g. the first load).
      */
     fun loadInventory() {
         if (_uiState.value !is PantryUiState.Success) {
@@ -121,6 +125,8 @@ class PantryViewModel @Inject constructor(
                 is GetInventoryUseCase.Output.Failure ->
                     if (_uiState.value !is PantryUiState.Success) {
                         _uiState.value = PantryUiState.Error
+                    } else {
+                        _events.send(PantryEvent.RefreshFailed)
                     }
             }
         }

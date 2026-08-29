@@ -40,6 +40,8 @@
     <string name="unknown_error">Unknown error</string>
     <string name="pantry_retry">Retry</string>
     <string name="pantry_error">Error loading pantry</string>
+    <!-- Snackbar: a refresh failed over items already on screen. -->
+    <string name="pantry_refresh_failed">Couldn\'t refresh your pantry. Showing what loaded last.</string>
 
     <!-- Pantry mini dashboard (SCRUM-99) -->
     <string name="pantry_dashboard_expiring">Expiring</string>
@@ -157,6 +159,8 @@
     <!-- History tab: completed shopping trips -->
     <string name="history_error">Couldn\'t load your purchase history</string>
     <string name="history_retry">Retry</string>
+    <!-- Snackbar: a refresh failed over trips or insights already on screen. -->
+    <string name="history_refresh_failed">Couldn\'t refresh. Showing what loaded last.</string>
     <string name="history_empty">No purchases yet. Completed shopping trips show up here.</string>
     <!-- Shown instead of history_empty when a filter is on: the user has trips, just
          none matching. Telling them "no purchases yet" here would read as data loss. -->

@@ -14,16 +14,21 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -64,6 +69,9 @@ fun HistoryScreen(
     val selectedPreset by viewModel.selectedDatePreset.collectAsStateWithLifecycle()
     val searchInput by viewModel.searchInput.collectAsStateWithLifecycle()
     val spendSummary by viewModel.spendSummary.collectAsStateWithLifecycle()
+    val summaryRefreshFailed by viewModel.summaryRefreshFailed.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val resources = LocalResources.current
 
     // Re-fetch on every entry so a trip completed on the shopping-list tab shows up
     // without restarting the app. Already-loaded pages stay on screen while the
@@ -73,21 +81,44 @@ fun HistoryScreen(
         viewModel.refreshSummary()
     }
 
-    HistoryContent(
-        trips = trips,
-        stores = stores,
-        filter = filter,
-        selectedPreset = selectedPreset,
-        searchInput = searchInput,
-        spendSummary = spendSummary,
-        onSearchChange = viewModel::setSearch,
-        onToggleStore = viewModel::toggleStore,
-        onSelectPreset = viewModel::selectDatePreset,
-        onCustomRange = viewModel::setCustomRange,
-        onClearFilters = viewModel::clearFilters,
-        onTripClick = onTripClick,
-        modifier = modifier,
-    )
+    // A refresh failed over content already on screen. With no trips loaded the list
+    // shows its own error state instead.
+    val isStale = (trips.loadState.refresh is LoadState.Error && trips.itemCount > 0) ||
+        summaryRefreshFailed
+
+    // Keyed on the flag, so recovering cancels the effect and dismisses the snackbar.
+    LaunchedEffect(isStale) {
+        if (!isStale) return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message = resources.getString(R.string.history_refresh_failed),
+            actionLabel = resources.getString(R.string.history_retry),
+        )
+        if (result == SnackbarResult.ActionPerformed) {
+            trips.retry()
+            viewModel.refreshSummary()
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        HistoryContent(
+            trips = trips,
+            stores = stores,
+            filter = filter,
+            selectedPreset = selectedPreset,
+            searchInput = searchInput,
+            spendSummary = spendSummary,
+            onSearchChange = viewModel::setSearch,
+            onToggleStore = viewModel::toggleStore,
+            onSelectPreset = viewModel::selectDatePreset,
+            onCustomRange = viewModel::setCustomRange,
+            onClearFilters = viewModel::clearFilters,
+            onTripClick = onTripClick,
+        )
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
 }
 
 @Composable
