@@ -28,6 +28,17 @@ internal val HistoryFilter.isActive: Boolean
     get() = storeIds.isNotEmpty() || from != null || to != null || searchTerm() != null
 
 /**
+ * How many things this filter narrows on, for the collapsed panel's badge. Each
+ * store counts separately so the badge matches the summary line; a date range counts
+ * once whatever its bounds. Asks [searchTerm], so a half-typed letter counts for
+ * nothing.
+ */
+internal val HistoryFilter.activeCount: Int
+    get() = storeIds.size +
+        (if (from != null || to != null) 1 else 0) +
+        (if (searchTerm() != null) 1 else 0)
+
+/**
  * This filter as the summary view's query.
  *
  * The set becomes a list only to fix an order for the request; the ids OR-join, so
