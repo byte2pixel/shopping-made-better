@@ -144,19 +144,31 @@ join lateral (
 ) picked on true
 where sl.user_id = '11111111-1111-1111-1111-111111111111';
 
--- 5) Demo purchase history: two completed trips, so the History tab has
---    something to show on a fresh reset.
+-- 5) Demo purchase history: completed trips, so the History tab and its spend
+--    insights have something to show on a fresh reset.
 --    Clear first for idempotent re-runs (items cascade with the header row).
 delete from public.purchase_history
 where user_id = '11111111-1111-1111-1111-111111111111';
 
--- One trip per store, 4 currently-priced products each, dated relative to now()
--- so they always read as recent and land newest-first.
+-- Trips across all three stores, spread over the last ~6 months and dated relative
+-- to now(), so the History insights have month-over-month and per-store spending to
+-- aggregate on every reset. Offsets and quantities vary so no two months total the
+-- same and no month is empty.
 with trip_spec as (
   select * from (values
-    -- store,     days ago, product offset, qty per line
-    ('ALDI',      3,        0,              2),
-    ('Publix',    10,       4,              1)
+    -- store,        days ago, product offset, qty per line
+    ('ALDI',         3,        0,              2),
+    ('Publix',       10,       4,              1),
+    ('Whole Foods',  16,       8,              1),
+    ('ALDI',         24,       12,             3),
+    ('Publix',       38,       0,              2),
+    ('ALDI',         52,       16,             1),
+    ('Whole Foods',  67,       4,              2),
+    ('Publix',       81,       20,             1),
+    ('ALDI',         96,       8,              2),
+    ('Whole Foods',  112,      12,             1),
+    ('Publix',       134,      16,             3),
+    ('ALDI',         158,      20,             1)
   ) as t(store_name, days_ago, pick_offset, quantity)
 ),
 picked as (
@@ -187,9 +199,14 @@ trip as (
     sum(p.quantity * p.price)
   from picked p
   group by p.store_id, p.days_ago
-  returning id, store_id
+  returning id, store_id, purchased_at
 )
 insert into public.purchase_history_items (purchase_id, product_id, quantity, price_paid)
 select t.id, p.product_id, p.quantity, p.price
 from trip t
-join picked p on p.store_id = t.store_id;
+-- Keyed on the date as well as the store: a store now has several trips, and
+-- matching on store alone would give each of them every other trip's items.
+-- now() is transaction-stable, so both sides compute the same timestamp.
+join picked p
+  on p.store_id = t.store_id
+ and now() - make_interval(days => p.days_ago) = t.purchased_at;

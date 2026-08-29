@@ -6,6 +6,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.click
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
@@ -20,8 +22,10 @@ import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.history.domain.AddTripToList
 import com.fullsail.shoppingmadebetter.feature.history.domain.AddTripToListUseCase
 import com.fullsail.shoppingmadebetter.feature.history.domain.GetPurchaseTripUseCase
+import com.fullsail.shoppingmadebetter.feature.history.domain.GetTripCostComparisonUseCase
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseLineItem
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTrip
+import com.fullsail.shoppingmadebetter.feature.history.domain.StoreBasketCost
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import kotlinx.datetime.LocalDate
@@ -55,6 +59,13 @@ class PurchaseTripDetailScreenTest {
     private class FakeAddTripToListUseCase : AddTripToListUseCase {
         override suspend fun execute(input: AddTripToList): AddTripToListUseCase.Output =
             AddTripToListUseCase.Output.Success(added = 0, skipped = 0)
+    }
+
+    private class FakeGetTripCostComparisonUseCase(
+        private val stores: List<StoreBasketCost> = emptyList(),
+    ) : GetTripCostComparisonUseCase {
+        override suspend fun execute(input: String): GetTripCostComparisonUseCase.Output =
+            GetTripCostComparisonUseCase.Output.Success(stores)
     }
 
     private val milk = PurchaseLineItem(
@@ -95,11 +106,12 @@ class PurchaseTripDetailScreenTest {
 
     private var clickedProductId: String? = null
 
-    private fun setScreen() {
+    private fun setScreen(storeCosts: List<StoreBasketCost> = emptyList()) {
         val viewModel = PurchaseTripDetailViewModel(
             FakeGetPurchaseTripUseCase(GetPurchaseTripUseCase.Output.Success(trip)),
             FakeGetShoppingTripsUseCase(),
             FakeAddTripToListUseCase(),
+            FakeGetTripCostComparisonUseCase(storeCosts),
         )
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
@@ -156,5 +168,45 @@ class PurchaseTripDetailScreenTest {
         row().performTouchInput { click(Offset(24.dp.toPx(), height - 1f)) }
         toggleStrip().assertIsOn()
         assertNull(clickedProductId)
+    }
+
+    @Test
+    fun theComparisonIsAbsentWhenNoStoreCanPriceTheBasket() {
+        setScreen()
+
+        composeTestRule
+            .onNodeWithText(string(R.string.history_detail_cost_elsewhere))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun theComparisonNamesEveryStoreAndHowItComparesToWhatWasPaid() {
+        setScreen(
+            listOf(
+                StoreBasketCost("s-2", "Publix", 6.50, 1.48),
+                StoreBasketCost("s-1", "Whole Foods", 9.00, -1.02),
+            ),
+        )
+
+        composeTestRule
+            .onNodeWithText(string(R.string.history_detail_cost_elsewhere))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Publix").assertIsDisplayed()
+        // The difference is stated unsigned, with the wording carrying the direction.
+        composeTestRule
+            .onNodeWithText(string(R.string.history_detail_cost_cheaper, "$1.48"))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(string(R.string.history_detail_cost_dearer, "$1.02"))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun aStoreMatchingWhatWasPaidSaysSoRatherThanShowingZero() {
+        setScreen(listOf(StoreBasketCost("s-2", "Publix", 7.98, 0.0)))
+
+        composeTestRule
+            .onNodeWithText(string(R.string.history_detail_cost_same))
+            .assertIsDisplayed()
     }
 }

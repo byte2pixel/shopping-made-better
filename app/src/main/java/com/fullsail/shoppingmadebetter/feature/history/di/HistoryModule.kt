@@ -2,12 +2,18 @@ package com.fullsail.shoppingmadebetter.feature.history.di
 
 import com.fullsail.shoppingmadebetter.feature.history.data.HistoryRepository
 import com.fullsail.shoppingmadebetter.feature.history.data.HistoryRepositoryImpl
+import com.fullsail.shoppingmadebetter.feature.history.data.SpendRepository
+import com.fullsail.shoppingmadebetter.feature.history.data.SpendRepositoryImpl
 import com.fullsail.shoppingmadebetter.feature.history.domain.AddTripToListUseCase
 import com.fullsail.shoppingmadebetter.feature.history.domain.AddTripToListUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.history.domain.GetPurchaseHistoryUseCase
 import com.fullsail.shoppingmadebetter.feature.history.domain.GetPurchaseHistoryUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.history.domain.GetPurchaseTripUseCase
 import com.fullsail.shoppingmadebetter.feature.history.domain.GetPurchaseTripUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.history.domain.GetSpendSummaryUseCase
+import com.fullsail.shoppingmadebetter.feature.history.domain.GetSpendSummaryUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.history.domain.GetTripCostComparisonUseCase
+import com.fullsail.shoppingmadebetter.feature.history.domain.GetTripCostComparisonUseCaseImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -34,4 +40,17 @@ abstract class HistoryModule {
     abstract fun bindAddTripToListUseCase(
         impl: AddTripToListUseCaseImpl,
     ): AddTripToListUseCase
+
+    @Binds @Singleton
+    abstract fun bindSpendRepository(impl: SpendRepositoryImpl): SpendRepository
+
+    @Binds
+    abstract fun bindGetSpendSummaryUseCase(
+        impl: GetSpendSummaryUseCaseImpl,
+    ): GetSpendSummaryUseCase
+
+    @Binds
+    abstract fun bindGetTripCostComparisonUseCase(
+        impl: GetTripCostComparisonUseCaseImpl,
+    ): GetTripCostComparisonUseCase
 }
