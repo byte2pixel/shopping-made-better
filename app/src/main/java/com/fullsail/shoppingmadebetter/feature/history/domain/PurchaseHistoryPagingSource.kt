@@ -2,7 +2,6 @@ package com.fullsail.shoppingmadebetter.feature.history.domain
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
-import javax.inject.Inject
 
 /**
  * Feeds the History list one page of trips at a time. The key is a row offset,
@@ -10,9 +9,15 @@ import javax.inject.Inject
  *
  * Append-only: the list starts at the newest trip and only ever loads older ones,
  * so [LoadResult.Page.prevKey] is always null.
+ *
+ * One source pages one [filter]: the offsets it hands out are positions within
+ * that filter's results, so they mean nothing under a different one. Changing the
+ * filter builds a new source rather than invalidating this one — see
+ * `HistoryViewModel`.
  */
-class PurchaseHistoryPagingSource @Inject constructor(
+class PurchaseHistoryPagingSource(
     private val getPurchaseHistoryUseCase: GetPurchaseHistoryUseCase,
+    private val filter: HistoryFilter = HistoryFilter(),
 ) : PagingSource<Int, PurchaseTripSummary>() {
 
     override suspend fun load(
@@ -20,7 +25,11 @@ class PurchaseHistoryPagingSource @Inject constructor(
     ): LoadResult<Int, PurchaseTripSummary> {
         val offset = params.key ?: 0
         val output = getPurchaseHistoryUseCase.execute(
-            GetPurchaseHistoryUseCase.Input(offset = offset, limit = params.loadSize),
+            GetPurchaseHistoryUseCase.Input(
+                offset = offset,
+                limit = params.loadSize,
+                filter = filter,
+            ),
         )
         return when (output) {
             is GetPurchaseHistoryUseCase.Output.Success -> LoadResult.Page(

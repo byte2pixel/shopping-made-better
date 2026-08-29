@@ -19,9 +19,20 @@ class HistoryRepositoryImpl @Inject constructor(
     override suspend fun getPurchaseHistoryPage(
         offset: Int,
         limit: Int,
+        query: HistoryQuery,
     ): List<PurchaseTripSummaryDto> = withContext(Dispatchers.IO) {
         postgrest.from(PURCHASE_HISTORY_SUMMARY)
             .select {
+                // Filtering runs on the server, before the range: the list is paged,
+                // so narrowing the loaded page instead would only ever search the
+                // trips already on screen and call the rest a miss.
+                filter {
+                    // Omitted entirely when empty — `isIn` on no values matches
+                    // nothing, which would read as "you have no history".
+                    if (query.storeIds.isNotEmpty()) {
+                        isIn("storeId", query.storeIds)
+                    }
+                }
                 order("purchasedAtEpoch", Order.DESCENDING)
                 order("id", Order.DESCENDING)
                 range(offset.toLong(), (offset + limit - 1).toLong())

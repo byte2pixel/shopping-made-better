@@ -7,13 +7,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -26,15 +29,19 @@ import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTripSummary
+import com.fullsail.shoppingmadebetter.feature.history.domain.isActive
+import com.fullsail.shoppingmadebetter.feature.stores.domain.Store
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 
 /**
- * The History tab: every completed shopping trip, newest first, a page at a time.
- * Tapping a trip opens its line items via [onTripClick].
+ * The History tab: every completed shopping trip, newest first, a page at a time,
+ * narrowed by the filter row above the list. Tapping a trip opens its line items
+ * via [onTripClick].
  */
 @Composable
 fun HistoryScreen(
@@ -43,18 +50,53 @@ fun HistoryScreen(
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     val trips = viewModel.trips.collectAsLazyPagingItems()
+    val stores by viewModel.stores.collectAsStateWithLifecycle()
+    val filter by viewModel.filter.collectAsStateWithLifecycle()
 
     // Re-fetch on every entry so a trip completed on the shopping-list tab shows up
     // without restarting the app. Already-loaded pages stay on screen while the
     // refresh runs, so this doesn't flash a spinner over a populated list.
     LaunchedEffect(Unit) { trips.refresh() }
 
-    HistoryContent(trips = trips, onTripClick = onTripClick, modifier = modifier)
+    HistoryContent(
+        trips = trips,
+        stores = stores,
+        selectedStoreIds = filter.storeIds,
+        // Asked of the filter itself, so the later date and search filters pick the
+        // same message up without this screen having to learn about them.
+        isFiltered = filter.isActive,
+        onToggleStore = viewModel::toggleStore,
+        onTripClick = onTripClick,
+        modifier = modifier,
+    )
 }
 
 @Composable
 private fun HistoryContent(
     trips: LazyPagingItems<PurchaseTripSummary>,
+    stores: List<Store>,
+    selectedStoreIds: Set<String>,
+    isFiltered: Boolean,
+    onToggleStore: (String) -> Unit,
+    onTripClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxSize()) {
+        HistoryFilterRow(
+            stores = stores,
+            selectedStoreIds = selectedStoreIds,
+            onToggleStore = onToggleStore,
+        )
+        if (stores.isNotEmpty()) HorizontalDivider()
+
+        HistoryList(trips = trips, isFiltered = isFiltered, onTripClick = onTripClick)
+    }
+}
+
+@Composable
+private fun HistoryList(
+    trips: LazyPagingItems<PurchaseTripSummary>,
+    isFiltered: Boolean,
     onTripClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -74,6 +116,12 @@ private fun HistoryContent(
                 message = stringResource(R.string.history_error),
                 actionLabel = stringResource(R.string.history_retry),
                 onAction = trips::retry,
+            )
+
+            // An empty list means two different things, and the filter is what
+            // tells them apart: nothing bought yet, or nothing matching.
+            isEmpty && isFiltered -> HistoryMessage(
+                message = stringResource(R.string.history_no_matches),
             )
 
             isEmpty -> HistoryMessage(message = stringResource(R.string.history_empty))
@@ -168,9 +216,18 @@ private fun previewPager(
 @Composable
 private fun HistoryContentPreviewHost(
     pager: Flow<PagingData<PurchaseTripSummary>>,
+    stores: List<Store> = previewStores,
+    selectedStoreIds: Set<String> = emptySet(),
 ) {
     ShoppingMadeBetterTheme {
-        HistoryContent(trips = pager.collectAsLazyPagingItems(), onTripClick = {})
+        HistoryContent(
+            trips = pager.collectAsLazyPagingItems(),
+            stores = stores,
+            selectedStoreIds = selectedStoreIds,
+            isFiltered = selectedStoreIds.isNotEmpty(),
+            onToggleStore = {},
+            onTripClick = {},
+        )
     }
 }
 
@@ -218,6 +275,21 @@ private fun HistoryContentAppendErrorPreview() {
 @Composable
 private fun HistoryContentEmptyPreview() {
     HistoryContentPreviewHost(previewPager())
+}
+
+@Preview(showBackground = true, name = "Filtered, no matches")
+@Composable
+private fun HistoryContentNoMatchesPreview() {
+    HistoryContentPreviewHost(previewPager(), selectedStoreIds = setOf("s-2"))
+}
+
+@Preview(showBackground = true, name = "Filtered by store")
+@Composable
+private fun HistoryContentFilteredPreview() {
+    HistoryContentPreviewHost(
+        previewPager(listOf(previewTripSummary(storeName = "ALDI"))),
+        selectedStoreIds = setOf("s-2"),
+    )
 }
 
 @Preview(showBackground = true, name = "Error")

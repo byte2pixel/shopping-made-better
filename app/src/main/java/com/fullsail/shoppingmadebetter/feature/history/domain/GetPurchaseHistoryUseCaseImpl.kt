@@ -14,13 +14,15 @@ class GetPurchaseHistoryUseCaseImpl @Inject constructor(
         val page = historyRepository.getPurchaseHistoryPage(
             offset = input.offset,
             limit = input.limit,
+            query = input.filter.toQuery(),
         )
         GetPurchaseHistoryUseCase.Output.Success(
             trips = page.map { it.toSummary() },
             // A short page means the history ran out. A page that is exactly
             // `limit` long may still be the last one; the next request comes back
             // empty and ends it there, which costs one extra call but never stops
-            // short of a trip the user has.
+            // short of a trip the user has. Unchanged by filtering: the count is
+            // of rows that came back, which the server has already narrowed.
             endReached = page.size < input.limit,
         )
     } catch (e: Exception) {
