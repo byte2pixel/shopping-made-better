@@ -386,6 +386,84 @@ class GetPurchaseHistoryUseCaseTest {
         assertTrue(output.endReached)
     }
 
+    @Test
+    fun `a search reaches the repository as an escaped term`() = runTest {
+        val repository = FakeHistoryRepository(summaries = summaryRows(3))
+
+        useCase(repository).execute(
+            GetPurchaseHistoryUseCase.Input(
+                offset = 0,
+                limit = 20,
+                filter = HistoryFilter(search = " 100% oats "),
+            ),
+        )
+
+        assertEquals("100\\% oats", repository.requestedQueries.single().productSearch)
+    }
+
+    @Test
+    fun `a searched read returns only trips that bought it`() = runTest {
+        val repository = FakeHistoryRepository(
+            summaries = listOf(
+                summaryRow(id = "oats", productSearch = "Minute Oats Robertsons"),
+                summaryRow(id = "cheese", productSearch = "Havarti Cheese Slices Cracker Barrel"),
+                summaryRow(id = "both", productSearch = "Steel Cut Oats Havarti Cheese"),
+            ),
+        )
+
+        val output = useCase(repository).execute(
+            GetPurchaseHistoryUseCase.Input(
+                offset = 0,
+                limit = 20,
+                filter = HistoryFilter(search = "oats"),
+            ),
+        ).success()
+
+        // Case-insensitive, and matching mid-string — the column runs every item's
+        // title and brand together, so a term is almost never at its start.
+        assertEquals(listOf("oats", "both"), output.trips.map { it.id })
+    }
+
+    @Test
+    fun `a search combines with a store and a date`() = runTest {
+        val repository = FakeHistoryRepository(
+            summaries = listOf(
+                summaryRow(
+                    id = "wanted",
+                    storeId = "store-aldi",
+                    purchasedOn = LocalDate(2026, 8, 12),
+                    productSearch = "Minute Oats",
+                ),
+                summaryRow(
+                    id = "wrong-store",
+                    storeId = "store-publix",
+                    purchasedOn = LocalDate(2026, 8, 12),
+                    productSearch = "Minute Oats",
+                ),
+                summaryRow(
+                    id = "wrong-product",
+                    storeId = "store-aldi",
+                    purchasedOn = LocalDate(2026, 8, 12),
+                    productSearch = "Havarti Cheese",
+                ),
+            ),
+        )
+
+        val output = useCase(repository).execute(
+            GetPurchaseHistoryUseCase.Input(
+                offset = 0,
+                limit = 20,
+                filter = HistoryFilter(
+                    storeIds = setOf("store-aldi"),
+                    from = LocalDate(2026, 8, 1),
+                    search = "oats",
+                ),
+            ),
+        ).success()
+
+        assertEquals(listOf("wanted"), output.trips.map { it.id })
+    }
+
     private companion object {
         /** Money and quantities are Doubles; compare them with a tolerance. */
         const val DELTA = 0.0001

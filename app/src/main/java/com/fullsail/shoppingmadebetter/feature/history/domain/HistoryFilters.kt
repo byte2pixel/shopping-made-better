@@ -25,7 +25,7 @@ import kotlinx.datetime.minus
  * purchases simply do not match.
  */
 internal val HistoryFilter.isActive: Boolean
-    get() = storeIds.isNotEmpty() || from != null || to != null
+    get() = storeIds.isNotEmpty() || from != null || to != null || searchTerm() != null
 
 /**
  * This filter as the summary view's query.
@@ -37,7 +37,36 @@ internal fun HistoryFilter.toQuery(): HistoryQuery = HistoryQuery(
     storeIds = storeIds.toList(),
     from = from,
     to = to,
+    productSearch = searchTerm(),
 )
+
+/**
+ * The search text as something safe to hand to `LIKE`, or null when there is
+ * nothing worth searching for.
+ *
+ * Below [MIN_SEARCH_LENGTH] characters this returns null rather than a pattern: a
+ * single letter matches most of a history, so running it costs a request to say
+ * nothing. That is also why [isActive] asks this rather than reading `search` —
+ * a half-typed letter must not turn the empty list into "no trips match".
+ *
+ * `%` and `_` are wildcards to `LIKE`, and `\` escapes them, so all three are
+ * escaped here — otherwise searching for a product literally named "100% Whole
+ * Grains" would match anything starting with "100". The client does not do this
+ * for us: outside a logical group it sends an `ilike` value through `toString()`
+ * untouched, which is why the existing search at `ShoppingListRepositoryImpl`
+ * over-matches. Backslash goes first, or it would escape its own replacements.
+ */
+internal fun HistoryFilter.searchTerm(): String? {
+    val trimmed = search.trim()
+    if (trimmed.length < MIN_SEARCH_LENGTH) return null
+    return trimmed
+        .replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+}
+
+/** Shortest search worth sending; below this the whole history would match. */
+internal const val MIN_SEARCH_LENGTH = 2
 
 /** The date ranges offered as one-tap chips, in the order they are shown. */
 enum class HistoryDatePreset { Last30Days, Last3Months, ThisYear }

@@ -56,6 +56,7 @@ fun HistoryScreen(
     val stores by viewModel.stores.collectAsStateWithLifecycle()
     val filter by viewModel.filter.collectAsStateWithLifecycle()
     val selectedPreset by viewModel.selectedDatePreset.collectAsStateWithLifecycle()
+    val searchInput by viewModel.searchInput.collectAsStateWithLifecycle()
 
     // Re-fetch on every entry so a trip completed on the shopping-list tab shows up
     // without restarting the app. Already-loaded pages stay on screen while the
@@ -67,6 +68,8 @@ fun HistoryScreen(
         stores = stores,
         filter = filter,
         selectedPreset = selectedPreset,
+        searchInput = searchInput,
+        onSearchChange = viewModel::setSearch,
         onToggleStore = viewModel::toggleStore,
         onSelectPreset = viewModel::selectDatePreset,
         onCustomRange = viewModel::setCustomRange,
@@ -82,6 +85,8 @@ private fun HistoryContent(
     stores: List<Store>,
     filter: HistoryFilter,
     selectedPreset: HistoryDatePreset?,
+    searchInput: String,
+    onSearchChange: (String) -> Unit,
     onToggleStore: (String) -> Unit,
     onSelectPreset: (HistoryDatePreset) -> Unit,
     onCustomRange: (LocalDate, LocalDate) -> Unit,
@@ -94,6 +99,8 @@ private fun HistoryContent(
             stores = stores,
             filter = filter,
             selectedPreset = selectedPreset,
+            searchInput = searchInput,
+            onSearchChange = onSearchChange,
             onToggleStore = onToggleStore,
             onSelectPreset = onSelectPreset,
             onCustomRange = onCustomRange,
@@ -245,6 +252,8 @@ private fun HistoryContentPreviewHost(
             stores = stores,
             filter = filter,
             selectedPreset = selectedPreset,
+            searchInput = filter.search,
+            onSearchChange = {},
             onToggleStore = {},
             onSelectPreset = {},
             onCustomRange = { _, _ -> },

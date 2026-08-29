@@ -18,12 +18,15 @@ import com.fullsail.shoppingmadebetter.feature.stores.domain.GetStoresUseCase
 import com.fullsail.shoppingmadebetter.feature.stores.domain.Store
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -32,6 +35,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 import javax.inject.Inject
 
 @HiltViewModel
@@ -69,13 +73,26 @@ class HistoryViewModel @Inject constructor(
         savedStateHandle.getStateFlow(KEY_STORE_IDS, emptyList<String>()),
         savedStateHandle.getStateFlow<String?>(KEY_FROM, null),
         savedStateHandle.getStateFlow<String?>(KEY_TO, null),
-    ) { ids, from, to ->
-        HistoryFilter(ids.toSet(), from?.let(LocalDate::parse), to?.let(LocalDate::parse))
+        savedStateHandle.getStateFlow(KEY_SEARCH, ""),
+    ) { ids, from, to, search ->
+        HistoryFilter(
+            storeIds = ids.toSet(),
+            from = from?.let(LocalDate::parse),
+            to = to?.let(LocalDate::parse),
+            search = search,
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
         initialValue = currentFilter(),
     )
+
+    /**
+     * What the search field shows, updated on every keystroke.
+     * Separate from the term in [filter], which lags it by [SEARCH_DEBOUNCE]:
+     */
+    private val _searchInput = MutableStateFlow(savedStateHandle[KEY_SEARCH] ?: "")
+    val searchInput: StateFlow<String> = _searchInput.asStateFlow()
 
     /**
      * Which date chip reads as selected, derived rather than stored so it can never
@@ -130,6 +147,12 @@ class HistoryViewModel @Inject constructor(
 
     init {
         loadStores()
+        commitSearchAfterPauses()
+    }
+
+    /** Records the search field's text; the filter follows once typing pauses. */
+    fun setSearch(text: String) {
+        _searchInput.value = text
     }
 
     /** Adds [storeId] to the filter, or drops it if it is already on. */
@@ -165,6 +188,27 @@ class HistoryViewModel @Inject constructor(
     fun clearFilters() {
         savedStateHandle[KEY_STORE_IDS] = emptyList<String>()
         setDates(from = null, to = null)
+        // Both, not just the input: waiting out the debounce would leave the list
+        // filtered for a moment after the user asked for it not to be.
+        _searchInput.value = ""
+        savedStateHandle[KEY_SEARCH] = ""
+    }
+
+    /**
+     * Feeds the settled search text into the filter, and so into a new pager.
+     *
+     * `debounce` waits for a pause instead of firing per keystroke, and
+     * `distinctUntilChanged` drops a pause that ended on the text it started with
+     * typing a letter and deleting it should not rebuild the pager.
+     */
+    @OptIn(FlowPreview::class)
+    private fun commitSearchAfterPauses() {
+        viewModelScope.launch {
+            _searchInput
+                .debounce(SEARCH_DEBOUNCE)
+                .distinctUntilChanged()
+                .collect { savedStateHandle[KEY_SEARCH] = it }
+        }
     }
 
     private fun setDates(from: LocalDate?, to: LocalDate?) {
@@ -179,6 +223,7 @@ class HistoryViewModel @Inject constructor(
         storeIds = storeIds().toSet(),
         from = savedStateHandle.get<String?>(KEY_FROM)?.let(LocalDate::parse),
         to = savedStateHandle.get<String?>(KEY_TO)?.let(LocalDate::parse),
+        search = savedStateHandle[KEY_SEARCH] ?: "",
     )
 
     private fun storeIds(): List<String> =
@@ -204,5 +249,11 @@ class HistoryViewModel @Inject constructor(
         /** Saved-state keys for the date range, as ISO strings; null means unbounded. */
         const val KEY_FROM = "history-filter-from"
         const val KEY_TO = "history-filter-to"
+
+        /** Saved-state key for the settled search text, never the in-flight one. */
+        const val KEY_SEARCH = "history-filter-search"
+
+        /** Long enough to cover typing, short enough to feel immediate. */
+        val SEARCH_DEBOUNCE = 300.milliseconds
     }
 }

@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
@@ -15,7 +16,10 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDateRangePickerState
@@ -25,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -64,6 +69,10 @@ import kotlinx.datetime.LocalDate
  * @param stores the stores to offer, in the order they should appear. Empty hides
  *   the store row, which is what a failed store load falls back to.
  * @param filter the active filter, read for the store selection and the dates.
+ * @param searchInput the search field's text. Deliberately not read off [filter]:
+ *   that one lags a keystroke by the debounce, and binding the field to it would
+ *   make typing stutter.
+ * @param onSearchChange invoked on every keystroke, and with "" by the clear icon.
  * @param selectedPreset which date chip reads as selected; null when the range was
  *   picked by hand or there is none.
  * @param onToggleStore invoked with a store's id when its chip is tapped.
@@ -77,6 +86,8 @@ internal fun HistoryFilterRow(
     stores: List<Store>,
     filter: HistoryFilter,
     selectedPreset: HistoryDatePreset?,
+    searchInput: String,
+    onSearchChange: (String) -> Unit,
     onToggleStore: (String) -> Unit,
     onSelectPreset: (HistoryDatePreset) -> Unit,
     onCustomRange: (LocalDate, LocalDate) -> Unit,
@@ -86,6 +97,27 @@ internal fun HistoryFilterRow(
     var showRangePicker by rememberSaveable { mutableStateOf(false) }
 
     Column(modifier = modifier) {
+        OutlinedTextField(
+            value = searchInput,
+            onValueChange = onSearchChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            label = { Text(text = stringResource(R.string.history_search_label)) },
+            singleLine = true,
+            trailingIcon = {
+                // Only worth offering once there is something to clear.
+                if (searchInput.isNotEmpty()) {
+                    IconButton(onClick = { onSearchChange("") }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_close),
+                            contentDescription = stringResource(R.string.history_search_clear),
+                        )
+                    }
+                }
+            },
+        )
+
         if (stores.isNotEmpty()) {
             ChipRow {
                 items(stores, key = { it.id }) { store ->
@@ -333,12 +365,15 @@ internal val previewStores = listOf(
 private fun HistoryFilterRowPreviewHost(
     filter: HistoryFilter = HistoryFilter(),
     selectedPreset: HistoryDatePreset? = null,
+    searchInput: String = "",
 ) {
     ShoppingMadeBetterTheme {
         HistoryFilterRow(
             stores = previewStores,
             filter = filter,
             selectedPreset = selectedPreset,
+            searchInput = searchInput,
+            onSearchChange = {},
             onToggleStore = {},
             onSelectPreset = {},
             onCustomRange = { _, _ -> },
@@ -373,5 +408,14 @@ private fun HistoryFilterRowPresetPreview() {
 private fun HistoryFilterRowCustomRangePreview() {
     HistoryFilterRowPreviewHost(
         HistoryFilter(from = LocalDate(2026, 8, 19), to = LocalDate(2026, 8, 28)),
+    )
+}
+
+@Preview(showBackground = true, name = "Searching")
+@Composable
+private fun HistoryFilterRowSearchPreview() {
+    HistoryFilterRowPreviewHost(
+        filter = HistoryFilter(search = "oats"),
+        searchInput = "oats",
     )
 }

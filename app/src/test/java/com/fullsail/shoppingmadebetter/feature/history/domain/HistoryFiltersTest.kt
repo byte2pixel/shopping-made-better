@@ -202,6 +202,79 @@ class HistoryFiltersTest {
         assertEquals(date, localDateFromUtcMillis(date.toUtcMillis()))
     }
 
+    @Test
+    fun `a search shorter than two characters is not a search`() {
+        // One letter matches most of a history, so it buys a request that says
+        // nothing. It must not read as active either, or a half-typed letter would
+        // turn an empty list into "no trips match".
+        assertNull(HistoryFilter(search = "o").searchTerm())
+        assertNull(HistoryFilter(search = " o ").searchTerm())
+        assertFalse(HistoryFilter(search = "o").isActive)
+    }
+
+    @Test
+    fun `a blank search is not a search`() {
+        assertNull(HistoryFilter(search = "").searchTerm())
+        assertNull(HistoryFilter(search = "   ").searchTerm())
+        assertFalse(HistoryFilter(search = "   ").isActive)
+    }
+
+    @Test
+    fun `a real search is trimmed and active`() {
+        assertEquals("oats", HistoryFilter(search = "  oats  ").searchTerm())
+        assertTrue(HistoryFilter(search = "oats").isActive)
+    }
+
+    @Test
+    fun `a percent in the search is escaped`() {
+        // The seeded catalog really has "100% Whole Grains Minute Oats". Unescaped,
+        // this would be the wildcard pattern %100%% and match anything starting
+        // with 100.
+        assertEquals("100\\% Whole", HistoryFilter(search = "100% Whole").searchTerm())
+    }
+
+    @Test
+    fun `an underscore in the search is escaped`() {
+        // `_` is LIKE's single-character wildcard, so "a_b" would match "axb".
+        assertEquals("a\\_b", HistoryFilter(search = "a_b").searchTerm())
+    }
+
+    @Test
+    fun `a backslash in the search is escaped first`() {
+        // Escaping % before \ would produce \\% -- an escaped backslash followed by
+        // a live wildcard. The backslash has to go first.
+        assertEquals("50\\\\\\%", HistoryFilter(search = "50\\%").searchTerm())
+    }
+
+    @Test
+    fun `the escaped term reaches the query`() {
+        val query = HistoryFilter(search = " 100% oats ").toQuery()
+
+        assertEquals("100\\% oats", query.productSearch)
+    }
+
+    @Test
+    fun `a too-short search sends no term`() {
+        assertNull(HistoryFilter(search = "o").toQuery().productSearch)
+    }
+
+    @Test
+    fun `all three filters travel in one query`() {
+        val filter = HistoryFilter(
+            storeIds = setOf("store-aldi"),
+            from = LocalDate(2026, 8, 1),
+            to = LocalDate(2026, 8, 28),
+            search = "oats",
+        )
+
+        val query = filter.toQuery()
+
+        assertEquals(listOf("store-aldi"), query.storeIds)
+        assertEquals(LocalDate(2026, 8, 1), query.from)
+        assertEquals(LocalDate(2026, 8, 28), query.to)
+        assertEquals("oats", query.productSearch)
+    }
+
     private companion object {
         /** Fixed, never a real clock — presets have to be deterministic. */
         val TODAY = LocalDate(2026, 8, 28)

@@ -40,6 +40,11 @@ internal fun PostgrestFilterBuilder.applyHistoryQuery(query: HistoryQuery) {
         from != null -> gte("purchasedOn", from.toString())
         to != null -> lte("purchasedOn", to.toString())
     }
+
+    // One filter on its own column, so it needs no `and` group — but it would the
+    // moment a second constraint lands on "productSearch". The term arrives already
+    // escaped; only the surrounding wildcards belong to this layer.
+    query.productSearch?.let { ilike("productSearch", "%$it%") }
 }
 
 class HistoryRepositoryImpl @Inject constructor(
