@@ -32,4 +32,5 @@ private fun PurchaseHistoryRowDto.toLineItem() = PurchaseLineItem(
     imageUrl = imageUrl,
     quantity = quantity,
     pricePaid = pricePaid,
+    addedToInventory = addedToInventory,
 )

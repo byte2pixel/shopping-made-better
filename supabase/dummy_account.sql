@@ -201,12 +201,17 @@ trip as (
   group by p.store_id, p.days_ago
   returning id, store_id, purchased_at
 )
-insert into public.purchase_history_items (purchase_id, product_id, quantity, price_paid)
-select t.id, p.product_id, p.quantity, p.price
+-- added_to_inventory stands in for the per-item choice the real completion flow
+-- copies from shopping_list_items.add_to_inventory: shelf-stable goods get tracked
+-- into the pantry, short-life perishables and non-food (NULL shelf life) do not.
+insert into public.purchase_history_items
+  (purchase_id, product_id, quantity, price_paid, added_to_inventory)
+select t.id, p.product_id, p.quantity, p.price, coalesce(pr.shelf_life_days, 0) >= 30
 from trip t
 -- Keyed on the date as well as the store: a store now has several trips, and
 -- matching on store alone would give each of them every other trip's items.
 -- now() is transaction-stable, so both sides compute the same timestamp.
 join picked p
   on p.store_id = t.store_id
- and now() - make_interval(days => p.days_ago) = t.purchased_at;
+ and now() - make_interval(days => p.days_ago) = t.purchased_at
+join public.products pr on pr.id = p.product_id;

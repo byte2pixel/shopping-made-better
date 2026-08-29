@@ -31,6 +31,7 @@ private fun lineItem(productId: String, id: String = "line-$productId") = Purcha
     imageUrl = "",
     quantity = 1.0,
     pricePaid = 2.50,
+    addedToInventory = false,
 )
 
 private fun trip(vararg productIds: String) = PurchaseTrip(

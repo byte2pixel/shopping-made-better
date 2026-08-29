@@ -120,6 +120,7 @@ internal fun previewLineItem(
     productName: String = "Havarti Cheese Slices",
     quantity: Double = 2.0,
     pricePaid: Double = 5.22,
+    addedToInventory: Boolean = false,
 ) = PurchaseLineItem(
     id = id,
     productId = "p-$id",
@@ -129,6 +130,7 @@ internal fun previewLineItem(
     imageUrl = "",
     quantity = quantity,
     pricePaid = pricePaid,
+    addedToInventory = addedToInventory,
 )
 
 internal fun previewTrip(
@@ -137,8 +139,19 @@ internal fun previewTrip(
     recordedTotal: Double? = 42.32,
     items: List<PurchaseLineItem> = listOf(
         previewLineItem("1"),
-        previewLineItem("2", productName = "100% Whole Grains Minute Oats", pricePaid = 4.08),
-        previewLineItem("3", productName = "Less Sodium Soy Sauce", pricePaid = 4.27),
+        // Two of the four marked, so previews show both states of the pantry chip.
+        previewLineItem(
+            "2",
+            productName = "100% Whole Grains Minute Oats",
+            pricePaid = 4.08,
+            addedToInventory = true,
+        ),
+        previewLineItem(
+            "3",
+            productName = "Less Sodium Soy Sauce",
+            pricePaid = 4.27,
+            addedToInventory = true,
+        ),
         previewLineItem("4", productName = "White Stilton With Mango & Ginger", pricePaid = 7.59),
     ),
 ) = PurchaseTrip(

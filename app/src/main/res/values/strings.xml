@@ -253,6 +253,10 @@
     <string name="history_line_quantity_price">Qty %1$s × %2$s</string>
     <!-- Click label on a line item; the checkbox beside it keeps its own label. -->
     <string name="history_line_item_open">Show product details</string>
+    <!-- Chip on a line item that was tracked into the pantry. The description is
+         spoken instead of the label, which alone reads as a storage location. -->
+    <string name="history_line_item_pantry">Pantry</string>
+    <string name="history_line_item_pantry_desc">Added to your pantry</string>
 
     <!-- History: copy a past trip's items onto a shopping list -->
     <string name="history_buy_again">Buy again</string>

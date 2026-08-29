@@ -25,4 +25,7 @@ data class PurchaseHistoryRowDto(
     val imageUrl: String,
     val quantity: Double,
     val pricePaid: Double,
+    /** Whether completing the trip also put this item in the pantry. Defaulted so a
+     *  database without the column still decodes. */
+    val addedToInventory: Boolean = false,
 )

@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.AddToShoppingListSheet
+import com.fullsail.shoppingmadebetter.core.ui.LabelChip
 import com.fullsail.shoppingmadebetter.core.ui.ProductImage
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseLineItem
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTrip
@@ -370,6 +371,15 @@ private fun PurchaseLineItemRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                // Only the marked items carry a chip; the rest are left unlabelled.
+                if (item.addedToInventory) {
+                    LabelChip(
+                        label = stringResource(R.string.history_line_item_pantry),
+                        accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        iconRes = R.drawable.ic_pantry,
+                        contentDescription = stringResource(R.string.history_line_item_pantry_desc),
+                    )
+                }
             }
             Column(
                 horizontalAlignment = Alignment.End,
