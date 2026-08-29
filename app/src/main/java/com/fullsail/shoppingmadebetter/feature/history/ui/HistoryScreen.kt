@@ -11,12 +11,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -94,6 +98,12 @@ private fun HistoryContent(
     onTripClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Sticky once any page has arrived: every refresh after that is the user changing
+    // a filter, not a first load.
+    var hasLoaded by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(trips.itemCount) { if (trips.itemCount > 0) hasLoaded = true }
+    val isRefreshingAfterFirstLoad = hasLoaded && trips.loadState.refresh is LoadState.Loading
+
     Column(modifier = modifier.fillMaxSize()) {
         HistoryFilterRow(
             stores = stores,
@@ -109,11 +119,18 @@ private fun HistoryContent(
         // Unconditional: the date row renders even when no store loaded.
         HorizontalDivider()
 
+        // Changing a filter builds a whole new pager, so the list momentarily has no
+        // items and is loading again.
+        if (isRefreshingAfterFirstLoad) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+
         HistoryList(
             trips = trips,
             // Asked of the filter itself, so the later search filter picks the same
             // message up without this screen having to learn about it.
             isFiltered = filter.isActive,
+            isRefiltering = isRefreshingAfterFirstLoad,
             onTripClick = onTripClick,
         )
     }
@@ -123,6 +140,7 @@ private fun HistoryContent(
 private fun HistoryList(
     trips: LazyPagingItems<PurchaseTripSummary>,
     isFiltered: Boolean,
+    isRefiltering: Boolean,
     onTripClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -131,6 +149,9 @@ private fun HistoryList(
 
     Box(modifier = modifier.fillMaxSize()) {
         when {
+            // A re-filter in flight says nothing yet
+            isEmpty && isRefiltering -> Unit
+
             // Loading and Error only take over the screen when there is nothing to
             // show yet. Once trips are loaded they stay put through a background
             // refresh, failed or not — same rule the pre-paging screen followed.
