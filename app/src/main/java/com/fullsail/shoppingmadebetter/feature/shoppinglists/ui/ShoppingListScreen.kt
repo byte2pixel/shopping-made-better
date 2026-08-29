@@ -62,6 +62,10 @@ fun ShoppingListsScreen(
                     }) {
                     Text(text = "Ok")
                 }
+            },   dismissButton = {
+                TextButton(onClick = {  showRenameDialog = false }) {
+                    Text(text = "Back")
+                }
             },
 
             )
@@ -145,18 +149,10 @@ fun ShoppingListsScreen(
 
                     else -> {}
                 }
+                FloatingActionButton(onClick = {onItemComparison(Dest.ShoppingListItemComparison)}, modifier = Modifier.align(
+                    Alignment.BottomEnd).padding(bottom = 40.dp, end = 16.dp).size(60.dp), shape = CircleShape ) {
+                    Icon(painterResource(id = R.drawable.ic_add), contentDescription = "add", Modifier.size(24.dp))}
             }
-            Box(modifier = Modifier.fillMaxSize())
-            {
-                OutlinedButton(
-                    onClick = { onItemComparison(Dest.ShoppingListItemComparison) },
-                    modifier = Modifier.align(Alignment.BottomEnd),
-                    shape = CircleShape
-                ) {
-                    Text("+")
-                }
-            }
-
         }
 
 @Composable

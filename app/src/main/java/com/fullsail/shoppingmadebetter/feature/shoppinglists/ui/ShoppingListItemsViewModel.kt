@@ -78,11 +78,14 @@ class ShoppingListItemsViewModel @Inject constructor(
     fun getItems(input : String)  {
         _uiState.value = ShoppingListItemsState.Loading
         viewModelScope.launch {
-            _uiState.value = when (val out = getShoppingListItemsUseCase.execute(input)) {
-                is GetShoppingListItemsUseCase.Output.Success ->
-                    ShoppingListItemsState.Success(out.input)
+         when (val out = getShoppingListItemsUseCase.execute(input)) {
+                is GetShoppingListItemsUseCase.Output.Success ->{
+                    _checkedItems.value = out.input.filter{
+                        it.checked
+                    }.map{it.id}
+                    _uiState.value = ShoppingListItemsState.Success(out.input)}
                 is GetShoppingListItemsUseCase.Output.Failure ->
-                    ShoppingListItemsState.Error
+                    _uiState.value = ShoppingListItemsState.Error
             }
         }
     }
@@ -114,8 +117,6 @@ class ShoppingListItemsViewModel @Inject constructor(
                     }
                     ShoppingListItemsState.DeleteSuccess
                 }
-
-
                 is DeleteItemsUseCase.Output.Failure ->
                     ShoppingListItemsState.Error
             }
