@@ -104,19 +104,25 @@ private fun HistoryContent(
     LaunchedEffect(trips.itemCount) { if (trips.itemCount > 0) hasLoaded = true }
     val isRefreshingAfterFirstLoad = hasLoaded && trips.loadState.refresh is LoadState.Loading
 
+    // Collapsed on entry: the common visit is a glance at recent trips. Saveable so
+    // an opened panel survives a rotation.
+    var filtersExpanded by rememberSaveable { mutableStateOf(false) }
+
     Column(modifier = modifier.fillMaxSize()) {
-        HistoryFilterRow(
+        HistoryFilterPanel(
             stores = stores,
             filter = filter,
             selectedPreset = selectedPreset,
             searchInput = searchInput,
+            expanded = filtersExpanded,
+            onExpandedChange = { filtersExpanded = it },
             onSearchChange = onSearchChange,
             onToggleStore = onToggleStore,
             onSelectPreset = onSelectPreset,
             onCustomRange = onCustomRange,
             onClearFilters = onClearFilters,
         )
-        // Unconditional: the date row renders even when no store loaded.
+        // Unconditional: the header renders even when no store loaded.
         HorizontalDivider()
 
         // Changing a filter builds a whole new pager, so the list momentarily has no

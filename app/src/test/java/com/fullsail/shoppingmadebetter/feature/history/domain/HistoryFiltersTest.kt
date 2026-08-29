@@ -275,6 +275,70 @@ class HistoryFiltersTest {
         assertEquals("oats", query.productSearch)
     }
 
+    @Test
+    fun `nothing filtered counts zero`() {
+        assertEquals(0, HistoryFilter().activeCount)
+    }
+
+    @Test
+    fun `each selected store counts on its own`() {
+        // The summary line names all three, so a badge reading 1 would look broken.
+        assertEquals(1, HistoryFilter(storeIds = setOf("store-aldi")).activeCount)
+        assertEquals(
+            3,
+            HistoryFilter(storeIds = setOf("s-1", "s-2", "s-3")).activeCount,
+        )
+    }
+
+    @Test
+    fun `a date range counts once however many bounds it has`() {
+        val from = LocalDate(2026, 8, 1)
+        val to = LocalDate(2026, 8, 28)
+
+        assertEquals(1, HistoryFilter(from = from).activeCount)
+        assertEquals(1, HistoryFilter(to = to).activeCount)
+        assertEquals(1, HistoryFilter(from = from, to = to).activeCount)
+    }
+
+    @Test
+    fun `a too-short search counts for nothing`() {
+        // Matches isActive: a half-typed letter is not filtering anything yet.
+        assertEquals(0, HistoryFilter(search = "o").activeCount)
+        assertEquals(0, HistoryFilter(search = "   ").activeCount)
+    }
+
+    @Test
+    fun `a real search counts once`() {
+        assertEquals(1, HistoryFilter(search = "oats").activeCount)
+    }
+
+    @Test
+    fun `every filter kind adds to the count`() {
+        val filter = HistoryFilter(
+            storeIds = setOf("store-aldi", "store-publix"),
+            from = LocalDate(2026, 8, 1),
+            to = LocalDate(2026, 8, 28),
+            search = "oats",
+        )
+
+        // Two stores + one range + one search.
+        assertEquals(4, filter.activeCount)
+    }
+
+    @Test
+    fun `the count is positive exactly when the filter is active`() {
+        // The badge and the empty-list message read the same state; they must agree.
+        listOf(
+            HistoryFilter(),
+            HistoryFilter(search = "o"),
+            HistoryFilter(storeIds = setOf("store-aldi")),
+            HistoryFilter(from = TODAY),
+            HistoryFilter(search = "oats"),
+        ).forEach { filter ->
+            assertEquals(filter.isActive, filter.activeCount > 0)
+        }
+    }
+
     private companion object {
         /** Fixed, never a real clock — presets have to be deterministic. */
         val TODAY = LocalDate(2026, 8, 28)
