@@ -15,5 +15,6 @@ data class Meal(
     val totalPrice: String,
     val category: String,
     val ingredients: List<Ingredient> = emptyList(),
-    val instructions: List<String> = emptyList()
+    val instructions: List<String> = emptyList(),
+    val imageUrl: String? = null,
 )
