@@ -12,7 +12,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 sealed interface MealsUiState {
     object Loading : MealsUiState
     data class Success(
@@ -163,6 +164,12 @@ class MealsViewModel @Inject constructor(
                     _uiState.value = currentState.copy(selectedMealId = mealId)
                 }
             }
+        }
+    }
+
+    fun toggleFavorite(mealId: String, isCurrentlyFavorite: Boolean) {
+        viewModelScope.launch {
+            repository.toggleFavoriteMeal(mealId, !isCurrentlyFavorite)
         }
     }
 }

@@ -6,4 +6,5 @@ interface MealsRepository {
     suspend fun selectMealPlan(mealId: String)
     suspend fun addIngredientToShoppingList(ingredientId: String, title: String, activeListId: String)
     suspend fun addMealToShoppingList(mealId: String, activeListId: String)
+    suspend fun toggleFavoriteMeal(mealId: String, isFavorite: Boolean)
 }
