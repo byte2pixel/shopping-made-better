@@ -13,11 +13,12 @@
 --   * Replaces the demo user's inventory with a fresh mock pantry.
 --   * Replaces the demo user's shopping trips (summarized by the
 --     shopping_trip_summaries view from migration 20260708015853).
---   * Replaces the demo user's purchase history with two completed trips.
+--   * Replaces the demo user's purchase history with 12 completed trips
+--     spread over the last ~6 months.
 --
 -- Sign-in credentials (email confirmations are disabled in config.toml,
 -- so this works immediately from the app's sign-in screen):
---     email:    demo@shoppingmadebetter.test
+--     email:    demo@smb.test
 --     password: password123
 -- ------------------------------------------------------------
 
@@ -70,6 +71,13 @@ on conflict do nothing;
 insert into public.profiles (id, display_name)
 values ('11111111-1111-1111-1111-111111111111', 'Demo Shopper')
 on conflict (id) do nothing;
+
+-- Opt the demo account into automatic pantry adjustment. The column default is
+-- false (real users opt in from settings), so flipping it here is what makes the
+-- feature exercisable straight after a `db reset`.
+update public.profiles
+   set auto_adjust_enabled = true
+ where id = '11111111-1111-1111-1111-111111111111';
 
 -- 3) Mock pantry. Clear first so re-running this file is idempotent, then
 --    insert. Products are matched by their stable source_product_id, so

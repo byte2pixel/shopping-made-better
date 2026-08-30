@@ -16,4 +16,8 @@ data class InventoryItemDto(
     val expiryDate: LocalDate?,
     val location: String = "pantry",
     val lowStockThreshold: Int? = null,
+    /** When the estimator last adjusted this lot, epoch seconds; `null` if it never has. */
+    val lastAutoAdjustedAtEpoch: Long? = null,
+    /** What the estimate was based on: `history`, `shelf_life` or `manual`. */
+    val estimateSource: String? = null,
 )
