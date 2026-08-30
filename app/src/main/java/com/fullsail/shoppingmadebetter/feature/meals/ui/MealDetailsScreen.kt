@@ -39,6 +39,7 @@ fun MealDetailsScreen(
     val matchPercentage = meal?.matchPercentage ?: 0
     val categoryName = meal?.category ?: "Loading..."
     var isFavorite by remember { mutableStateOf(false) }
+    var servingMultiplier by remember { mutableStateOf(1) }
     val context = LocalContext.current
 
     if (mealId.isBlank() || mealId == "error") {
@@ -81,7 +82,10 @@ fun MealDetailsScreen(
                     Spacer(modifier = Modifier.width(4.dp))
 
                     IconButton(
-                        onClick = { isFavorite = !isFavorite },
+                        onClick = {
+                            viewModel.toggleFavorite(mealId, isFavorite)
+                            isFavorite = !isFavorite
+                        },
                         colors = IconButtonDefaults.iconButtonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.primary
@@ -147,7 +151,6 @@ fun MealDetailsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // SCRUM-228: Nutritional Macros UI
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -158,7 +161,26 @@ fun MealDetailsScreen(
                 MacroChip(label = "Fat", value = meal?.fat?.let { "${it}g" } ?: "---g")
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "Servings: $servingMultiplier", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Row {
+                    Button(onClick = { if (servingMultiplier > 1) servingMultiplier-- }) {
+                        Text("-")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = { servingMultiplier++ }) {
+                        Text("+")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             Text(
                 text = "Ingredients",
@@ -175,11 +197,13 @@ fun MealDetailsScreen(
                 MealEmptyState(message = "No ingredients listed for this recipe.")
             } else {
                 ingredients.forEach { ingredient ->
+                    val baseQty = ingredient.quantity.toDoubleOrNull() ?: 1.0
+                    val scaledQty = baseQty * servingMultiplier
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(text = "${ingredient.quantity} ${ingredient.name}")
+                        Text(text = "$scaledQty ${ingredient.name}")
                         Text(text = ingredient.price, fontWeight = FontWeight.Bold)
                     }
                 }
