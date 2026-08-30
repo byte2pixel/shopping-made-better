@@ -147,6 +147,19 @@ fun MealDetailsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // SCRUM-228: Nutritional Macros UI
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                MacroChip(label = "Calories", value = meal?.calories ?: "---")
+                MacroChip(label = "Protein", value = meal?.protein?.let { "${it}g" } ?: "---g")
+                MacroChip(label = "Carbs", value = meal?.carbs?.let { "${it}g" } ?: "---g")
+                MacroChip(label = "Fat", value = meal?.fat?.let { "${it}g" } ?: "---g")
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             Text(
                 text = "Ingredients",
                 style = MaterialTheme.typography.titleMedium,
@@ -196,6 +209,29 @@ fun MealDetailsScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MacroChip(label: String, value: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+        )
     }
 }
 

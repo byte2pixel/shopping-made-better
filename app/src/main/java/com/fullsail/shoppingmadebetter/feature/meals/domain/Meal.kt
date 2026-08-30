@@ -17,4 +17,8 @@ data class Meal(
     val ingredients: List<Ingredient> = emptyList(),
     val instructions: List<String> = emptyList(),
     val imageUrl: String? = null,
+    val calories: String? = null,
+    val protein: String? = null,
+    val carbs: String? = null,
+    val fat: String? = null
 )
