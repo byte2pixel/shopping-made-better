@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetShoppingListItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListItems
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isChecked
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isCheckedUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CheckAllItemsUseCase
@@ -47,6 +49,7 @@ class ShoppingListItemsViewModel @Inject constructor(
     private val getDeleteItemsUseCase: DeleteItemsUseCase,
     private val completeShoppingTripUseCase: CompleteShoppingTripUseCase,
     private val getIsCheckedUseCase : isCheckedUseCase,
+    private val insertItemUseCase: InsertItemUseCase,
     private val checkAllItemsUseCase: CheckAllItemsUseCase,
 ) : ViewModel() {
 
@@ -61,6 +64,20 @@ class ShoppingListItemsViewModel @Inject constructor(
 
 
     init { }
+    fun addItem(item : InsertItem, listId : String)
+    {
+        //_uiState.value = ShoppingListItemsState.Loading
+        viewModelScope.launch {
+           when( insertItemUseCase.execute(item))
+           {
+               is InsertItemUseCase.Output.Success ->
+                   getItems(listId) // refresh the list since now it should be empty.
+               is InsertItemUseCase.Output.Failure ->
+                   _uiState.value = ShoppingListItemsState.Error
+           }
+
+        }
+    }
     fun toggleItemCheck(itemId: String) {
         val current = _checkedItems.value.toMutableList()
         if (itemId in current) {
@@ -90,12 +107,12 @@ class ShoppingListItemsViewModel @Inject constructor(
         }
     }
 
-    fun checkItem(id : String, state : Boolean){
+    fun checkItem(id : String, state : Boolean, listId : String){
         viewModelScope.launch{
             when (val out = getIsCheckedUseCase.execute(isChecked(id, state))) {
                 is isCheckedUseCase.Output.Success ->
                 {
-
+                    getItems(listId)
                 }
                 is isCheckedUseCase.Output.Failure ->
                     ShoppingListItemsState.Error
