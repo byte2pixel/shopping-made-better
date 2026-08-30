@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListItems
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 
 @Composable
 fun ShoppingListCartScreen(
@@ -49,6 +50,7 @@ fun ShoppingListCartScreen(
     val uiState by viewModel.uiState.collectAsState()
     val checkedItems by viewModel.checkedItems.collectAsState()
     var showDialog by remember {mutableStateOf(false)}
+    var toggled by remember {mutableStateOf(false)}
     if (showDialog)
     {
         AlertDialog(
@@ -90,6 +92,18 @@ fun ShoppingListCartScreen(
 
                 } else {
                     Column(Modifier.fillMaxWidth()) {
+                        IconButton(onClick = {
+                            toggled = !toggled
+                        })
+                        {
+                            Icon(
+                                painterResource(id = R.drawable.ic_filter_list),
+                                contentDescription = "Filter List",
+                                Modifier.size(24.dp)
+                            )
+                        }
+
+                        if (toggled) {
                         Text("Unchecked")
                         LazyColumn(
                             Modifier.weight(1f).padding(16.dp),
@@ -100,19 +114,44 @@ fun ShoppingListCartScreen(
 
                                 CartRow(it, viewModel, onItemCrossed = {
                                     viewModel.toggleItemCheck(it.id)
+                                    viewModel.checkItem(it.id, true, listId)
                                 }, onItemUncrossed = {
                                     viewModel.toggleItemCheck(it.id)
-                                })
+                                    viewModel.checkItem(it.id, false, listId)
+                                }, listId)
                             }
                         }
-                        Text("Checked")
-                        LazyColumn(Modifier.weight(1f).padding(16.dp)) {
-                            items(state.items.filter { it.checked }, key = { it.id }) {
-                                CartRow(it, viewModel, onItemCrossed = {
-                                    viewModel.toggleItemCheck(it.id)
-                                }, onItemUncrossed = {
-                                    viewModel.toggleItemCheck(it.id)
-                                })
+
+                            Text("Checked")
+                            LazyColumn(Modifier.weight(1f).padding(16.dp)) {
+                                items(state.items.filter { it.checked }, key = { it.id }) {
+                                    CartRow(it, viewModel, onItemCrossed = {
+                                        viewModel.toggleItemCheck(it.id)
+                                        viewModel.checkItem(it.id, true, listId)
+                                    }, onItemUncrossed = {
+                                        viewModel.toggleItemCheck(it.id)
+                                        viewModel.checkItem(it.id, false, listId)
+                                    }, listId)
+                                }
+                            }
+                        }
+                        else
+                        {
+                            LazyColumn(
+                                Modifier.weight(1f).padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+
+                                items(state.items, key = { it.id }) {
+
+                                    CartRow(it, viewModel, onItemCrossed = {
+                                        viewModel.toggleItemCheck(it.id)
+                                        viewModel.checkItem(it.id, true, listId)
+                                    }, onItemUncrossed = {
+                                        viewModel.toggleItemCheck(it.id)
+                                        viewModel.checkItem(it.id, false, listId)
+                                    }, listId)
+                                }
                             }
                         }
                     }
@@ -135,12 +174,12 @@ fun ShoppingListCartScreen(
     }
 }
 @Composable
-fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onItemCrossed: () -> Unit, onItemUncrossed : () -> Unit) {
+fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onItemCrossed: () -> Unit, onItemUncrossed : () -> Unit, listId : String) {
 
-    var clicked by remember { mutableStateOf(false)}
+
     Card(Modifier.fillMaxWidth().clickable(onClick = {
-        clicked = !clicked
-        if (clicked)
+
+        if (!item.checked)
         onItemCrossed()
 
         else {
@@ -149,7 +188,7 @@ fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onI
 
     }), colors = CardDefaults.cardColors(
 
-        if (!clicked)
+        if (!item.checked)
         {
             MaterialTheme.colorScheme.surfaceVariant
         } else {
@@ -160,10 +199,12 @@ fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onI
 
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically)
         {
-        if (!clicked)
+        if (!item.checked)
         {
             Text(item.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
             IconButton(onClick = {
+                val clonedItem = InsertItem(listId, item.productId, 1, "", item.checked, true)
+                viewModel.addItem(clonedItem, listId)
             })
             {
                 Icon(
