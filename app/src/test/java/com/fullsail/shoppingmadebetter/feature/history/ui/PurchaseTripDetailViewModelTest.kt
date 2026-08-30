@@ -127,6 +127,20 @@ class PurchaseTripDetailViewModelTest {
     }
 
     @Test
+    fun `load surfaces an error when the trip cannot be read`() {
+        val viewModel = viewModel(
+            getTrip = FakeGetPurchaseTripUseCase(
+                GetPurchaseTripUseCase.Output.Failure(IOException("network down")),
+            ),
+        )
+
+        viewModel.load("trip-1")
+
+        // Distinct from NotFound: the trip may well exist, the read failed.
+        assertEquals(PurchaseTripDetailUiState.Error, viewModel.uiState.value)
+    }
+
+    @Test
     fun `onItemToggled unticks then re-ticks an item`() {
         val viewModel = viewModel(
             getTrip = FakeGetPurchaseTripUseCase(
