@@ -113,6 +113,14 @@ fun PantryScreen(
                 is PantryEvent.UpdateFailed -> snackbarHostState.showSnackbar(
                     resources.getString(R.string.pantry_update_failed, event.itemName)
                 )
+
+                PantryEvent.RefreshFailed -> {
+                    val result = snackbarHostState.showSnackbar(
+                        message = resources.getString(R.string.pantry_refresh_failed),
+                        actionLabel = resources.getString(R.string.pantry_retry),
+                    )
+                    if (result == SnackbarResult.ActionPerformed) viewModel.loadInventory()
+                }
             }
         }
     }
