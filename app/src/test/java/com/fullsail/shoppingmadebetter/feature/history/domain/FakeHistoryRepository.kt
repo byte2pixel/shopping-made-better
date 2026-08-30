@@ -84,6 +84,7 @@ internal fun row(
     imageUrl: String = "",
     quantity: Double = 1.0,
     pricePaid: Double = 2.50,
+    addedToInventory: Boolean = false,
 ) = PurchaseHistoryRowDto(
     id = id,
     purchaseId = purchaseId,
@@ -98,6 +99,7 @@ internal fun row(
     imageUrl = imageUrl,
     quantity = quantity,
     pricePaid = pricePaid,
+    addedToInventory = addedToInventory,
 )
 
 /** A summary-view row with sensible defaults; override only what a test is about. */

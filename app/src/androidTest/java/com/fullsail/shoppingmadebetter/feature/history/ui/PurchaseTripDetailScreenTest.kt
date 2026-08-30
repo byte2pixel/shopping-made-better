@@ -77,6 +77,7 @@ class PurchaseTripDetailScreenTest {
         imageUrl = "",
         quantity = 2.0,
         pricePaid = 3.99,
+        addedToInventory = false,
     )
 
     private val trip = PurchaseTrip(

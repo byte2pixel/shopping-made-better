@@ -35,6 +35,26 @@ class GetPurchaseTripUseCaseTest {
     }
 
     @Test
+    fun `execute marks only the line items that went to the pantry`() = runTest {
+        val useCase = GetPurchaseTripUseCaseImpl(
+            FakeHistoryRepository(
+                rows = listOf(
+                    row(purchaseId = "wanted", id = "tracked", addedToInventory = true),
+                    row(purchaseId = "wanted", id = "eaten", addedToInventory = false),
+                ),
+            ),
+        )
+
+        val output = useCase.execute("wanted")
+
+        val trip = (output as GetPurchaseTripUseCase.Output.Success).trip
+        assertEquals(
+            mapOf("tracked" to true, "eaten" to false),
+            trip.items.associate { it.id to it.addedToInventory },
+        )
+    }
+
+    @Test
     fun `execute returns not found when no trip matches`() = runTest {
         val useCase = GetPurchaseTripUseCaseImpl(
             FakeHistoryRepository(rows = listOf(row(purchaseId = "other"))),

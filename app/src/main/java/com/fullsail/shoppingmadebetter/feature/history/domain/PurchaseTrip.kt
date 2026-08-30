@@ -12,6 +12,8 @@ data class PurchaseLineItem(
     val imageUrl: String,
     val quantity: Double,
     val pricePaid: Double,
+    /** Whether completing the trip also put this item in the pantry. */
+    val addedToInventory: Boolean,
 ) {
     /** What this line cost: unit price times quantity. */
     val lineTotal: Double = quantity * pricePaid
