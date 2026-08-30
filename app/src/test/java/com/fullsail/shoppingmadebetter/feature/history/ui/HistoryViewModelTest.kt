@@ -3,6 +3,9 @@ package com.fullsail.shoppingmadebetter.feature.history.ui
 import androidx.lifecycle.SavedStateHandle
 import androidx.paging.PagingData
 import com.fullsail.shoppingmadebetter.feature.history.domain.GetPurchaseHistoryUseCase
+import com.fullsail.shoppingmadebetter.feature.history.domain.GetSpendSummaryUseCase
+import com.fullsail.shoppingmadebetter.feature.history.domain.MonthlySpend
+import com.fullsail.shoppingmadebetter.feature.history.domain.SpendSummary
 import com.fullsail.shoppingmadebetter.feature.history.domain.HistoryDatePreset
 import com.fullsail.shoppingmadebetter.feature.history.domain.HistoryFilter
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTripSummary
@@ -75,11 +78,24 @@ class HistoryViewModelTest {
         override suspend fun execute(input: Unit) = output
     }
 
+    /** These tests are about filter state; the insights only need to not blow up. */
+    private class FakeGetSpendSummaryUseCase(
+        private val output: GetSpendSummaryUseCase.Output =
+            GetSpendSummaryUseCase.Output.Failure(IOException("not under test")),
+    ) : GetSpendSummaryUseCase {
+        var callCount = 0
+        override suspend fun execute(input: Unit): GetSpendSummaryUseCase.Output {
+            callCount++
+            return output
+        }
+    }
+
     private fun viewModel(
         savedState: SavedStateHandle = SavedStateHandle(),
         stores: GetStoresUseCase = FakeGetStoresUseCase(),
         history: GetPurchaseHistoryUseCase = FakeGetPurchaseHistoryUseCase(),
-    ) = HistoryViewModel(history, stores, savedState, fixedClock)
+        spend: GetSpendSummaryUseCase = FakeGetSpendSummaryUseCase(),
+    ) = HistoryViewModel(history, stores, spend, savedState, fixedClock)
 
     /** Runs on the dispatcher rule's scheduler, so virtual time is shared. */
     private fun vmTest(body: suspend TestScope.() -> Unit) =
@@ -360,7 +376,74 @@ class HistoryViewModelTest {
         assertTrue("expected a new pager, saw $before then ${pagers.size}", pagers.size > before)
     }
 
+    // ---- spend insights -----------------------------------------------------
+
+    @Test
+    fun `the insights load on creation`() = vmTest {
+        val spend = FakeGetSpendSummaryUseCase(
+            GetSpendSummaryUseCase.Output.Success(summary(total = 100.0)),
+        )
+        val viewModel = viewModel(spend = spend)
+
+        advanceUntilIdle()
+
+        assertEquals(100.0, viewModel.spendSummary.value?.thisMonth?.total ?: 0.0, 0.001)
+    }
+
+    @Test
+    fun `a failed insights load leaves the tab readable`() = vmTest {
+        // Losing the cards is worth less than an error screen over a list that loaded.
+        val viewModel = viewModel(
+            spend = FakeGetSpendSummaryUseCase(
+                GetSpendSummaryUseCase.Output.Failure(IOException("no network")),
+            ),
+        )
+
+        advanceUntilIdle()
+
+        assertNull(viewModel.spendSummary.value)
+    }
+
+    @Test
+    fun `refreshing re-reads the insights`() = vmTest {
+        // The screen calls this on entry so a trip completed elsewhere is counted.
+        val spend = FakeGetSpendSummaryUseCase()
+        val viewModel = viewModel(spend = spend)
+        advanceUntilIdle()
+        val afterInit = spend.callCount
+
+        viewModel.refreshSummary()
+        advanceUntilIdle()
+
+        assertEquals(afterInit + 1, spend.callCount)
+    }
+
+    @Test
+    fun `changing a filter does not re-read the insights`() = vmTest {
+        // The cards speak in fixed windows, so narrowing the list must not move them.
+        val spend = FakeGetSpendSummaryUseCase(
+            GetSpendSummaryUseCase.Output.Success(summary(total = 100.0)),
+        )
+        val viewModel = viewModel(spend = spend)
+        advanceUntilIdle()
+        val afterInit = spend.callCount
+
+        viewModel.toggleStore("s-1")
+        viewModel.selectDatePreset(HistoryDatePreset.Last30Days)
+        advanceUntilIdle()
+
+        assertEquals(afterInit, spend.callCount)
+        assertEquals(100.0, viewModel.spendSummary.value?.thisMonth?.total ?: 0.0, 0.001)
+    }
+
     private companion object {
         fun store(id: String) = Store(id, "Store $id", "1 Main St", "Orlando", "FL", "32801", null)
+
+        fun summary(total: Double) = SpendSummary(
+            thisMonth = MonthlySpend(LocalDate(2026, 8, 1), total, tripCount = 3),
+            lastMonth = null,
+            byStore = emptyList(),
+            cheapest = null,
+        )
     }
 }

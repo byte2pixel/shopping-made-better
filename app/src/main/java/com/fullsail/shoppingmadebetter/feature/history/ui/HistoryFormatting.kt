@@ -14,6 +14,7 @@ private val tripDateFormat: DateTimeFormatter =
     DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 private val filterDateFormat: DateTimeFormatter =
     DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)
+private val monthFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("LLLL yyyy", Locale.US)
 
 /**
  * Money as US dollars, e.g. `$5.22`. The seeded pricing is in dollars, so the
@@ -32,6 +33,10 @@ internal fun formatQuantity(quantity: Double): String =
 /** A trip's date in the device's medium localized form, e.g. "Aug 19, 2026". */
 internal fun formatTripDate(date: LocalDate): String =
     date.toJavaLocalDate().format(tripDateFormat)
+
+/** A month as its name and year, e.g. "August 2026". */
+internal fun formatMonth(date: LocalDate): String =
+    date.toJavaLocalDate().format(monthFormat)
 
 /**
  * A filter bound in the device's short form, e.g. "8/19/26" — two of these and a

@@ -6,7 +6,9 @@ import com.fullsail.shoppingmadebetter.core.ui.ShoppingListPickerState
 import com.fullsail.shoppingmadebetter.feature.history.domain.AddTripToList
 import com.fullsail.shoppingmadebetter.feature.history.domain.AddTripToListUseCase
 import com.fullsail.shoppingmadebetter.feature.history.domain.GetPurchaseTripUseCase
+import com.fullsail.shoppingmadebetter.feature.history.domain.GetTripCostComparisonUseCase
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTrip
+import com.fullsail.shoppingmadebetter.feature.history.domain.StoreBasketCost
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -55,10 +57,19 @@ class PurchaseTripDetailViewModel @Inject constructor(
     private val getPurchaseTripUseCase: GetPurchaseTripUseCase,
     private val getShoppingTripsUseCase: GetShoppingTripsUseCase,
     private val addTripToListUseCase: AddTripToListUseCase,
+    private val getTripCostComparisonUseCase: GetTripCostComparisonUseCase,
 ) : ViewModel() {
     private val _uiState =
         MutableStateFlow<PurchaseTripDetailUiState>(PurchaseTripDetailUiState.Loading)
     val uiState: StateFlow<PurchaseTripDetailUiState> = _uiState.asStateFlow()
+
+    /**
+     * This basket priced at every store that stocks all of it, cheapest first, or
+     * empty when there is nothing to compare. A failure leaves it empty rather than
+     * failing the screen — the trip itself loaded.
+     */
+    private val _storeCosts = MutableStateFlow<List<StoreBasketCost>>(emptyList())
+    val storeCosts: StateFlow<List<StoreBasketCost>> = _storeCosts.asStateFlow()
 
     /** Products ticked for "buy again"; every item of the trip starts selected. */
     private val _selectedProductIds = MutableStateFlow<Set<String>>(emptySet())
@@ -77,6 +88,8 @@ class PurchaseTripDetailViewModel @Inject constructor(
     fun load(purchaseId: String) {
         this.purchaseId = purchaseId
         _uiState.value = PurchaseTripDetailUiState.Loading
+        _storeCosts.value = emptyList()
+        loadStoreCosts(purchaseId)
         viewModelScope.launch {
             _uiState.value = when (val out = getPurchaseTripUseCase.execute(purchaseId)) {
                 is GetPurchaseTripUseCase.Output.Success -> {
@@ -88,6 +101,17 @@ class PurchaseTripDetailViewModel @Inject constructor(
 
                 GetPurchaseTripUseCase.Output.NotFound -> PurchaseTripDetailUiState.NotFound
                 is GetPurchaseTripUseCase.Output.Failure -> PurchaseTripDetailUiState.Error
+            }
+        }
+    }
+
+    private fun loadStoreCosts(purchaseId: String) {
+        viewModelScope.launch {
+            _storeCosts.value = when (
+                val out = getTripCostComparisonUseCase.execute(purchaseId)
+            ) {
+                is GetTripCostComparisonUseCase.Output.Success -> out.stores
+                is GetTripCostComparisonUseCase.Output.Failure -> emptyList()
             }
         }
     }

@@ -4,8 +4,10 @@ import com.fullsail.shoppingmadebetter.core.ui.ShoppingListPickerState
 import com.fullsail.shoppingmadebetter.feature.history.domain.AddTripToList
 import com.fullsail.shoppingmadebetter.feature.history.domain.AddTripToListUseCase
 import com.fullsail.shoppingmadebetter.feature.history.domain.GetPurchaseTripUseCase
+import com.fullsail.shoppingmadebetter.feature.history.domain.GetTripCostComparisonUseCase
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseLineItem
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTrip
+import com.fullsail.shoppingmadebetter.feature.history.domain.StoreBasketCost
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import com.fullsail.shoppingmadebetter.testing.MainDispatcherRule
@@ -86,11 +88,19 @@ class PurchaseTripDetailViewModelTest {
         }
     }
 
+    private class FakeGetTripCostComparisonUseCase(
+        var output: GetTripCostComparisonUseCase.Output =
+            GetTripCostComparisonUseCase.Output.Success(emptyList()),
+    ) : GetTripCostComparisonUseCase {
+        override suspend fun execute(input: String) = output
+    }
+
     private fun viewModel(
         getTrip: FakeGetPurchaseTripUseCase = FakeGetPurchaseTripUseCase(),
         getLists: FakeGetShoppingTripsUseCase = FakeGetShoppingTripsUseCase(),
         addToList: FakeAddTripToListUseCase = FakeAddTripToListUseCase(),
-    ) = PurchaseTripDetailViewModel(getTrip, getLists, addToList)
+        compare: FakeGetTripCostComparisonUseCase = FakeGetTripCostComparisonUseCase(),
+    ) = PurchaseTripDetailViewModel(getTrip, getLists, addToList, compare)
 
     @Test
     fun `load selects every line item by default`() {
@@ -317,5 +327,58 @@ class PurchaseTripDetailViewModelTest {
         viewModel.onListChosen(shoppingTrip())
 
         assertNull(addToList.lastInput)
+    }
+
+    // ---- cost comparison ----------------------------------------------------
+
+    @Test
+    fun `loading a trip also prices it at other stores`() {
+        val compare = FakeGetTripCostComparisonUseCase(
+            GetTripCostComparisonUseCase.Output.Success(
+                listOf(StoreBasketCost("s-2", "Publix", 40.0, 2.0)),
+            ),
+        )
+        val viewModel = viewModel(
+            getTrip = FakeGetPurchaseTripUseCase(GetPurchaseTripUseCase.Output.Success(trip("milk"))),
+            compare = compare,
+        )
+
+        viewModel.load("trip-1")
+
+        assertEquals(listOf("Publix"), viewModel.storeCosts.value.map { it.storeName })
+    }
+
+    @Test
+    fun `a failed comparison leaves the trip readable`() {
+        val viewModel = viewModel(
+            getTrip = FakeGetPurchaseTripUseCase(GetPurchaseTripUseCase.Output.Success(trip("milk"))),
+            compare = FakeGetTripCostComparisonUseCase(
+                GetTripCostComparisonUseCase.Output.Failure(IOException("no network")),
+            ),
+        )
+
+        viewModel.load("trip-1")
+
+        assertTrue(viewModel.storeCosts.value.isEmpty())
+        assertTrue(viewModel.uiState.value is PurchaseTripDetailUiState.Success)
+    }
+
+    @Test
+    fun `loading a second trip drops the first one's comparison`() {
+        val compare = FakeGetTripCostComparisonUseCase(
+            GetTripCostComparisonUseCase.Output.Success(
+                listOf(StoreBasketCost("s-2", "Publix", 40.0, 2.0)),
+            ),
+        )
+        val viewModel = viewModel(
+            getTrip = FakeGetPurchaseTripUseCase(GetPurchaseTripUseCase.Output.Success(trip("milk"))),
+            compare = compare,
+        )
+        viewModel.load("trip-1")
+
+        compare.output = GetTripCostComparisonUseCase.Output.Success(emptyList())
+        viewModel.load("trip-2")
+
+        assertTrue(viewModel.storeCosts.value.isEmpty())
     }
 }

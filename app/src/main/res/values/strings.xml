@@ -161,6 +161,29 @@
     <!-- Shown instead of history_empty when a filter is on: the user has trips, just
          none matching. Telling them "no purchases yet" here would read as data loss. -->
     <string name="history_no_matches">No trips match your filters. Try clearing one.</string>
+    <!-- Spend insights above the trip list. Hidden entirely when there is no history. -->
+    <string name="history_insights_this_month">This month</string>
+    <plurals name="history_insights_trips">
+        <item quantity="one">%1$d trip</item>
+        <item quantity="other">%1$d trips</item>
+    </plurals>
+    <!-- Delta against last month; %1$s is the amount, always shown unsigned. -->
+    <string name="history_insights_delta_down">↓ %1$s</string>
+    <string name="history_insights_delta_up">↑ %1$s</string>
+    <string name="history_insights_delta_caption">vs last month</string>
+    <string name="history_insights_delta_down_desc">%1$s less than last month</string>
+    <string name="history_insights_delta_up_desc">%1$s more than last month</string>
+    <string name="history_insights_by_store">Where it went</string>
+    <!-- One breakdown row: store, amount, share of the month. -->
+    <string name="history_insights_store_desc">%1$s, %2$s, %3$d%% of this month</string>
+    <string name="history_insights_cheapest_title">Cheapest for your basket</string>
+    <string name="history_insights_cheapest_body">%1$s — you\'d save %2$s on your last 30 days of shopping</string>
+    <!-- Trip detail: the same basket priced at every store that stocks all of it,
+         the trip's own store included as the baseline. -->
+    <string name="history_detail_cost_elsewhere">What this basket costs today</string>
+    <string name="history_detail_cost_cheaper">%1$s less than you paid</string>
+    <string name="history_detail_cost_dearer">%1$s more than you paid</string>
+    <string name="history_detail_cost_same">Same as you paid</string>
     <!-- Collapsible filter panel header. Collapsed by default; the badge and summary
          line are what keep an active filter visible while the controls are hidden. -->
     <string name="history_filters_title">Filters</string>

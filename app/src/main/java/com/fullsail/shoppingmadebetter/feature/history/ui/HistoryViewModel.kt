@@ -8,6 +8,8 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.fullsail.shoppingmadebetter.feature.history.domain.GetPurchaseHistoryUseCase
+import com.fullsail.shoppingmadebetter.feature.history.domain.GetSpendSummaryUseCase
+import com.fullsail.shoppingmadebetter.feature.history.domain.SpendSummary
 import com.fullsail.shoppingmadebetter.feature.history.domain.HistoryDatePreset
 import com.fullsail.shoppingmadebetter.feature.history.domain.HistoryFilter
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseHistoryPagingSource
@@ -42,9 +44,16 @@ import javax.inject.Inject
 class HistoryViewModel @Inject constructor(
     private val getPurchaseHistoryUseCase: GetPurchaseHistoryUseCase,
     private val getStoresUseCase: GetStoresUseCase,
+    private val getSpendSummaryUseCase: GetSpendSummaryUseCase,
     private val savedStateHandle: SavedStateHandle,
     private val clock: Clock,
 ) : ViewModel() {
+
+    /**
+     * The spend insights, or null until they load. Ignores [filter] always current month vs. prior.
+     */
+    private val _spendSummary = MutableStateFlow<SpendSummary?>(null)
+    val spendSummary: StateFlow<SpendSummary?> = _spendSummary.asStateFlow()
 
     /**
      * The stores offered as filter chips.
@@ -148,6 +157,17 @@ class HistoryViewModel @Inject constructor(
     init {
         loadStores()
         commitSearchAfterPauses()
+        refreshSummary()
+    }
+
+    /** Re-reads the insights; called again on entry so a new trip is counted. */
+    fun refreshSummary() {
+        viewModelScope.launch {
+            when (val output = getSpendSummaryUseCase.execute(Unit)) {
+                is GetSpendSummaryUseCase.Output.Success -> _spendSummary.value = output.summary
+                is GetSpendSummaryUseCase.Output.Failure -> _spendSummary.value = null
+            }
+        }
     }
 
     /** Records the search field's text; the filter follows once typing pauses. */

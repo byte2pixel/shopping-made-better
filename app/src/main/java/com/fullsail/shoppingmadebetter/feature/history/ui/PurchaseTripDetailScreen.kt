@@ -50,7 +50,9 @@ import com.fullsail.shoppingmadebetter.core.ui.AddToShoppingListSheet
 import com.fullsail.shoppingmadebetter.core.ui.ProductImage
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseLineItem
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTrip
+import com.fullsail.shoppingmadebetter.feature.history.domain.StoreBasketCost
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
+import kotlin.math.roundToInt
 
 /**
  * One completed trip: its date, store and total, followed by every line item bought
@@ -70,6 +72,7 @@ fun PurchaseTripDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val selectedProductIds by viewModel.selectedProductIds.collectAsState()
     val sheetState by viewModel.buyAgainSheet.collectAsState()
+    val storeCosts by viewModel.storeCosts.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val resources = LocalResources.current
     LaunchedEffect(purchaseId) { viewModel.load(purchaseId) }
@@ -107,6 +110,7 @@ fun PurchaseTripDetailScreen(
             is PurchaseTripDetailUiState.Success -> PurchaseTripDetailContent(
                 trip = state.trip,
                 selectedProductIds = selectedProductIds,
+                storeCosts = storeCosts,
                 onItemToggled = viewModel::onItemToggled,
                 onItemClick = onProductClick,
                 onBuyAgainClick = viewModel::onBuyAgainClicked,
@@ -152,6 +156,7 @@ private fun TripDetailEvent.message(resources: Resources): String = when (this) 
 private fun PurchaseTripDetailContent(
     trip: PurchaseTrip,
     selectedProductIds: Set<String>,
+    storeCosts: List<StoreBasketCost>,
     onItemToggled: (String) -> Unit,
     onItemClick: (String) -> Unit,
     onBuyAgainClick: () -> Unit,
@@ -167,6 +172,11 @@ private fun PurchaseTripDetailContent(
                 buyAgainEnabled = selectedProductIds.isNotEmpty(),
                 onBuyAgainClick = onBuyAgainClick,
             )
+            // Absent when only this trip's own store prices the whole basket.
+            if (storeCosts.isNotEmpty()) {
+                HorizontalDivider()
+                StoreCostComparison(storeCosts)
+            }
             HorizontalDivider()
         }
         items(trip.items, key = { it.id }) { item ->
@@ -223,6 +233,68 @@ private fun TripSummary(
             Spacer(modifier = Modifier.width(8.dp))
             Text(text = stringResource(R.string.history_buy_again))
         }
+    }
+}
+
+/** The same basket at every store that stocks all of it, cheapest first. */
+@Composable
+private fun StoreCostComparison(costs: List<StoreBasketCost>, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.history_detail_cost_elsewhere),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        costs.forEachIndexed { index, cost ->
+            StoreCostRow(cost = cost, isCheapest = index == 0)
+        }
+    }
+}
+
+@Composable
+private fun StoreCostRow(cost: StoreBasketCost, isCheapest: Boolean) {
+    // Rounded to cents first: a sub-cent difference reads as "same", not "$0.00 less".
+    val rounded = (cost.difference * 100).roundToInt()
+    val difference = when {
+        rounded > 0 -> stringResource(
+            R.string.history_detail_cost_cheaper,
+            formatPrice(cost.difference),
+        )
+
+        rounded < 0 -> stringResource(
+            R.string.history_detail_cost_dearer,
+            formatPrice(-cost.difference),
+        )
+
+        else -> stringResource(R.string.history_detail_cost_same)
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = cost.storeName,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isCheapest) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+            )
+            Text(
+                text = difference,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(text = formatPrice(cost.cost), style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -329,6 +401,7 @@ private fun PurchaseTripDetailContentPreview() {
         PurchaseTripDetailContent(
             trip = trip,
             selectedProductIds = trip.items.map { it.productId }.toSet(),
+            storeCosts = previewStoreCosts,
             onItemToggled = {},
             onItemClick = {},
             onBuyAgainClick = {},
@@ -352,12 +425,21 @@ private fun PurchaseTripDetailContentUnknownStorePreview() {
             trip = trip,
             // Only the first item ticked, to show both checkbox states.
             selectedProductIds = setOf(trip.items.first().productId),
+            // No store prices the whole basket, so the comparison is absent.
+            storeCosts = emptyList(),
             onItemToggled = {},
             onItemClick = {},
             onBuyAgainClick = {},
         )
     }
 }
+
+/** Cheapest first, spanning cheaper / same / dearer than the trip cost. */
+private val previewStoreCosts = listOf(
+    StoreBasketCost("s-2", "ALDI", 40.20, 2.12),
+    StoreBasketCost("s-3", "Publix", 42.32, 0.0),
+    StoreBasketCost("s-1", "Whole Foods", 44.44, -2.12),
+)
 
 @Preview(showBackground = true, name = "Trip not found")
 @Composable

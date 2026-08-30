@@ -18,15 +18,18 @@ import androidx.compose.ui.unit.dp
 /**
  * The centered empty / error / not-found message both history screens fall back to,
  * with an optional action button.
+ *
+ * Fills its parent by default; callers placing it inside a lazy item pass their own
+ * bounds instead, since height is unbounded there.
  */
 @Composable
 internal fun HistoryMessage(
     message: String,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.fillMaxSize(),
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
 ) {
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier) {
         Column(
             modifier = Modifier.align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally,

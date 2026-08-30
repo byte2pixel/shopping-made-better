@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
@@ -38,6 +39,7 @@ import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.history.domain.HistoryDatePreset
 import com.fullsail.shoppingmadebetter.feature.history.domain.HistoryFilter
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTripSummary
+import com.fullsail.shoppingmadebetter.feature.history.domain.SpendSummary
 import com.fullsail.shoppingmadebetter.feature.history.domain.isActive
 import com.fullsail.shoppingmadebetter.feature.stores.domain.Store
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
@@ -61,11 +63,15 @@ fun HistoryScreen(
     val filter by viewModel.filter.collectAsStateWithLifecycle()
     val selectedPreset by viewModel.selectedDatePreset.collectAsStateWithLifecycle()
     val searchInput by viewModel.searchInput.collectAsStateWithLifecycle()
+    val spendSummary by viewModel.spendSummary.collectAsStateWithLifecycle()
 
     // Re-fetch on every entry so a trip completed on the shopping-list tab shows up
     // without restarting the app. Already-loaded pages stay on screen while the
     // refresh runs, so this doesn't flash a spinner over a populated list.
-    LaunchedEffect(Unit) { trips.refresh() }
+    LaunchedEffect(Unit) {
+        trips.refresh()
+        viewModel.refreshSummary()
+    }
 
     HistoryContent(
         trips = trips,
@@ -73,6 +79,7 @@ fun HistoryScreen(
         filter = filter,
         selectedPreset = selectedPreset,
         searchInput = searchInput,
+        spendSummary = spendSummary,
         onSearchChange = viewModel::setSearch,
         onToggleStore = viewModel::toggleStore,
         onSelectPreset = viewModel::selectDatePreset,
@@ -90,6 +97,7 @@ private fun HistoryContent(
     filter: HistoryFilter,
     selectedPreset: HistoryDatePreset?,
     searchInput: String,
+    spendSummary: SpendSummary?,
     onSearchChange: (String) -> Unit,
     onToggleStore: (String) -> Unit,
     onSelectPreset: (HistoryDatePreset) -> Unit,
@@ -137,53 +145,83 @@ private fun HistoryContent(
             // message up without this screen having to learn about it.
             isFiltered = filter.isActive,
             isRefiltering = isRefreshingAfterFirstLoad,
+            // Unfiltered, so it still shows over a "no matches" list.
+            spendSummary = spendSummary?.takeUnless { it.isEmpty },
             onTripClick = onTripClick,
         )
     }
 }
 
+/**
+ * The insights and the trip list in one scroller, so the cards greet the user on
+ * entry and scroll away as they browse. The empty and error states are items too,
+ * since the insights sit above them and are not filtered.
+ */
 @Composable
 private fun HistoryList(
     trips: LazyPagingItems<PurchaseTripSummary>,
     isFiltered: Boolean,
     isRefiltering: Boolean,
+    spendSummary: SpendSummary?,
     onTripClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val refreshState = trips.loadState.refresh
     val isEmpty = trips.itemCount == 0
 
-    Box(modifier = modifier.fillMaxSize()) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (spendSummary != null) {
+            item(key = INSIGHTS_KEY) {
+                SpendInsightsSection(summary = spendSummary, modifier = Modifier.animateItem())
+            }
+        }
+
         when {
-            // A re-filter in flight says nothing yet
+            // A re-filter in flight says nothing yet.
             isEmpty && isRefiltering -> Unit
 
-            // Loading and Error only take over the screen when there is nothing to
-            // show yet. Once trips are loaded they stay put through a background
-            // refresh, failed or not — same rule the pre-paging screen followed.
-            isEmpty && refreshState is LoadState.Loading -> CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.Center),
-            )
+            // Loading and Error only take over when there is nothing to show yet.
+            // Once trips are loaded they stay put through a background refresh,
+            // failed or not.
+            isEmpty && refreshState is LoadState.Loading -> item(key = STATE_KEY) {
+                Box(
+                    modifier = stateBounds(alone = spendSummary == null),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
 
-            isEmpty && refreshState is LoadState.Error -> HistoryMessage(
-                message = stringResource(R.string.history_error),
-                actionLabel = stringResource(R.string.history_retry),
-                onAction = trips::retry,
-            )
+            isEmpty && refreshState is LoadState.Error -> item(key = STATE_KEY) {
+                HistoryMessage(
+                    message = stringResource(R.string.history_error),
+                    modifier = stateBounds(alone = spendSummary == null),
+                    actionLabel = stringResource(R.string.history_retry),
+                    onAction = trips::retry,
+                )
+            }
 
             // An empty list means two different things, and the filter is what
             // tells them apart: nothing bought yet, or nothing matching.
-            isEmpty && isFiltered -> HistoryMessage(
-                message = stringResource(R.string.history_no_matches),
-            )
+            isEmpty && isFiltered -> item(key = STATE_KEY) {
+                HistoryMessage(
+                    message = stringResource(R.string.history_no_matches),
+                    modifier = stateBounds(alone = spendSummary == null),
+                )
+            }
 
-            isEmpty -> HistoryMessage(message = stringResource(R.string.history_empty))
+            isEmpty -> item(key = STATE_KEY) {
+                HistoryMessage(
+                    message = stringResource(R.string.history_empty),
+                    modifier = stateBounds(alone = spendSummary == null),
+                )
+            }
 
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
+            else -> {
                 items(
                     count = trips.itemCount,
                     key = trips.itemKey { it.id },
@@ -212,6 +250,21 @@ private fun HistoryList(
             }
         }
     }
+}
+
+/**
+ * Bounds for an empty / loading / error item. Takes the viewport only when it is
+ * alone on it — under the insight cards it sits directly below them instead, since
+ * a lazy item's height is otherwise unbounded.
+ */
+private fun LazyItemScope.stateBounds(alone: Boolean): Modifier = if (alone) {
+    Modifier
+        .fillMaxWidth()
+        .fillParentMaxHeight()
+} else {
+    Modifier
+        .fillMaxWidth()
+        .padding(vertical = 32.dp)
 }
 
 /** The "loading the next page" footer under the last card. */
@@ -246,6 +299,10 @@ private fun AppendError(onRetry: () -> Unit) {
 }
 
 private const val APPEND_FOOTER_KEY = "history-append-footer"
+private const val INSIGHTS_KEY = "history-insights"
+
+/** One key for every empty/loading/error item; only one is ever present. */
+private const val STATE_KEY = "history-list-state"
 
 /**
  * A pager for previews: [trips] already loaded, with [refresh] and [append] load
@@ -272,6 +329,7 @@ private fun HistoryContentPreviewHost(
     stores: List<Store> = previewStores,
     filter: HistoryFilter = HistoryFilter(),
     selectedPreset: HistoryDatePreset? = null,
+    spendSummary: SpendSummary? = previewSummary(),
 ) {
     ShoppingMadeBetterTheme {
         HistoryContent(
@@ -280,6 +338,7 @@ private fun HistoryContentPreviewHost(
             filter = filter,
             selectedPreset = selectedPreset,
             searchInput = filter.search,
+            spendSummary = spendSummary,
             onSearchChange = {},
             onToggleStore = {},
             onSelectPreset = {},
@@ -333,12 +392,14 @@ private fun HistoryContentAppendErrorPreview() {
 @Preview(showBackground = true, name = "No purchases yet")
 @Composable
 private fun HistoryContentEmptyPreview() {
-    HistoryContentPreviewHost(previewPager())
+    // No history means no insights either, so the section is absent.
+    HistoryContentPreviewHost(previewPager(), spendSummary = null)
 }
 
 @Preview(showBackground = true, name = "Filtered, no matches")
 @Composable
 private fun HistoryContentNoMatchesPreview() {
+    // The insights are unfiltered, so they stay put over the "no matches" message.
     HistoryContentPreviewHost(
         previewPager(),
         filter = HistoryFilter(storeIds = setOf("s-2")),
