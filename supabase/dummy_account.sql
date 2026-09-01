@@ -223,3 +223,26 @@ join picked p
   on p.store_id = t.store_id
  and now() - make_interval(days => p.days_ago) = t.purchased_at
 join public.products pr on pr.id = p.product_id;
+
+-- 6) Pantry <-> history alignment. Sections 3 and 5 pick disjoint product
+--    sets, so no pantry lot would get a consumption rate and the nightly
+--    adjustment job would have nothing visible to do. Add three pantry
+--    staples to the two ALDI trips 93 days apart; the estimator then derives
+--    a history rate of (4 - 2) / 93 = 0.0215/day for each, and the apply run
+--    visibly adjusts those lots. Idempotent because section 5 recreates
+--    purchase_history (items cascade) on every run.
+insert into public.purchase_history_items
+  (purchase_id, product_id, quantity, price_paid, added_to_inventory)
+select ph.id, p.id, v.qty, v.price, true
+from (values
+  ('21125083_EA',  3, 2, 2.49),  -- Mac & Cheese Sauce
+  ('21125083_EA', 96, 2, 2.49),
+  ('21219491_EA',  3, 2, 4.99),  -- Peanut Butter
+  ('21219491_EA', 96, 2, 4.99),
+  ('21535597_EA',  3, 2, 3.29),  -- Jasmine Rice pouch
+  ('21535597_EA', 96, 2, 3.29)
+) as v(source_product_id, days_ago, qty, price)
+join public.products p on p.source_product_id = v.source_product_id
+join public.purchase_history ph
+  on ph.user_id = '11111111-1111-1111-1111-111111111111'
+ and ph.purchased_at::date = current_date - v.days_ago;
