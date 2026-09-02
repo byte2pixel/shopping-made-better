@@ -11,5 +11,9 @@ data class MealDto(
     @SerialName("item_count") val itemCount: Int,
     @SerialName("total_price") val totalPrice: String,
     @SerialName("category") val category: String,
-    @SerialName("image_url") val imageUrl: String? = null
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("calories") val calories: String? = null,
+    @SerialName("protein") val protein: String? = null,
+    @SerialName("carbs") val carbs: String? = null,
+    @SerialName("fat") val fat: String? = null
 )
