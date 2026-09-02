@@ -134,4 +134,18 @@ class MealsRepositoryImpl @Inject constructor(
             println("Supabase Error adding meal to list: ${e.message}")
         }
     }
+
+    override suspend fun toggleFavoriteMeal(mealId: String, isFavorite: Boolean) {
+        try {
+            if (isFavorite) {
+
+                supabaseClient.postgrest["favorite_meals"].insert(mapOf("meal_id" to mealId))
+            } else {
+
+                supabaseClient.postgrest["favorite_meals"].delete { filter { eq("meal_id", mealId) } }
+            }
+        } catch (e: Exception) {
+            println("Supabase Error toggling favorite: ${e.message}")
+        }
+    }
 }
