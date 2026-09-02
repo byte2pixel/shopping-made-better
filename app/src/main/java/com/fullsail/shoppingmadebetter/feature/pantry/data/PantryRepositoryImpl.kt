@@ -4,6 +4,8 @@ import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import javax.inject.Inject
 
 class PantryRepositoryImpl @Inject constructor(
@@ -54,4 +56,19 @@ class PantryRepositoryImpl @Inject constructor(
             }
             Unit
         }
+
+    override suspend fun applyInventoryAdjustment(
+        id: String,
+        delta: Int,
+        reason: String,
+    ): InventoryAdjustmentResultDto = withContext(Dispatchers.IO) {
+        postgrest.rpc(
+            "apply_inventory_adjustment",
+            buildJsonObject {
+                put("p_inventory_item_id", id)
+                put("p_delta", delta)
+                put("p_reason", reason)
+            },
+        ).decodeSingle<InventoryAdjustmentResultDto>()
+    }
 }
