@@ -3,6 +3,7 @@ package com.fullsail.shoppingmadebetter.feature.meals.ui
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -35,7 +36,8 @@ fun MealDetailsScreen(
     viewModel: MealsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val meal = (uiState as? MealsUiState.Success)?.meals?.find { it.id == mealId }
+    val successState = uiState as? MealsUiState.Success
+    val meal = successState?.meals?.find { it.id == mealId }
     val matchPercentage = meal?.matchPercentage ?: 0
     val categoryName = meal?.category ?: "Loading..."
     var isFavorite by remember { mutableStateOf(false) }
@@ -232,6 +234,51 @@ fun MealDetailsScreen(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "You Might Also Like",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.Start)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val relatedMeals = successState?.meals?.filter { it.id != mealId } ?: emptyList()
+            if (relatedMeals.isEmpty()) {
+                MealEmptyState(message = "No other recipes available.")
+            } else {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(relatedMeals.size) { index ->
+                        val relatedMeal = relatedMeals[index]
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier
+                                .width(140.dp)
+                                .height(90.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(8.dp),
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = relatedMeal.title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 2
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -267,7 +314,7 @@ private fun MealEmptyState(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 32.dp),
+            .padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -277,7 +324,7 @@ private fun MealEmptyState(
             fontWeight = FontWeight.Bold,
             color = Color.Gray
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
