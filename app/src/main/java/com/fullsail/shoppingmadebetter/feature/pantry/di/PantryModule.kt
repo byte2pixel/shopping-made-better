@@ -4,6 +4,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryPreferencesRepo
 import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryPreferencesRepositoryImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryRepositoryImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryRepository
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
@@ -72,4 +74,9 @@ abstract class PantryModule {
     abstract fun bindUpdateInventoryLowStockThresholdUseCase(
         impl: UpdateInventoryLowStockThresholdUseCaseImpl,
     ): UpdateInventoryLowStockThresholdUseCase
+
+    @Binds
+    abstract fun bindApplyInventoryAdjustmentUseCase(
+        impl: ApplyInventoryAdjustmentUseCaseImpl,
+    ): ApplyInventoryAdjustmentUseCase
 }

@@ -26,4 +26,12 @@ interface PantryRepository {
      * survives removing and re-adding the product. RLS scopes it to the current user.
      */
     suspend fun updateLowStockThreshold(productId: String, threshold: Int?)
+
+    /**
+     * Applies the signed [delta] to the quantity on inventory row [id] via the
+     * `apply_inventory_adjustment` RPC, which floors at zero, stamps the lot and writes the
+     * audit row under the raw db [reason] ('auto'|'manual'|'confirmed'|'undo'|'dismissed').
+     * RLS scopes it to the current user.
+     */
+    suspend fun applyInventoryAdjustment(id: String, delta: Int, reason: String): InventoryAdjustmentResultDto
 }

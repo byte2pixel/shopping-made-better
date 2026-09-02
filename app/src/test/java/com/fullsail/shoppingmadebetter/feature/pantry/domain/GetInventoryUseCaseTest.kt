@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.domain
 
+import com.fullsail.shoppingmadebetter.feature.pantry.data.InventoryAdjustmentResultDto
 import com.fullsail.shoppingmadebetter.feature.pantry.data.InventoryItemDto
 import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryRepository
 import kotlinx.coroutines.test.runTest
@@ -41,6 +42,9 @@ class GetInventoryUseCaseTest {
         override suspend fun updateExpiry(id: String, expiresAt: LocalDate) = Unit
 
         override suspend fun updateLowStockThreshold(productId: String, threshold: Int?) = Unit
+
+        override suspend fun applyInventoryAdjustment(id: String, delta: Int, reason: String) =
+            InventoryAdjustmentResultDto(inventoryItemId = id, delta = 0.0, newQuantity = 0.0)
     }
 
     private val fixedClock = object : Clock {
