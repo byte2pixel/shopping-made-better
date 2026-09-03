@@ -3,6 +3,9 @@ package com.fullsail.shoppingmadebetter.feature.pantry.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.core.ui.ShoppingListPickerState
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentReason
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustment
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
@@ -16,8 +19,6 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLoca
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
-import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
-import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
@@ -85,7 +86,7 @@ class PantryViewModel @Inject constructor(
     private val deleteInventoryItemUseCase: DeleteInventoryItemUseCase,
     private val getSkipRemoveConfirmationUseCase: GetSkipRemoveConfirmationUseCase,
     private val setSkipRemoveConfirmationUseCase: SetSkipRemoveConfirmationUseCase,
-    private val updateInventoryQuantityUseCase: UpdateInventoryQuantityUseCase,
+    private val applyInventoryAdjustmentUseCase: ApplyInventoryAdjustmentUseCase,
     private val updateInventoryLocationUseCase: UpdateInventoryLocationUseCase,
     private val updateInventoryExpiryUseCase: UpdateInventoryExpiryUseCase,
     private val updateInventoryLowStockThresholdUseCase: UpdateInventoryLowStockThresholdUseCase,
@@ -246,19 +247,44 @@ class PantryViewModel @Inject constructor(
     }
 
     /**
-     * Optimistically sets [item]'s quantity to [newQuantity] in the list, persists it,
-     * and reverts with a snackbar if the save fails. No-op when the value is unchanged.
+     * Persists a manual quantity edit as an audit-tracked `manual` adjustment.
+     * No-op when the value is unchanged.
      */
     fun onQuantityChanged(item: InventoryItem, newQuantity: Int) {
         if (newQuantity == item.quantity) return
-        updateLotInState(item.id) { it.copy(quantity = newQuantity) }
+        applyAdjustment(item, newQuantity, AdjustmentReason.Manual)
+    }
+
+    /** Confirms [item]'s auto-adjusted quantity as-is (a zero-delta `confirmed` adjustment). */
+    fun onConfirmEstimate(item: InventoryItem) {
+        applyAdjustment(item, item.quantity, AdjustmentReason.Confirmed)
+    }
+
+    /** Replaces [item]'s auto-adjusted quantity with the user's count as a `confirmed` adjustment. */
+    fun onCorrectEstimate(item: InventoryItem, newQuantity: Int) {
+        applyAdjustment(item, newQuantity, AdjustmentReason.Confirmed)
+    }
+
+    /**
+     * Optimistically sets [item]'s quantity to [newQuantity] and clears its estimated
+     * marker (any adjustment supersedes the `auto` audit row), persists the change with
+     * [reason], and reverts with a snackbar if the save fails. On success the quantity
+     * reconciles to what the backend applied, since it floors at zero.
+     */
+    private fun applyAdjustment(item: InventoryItem, newQuantity: Int, reason: AdjustmentReason) {
+        updateLotInState(item.id) { it.copy(quantity = newQuantity, estimated = false) }
         viewModelScope.launch {
-            val out = updateInventoryQuantityUseCase.execute(
-                UpdateInventoryQuantity(item.id, newQuantity),
+            val out = applyInventoryAdjustmentUseCase.execute(
+                ApplyInventoryAdjustment(item.id, newQuantity - item.quantity, reason),
             )
-            if (out is UpdateInventoryQuantityUseCase.Output.Failure) {
-                updateLotInState(item.id) { item }
-                _events.send(PantryEvent.UpdateFailed(item.name))
+            when (out) {
+                is ApplyInventoryAdjustmentUseCase.Output.Success ->
+                    updateLotInState(item.id) { it.copy(quantity = out.newQuantity) }
+
+                is ApplyInventoryAdjustmentUseCase.Output.Failure -> {
+                    updateLotInState(item.id) { item }
+                    _events.send(PantryEvent.UpdateFailed(item.name))
+                }
             }
         }
     }

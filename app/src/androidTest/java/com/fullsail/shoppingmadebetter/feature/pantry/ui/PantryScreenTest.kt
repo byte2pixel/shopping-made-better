@@ -7,13 +7,18 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.espresso.Espresso
 import com.fullsail.shoppingmadebetter.R
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentReason
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustment
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.EstimateSource
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
@@ -24,8 +29,6 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLoca
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
-import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
-import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.groupInventoryByProduct
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
@@ -101,11 +104,14 @@ class PantryScreenTest {
         }
     }
 
-    private class FakeUpdateInventoryQuantityUseCase(
-        var output: UpdateInventoryQuantityUseCase.Output = UpdateInventoryQuantityUseCase.Output.Success,
-    ) : UpdateInventoryQuantityUseCase {
-        var lastInput: UpdateInventoryQuantity? = null
-        override suspend fun execute(input: UpdateInventoryQuantity): UpdateInventoryQuantityUseCase.Output {
+    private class FakeApplyInventoryAdjustmentUseCase(
+        var output: ApplyInventoryAdjustmentUseCase.Output =
+            ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 0, appliedDelta = 0),
+    ) : ApplyInventoryAdjustmentUseCase {
+        var lastInput: ApplyInventoryAdjustment? = null
+        override suspend fun execute(
+            input: ApplyInventoryAdjustment,
+        ): ApplyInventoryAdjustmentUseCase.Output {
             lastInput = input
             return output
         }
@@ -217,7 +223,7 @@ class PantryScreenTest {
         deleteInventory: DeleteInventoryItemUseCase = FakeDeleteInventoryItemUseCase(),
         getSkip: GetSkipRemoveConfirmationUseCase = FakeGetSkipRemoveConfirmationUseCase(),
         setSkip: SetSkipRemoveConfirmationUseCase = FakeSetSkipRemoveConfirmationUseCase(),
-        updateQuantity: UpdateInventoryQuantityUseCase = FakeUpdateInventoryQuantityUseCase(),
+        applyAdjustment: ApplyInventoryAdjustmentUseCase = FakeApplyInventoryAdjustmentUseCase(),
         updateLocation: UpdateInventoryLocationUseCase = FakeUpdateInventoryLocationUseCase(),
         updateExpiry: UpdateInventoryExpiryUseCase = FakeUpdateInventoryExpiryUseCase(),
         updateThreshold: UpdateInventoryLowStockThresholdUseCase =
@@ -225,7 +231,7 @@ class PantryScreenTest {
         onProductClick: (String) -> Unit = {},
     ) {
         val viewModel = PantryViewModel(
-            inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, updateQuantity,
+            inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, applyAdjustment,
             updateLocation, updateExpiry, updateThreshold,
         )
         composeTestRule.setContent {
@@ -338,11 +344,13 @@ class PantryScreenTest {
 
     @Test
     fun lotQuantityEditsCommitAgainstThatLot() {
-        val updateQuantity = FakeUpdateInventoryQuantityUseCase()
+        val applyAdjustment = FakeApplyInventoryAdjustmentUseCase(
+            ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 4, appliedDelta = 1)
+        )
         val secondLot = milk.copy(id = "i9", quantity = 3, expiresInDays = 5)
         setScreen(
             inventory = FakeGetInventoryUseCase(inventoryOf(milk, secondLot)),
-            updateQuantity = updateQuantity,
+            applyAdjustment = applyAdjustment,
         )
         toggleCard("2% Milk")
 
@@ -356,7 +364,89 @@ class PantryScreenTest {
         Espresso.pressBack()
         composeTestRule.waitForIdle()
 
-        assertEquals(UpdateInventoryQuantity(id = "i9", quantity = 4), updateQuantity.lastInput)
+        assertEquals(
+            ApplyInventoryAdjustment(id = "i9", delta = 1, reason = AdjustmentReason.Manual),
+            applyAdjustment.lastInput,
+        )
+    }
+
+    @Test
+    fun onlyAnEstimatedLotShowsTheEstChip() {
+        val estimatedMilk = milk.copy(estimated = true, estimateSource = EstimateSource.History)
+        setScreen(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedMilk, expiringYogurt)),
+        )
+        toggleCard("2% Milk")
+        toggleCard("Yogurt")
+
+        // One est. chip across both expanded cards: the yogurt lot is not estimated.
+        composeTestRule
+            .onAllNodesWithContentDescription(string(R.string.pantry_estimate_desc_history))
+            .assertCountEquals(1)
+        composeTestRule
+            .onAllNodesWithText(string(R.string.pantry_estimate_chip))
+            .assertCountEquals(1)
+    }
+
+    @Test
+    fun confirmingAnEstimateCommitsAZeroDeltaConfirmedAdjustment() {
+        val applyAdjustment = FakeApplyInventoryAdjustmentUseCase(
+            ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 2, appliedDelta = 0)
+        )
+        val estimatedMilk = milk.copy(estimated = true, estimateSource = EstimateSource.ShelfLife)
+        setScreen(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedMilk)),
+            applyAdjustment = applyAdjustment,
+        )
+        toggleCard("2% Milk")
+
+        // Tapping the est. chip reveals the inline check; Yes confirms as-is.
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_estimate_desc_shelf_life))
+            .performClick()
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_estimate_confirm_question, 2))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText(string(R.string.pantry_estimate_confirm_yes)).performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals(
+            ApplyInventoryAdjustment(id = "i1", delta = 0, reason = AdjustmentReason.Confirmed),
+            applyAdjustment.lastInput,
+        )
+        // The confirmed lot no longer reads as estimated.
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_estimate_desc_shelf_life))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun fixingAnEstimateCommitsTheCorrectedCountAsConfirmed() {
+        val applyAdjustment = FakeApplyInventoryAdjustmentUseCase(
+            ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 3, appliedDelta = 1)
+        )
+        val estimatedMilk = milk.copy(estimated = true, estimateSource = EstimateSource.History)
+        setScreen(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedMilk)),
+            applyAdjustment = applyAdjustment,
+        )
+        toggleCard("2% Milk")
+
+        // Fix opens the stepper; bump once and dismiss to commit as 'confirmed'.
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_estimate_desc_history))
+            .performClick()
+        composeTestRule.onNodeWithText(string(R.string.pantry_estimate_confirm_fix)).performClick()
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_quantity_increase))
+            .performClick()
+        Espresso.pressBack()
+        composeTestRule.waitForIdle()
+
+        assertEquals(
+            ApplyInventoryAdjustment(id = "i1", delta = 1, reason = AdjustmentReason.Confirmed),
+            applyAdjustment.lastInput,
+        )
     }
 
     @Test

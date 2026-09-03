@@ -1,7 +1,11 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
 import com.fullsail.shoppingmadebetter.core.ui.ShoppingListPickerState
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentReason
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustment
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.EstimateSource
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
@@ -13,8 +17,6 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLoca
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
-import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantity
-import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.groupInventoryByProduct
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
@@ -121,12 +123,15 @@ class PantryViewModelTest {
         }
     }
 
-    /** Fake quantity-update use case: records its input and returns a settable [output]. */
-    private class FakeUpdateInventoryQuantityUseCase(
-        var output: UpdateInventoryQuantityUseCase.Output = UpdateInventoryQuantityUseCase.Output.Success,
-    ) : UpdateInventoryQuantityUseCase {
-        var lastInput: UpdateInventoryQuantity? = null
-        override suspend fun execute(input: UpdateInventoryQuantity): UpdateInventoryQuantityUseCase.Output {
+    /** Fake adjustment use case: records its input and returns a settable [output]. */
+    private class FakeApplyInventoryAdjustmentUseCase(
+        var output: ApplyInventoryAdjustmentUseCase.Output =
+            ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 0, appliedDelta = 0),
+    ) : ApplyInventoryAdjustmentUseCase {
+        var lastInput: ApplyInventoryAdjustment? = null
+        override suspend fun execute(
+            input: ApplyInventoryAdjustment,
+        ): ApplyInventoryAdjustmentUseCase.Output {
             lastInput = input
             return output
         }
@@ -197,13 +202,13 @@ class PantryViewModelTest {
         deleteInventory: FakeDeleteInventoryItemUseCase = FakeDeleteInventoryItemUseCase(),
         getSkip: FakeGetSkipRemoveConfirmationUseCase = FakeGetSkipRemoveConfirmationUseCase(),
         setSkip: FakeSetSkipRemoveConfirmationUseCase = FakeSetSkipRemoveConfirmationUseCase(),
-        updateQuantity: FakeUpdateInventoryQuantityUseCase = FakeUpdateInventoryQuantityUseCase(),
+        applyAdjustment: FakeApplyInventoryAdjustmentUseCase = FakeApplyInventoryAdjustmentUseCase(),
         updateLocation: FakeUpdateInventoryLocationUseCase = FakeUpdateInventoryLocationUseCase(),
         updateExpiry: FakeUpdateInventoryExpiryUseCase = FakeUpdateInventoryExpiryUseCase(),
         updateThreshold: FakeUpdateInventoryLowStockThresholdUseCase =
             FakeUpdateInventoryLowStockThresholdUseCase(),
     ) = PantryViewModel(
-        inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, updateQuantity,
+        inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, applyAdjustment,
         updateLocation, updateExpiry, updateThreshold,
     )
 
@@ -595,29 +600,51 @@ class PantryViewModelTest {
     }
 
     @Test
-    fun `onQuantityChanged updates the item in place and persists the new quantity`() = runTest {
-        val update = FakeUpdateInventoryQuantityUseCase()
+    fun `onQuantityChanged updates the item in place and persists a manual adjustment`() = runTest {
+        val update = FakeApplyInventoryAdjustmentUseCase(
+            ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 5, appliedDelta = 3)
+        )
         val viewModel = buildViewModel(
             inventory = FakeGetInventoryUseCase(inventoryOf(sampleItem)),
-            updateQuantity = update,
+            applyAdjustment = update,
         )
 
         viewModel.onQuantityChanged(sampleItem, newQuantity = 5)
 
-        // The list reflects the new quantity immediately and the id/value are persisted.
+        // The list reflects the new quantity immediately; the delta persists as 'manual'.
         val items = (viewModel.uiState.value as PantryUiState.Success).lots
         assertEquals(5, items.single().quantity)
-        assertEquals(UpdateInventoryQuantity(id = "i1", quantity = 5), update.lastInput)
+        assertEquals(
+            ApplyInventoryAdjustment(id = "i1", delta = 3, reason = AdjustmentReason.Manual),
+            update.lastInput,
+        )
+    }
+
+    @Test
+    fun `onQuantityChanged reconciles to the quantity the backend applied`() = runTest {
+        // The RPC floors at zero, so the applied quantity can differ from the request.
+        val update = FakeApplyInventoryAdjustmentUseCase(
+            ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 0, appliedDelta = -2)
+        )
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(sampleItem)),
+            applyAdjustment = update,
+        )
+
+        viewModel.onQuantityChanged(sampleItem, newQuantity = 0)
+
+        val items = (viewModel.uiState.value as PantryUiState.Success).lots
+        assertEquals(0, items.single().quantity)
     }
 
     @Test
     fun `onQuantityChanged reverts and emits UpdateFailed when the save fails`() = runTest {
-        val update = FakeUpdateInventoryQuantityUseCase(
-            UpdateInventoryQuantityUseCase.Output.Failure(IOException("boom"))
+        val update = FakeApplyInventoryAdjustmentUseCase(
+            ApplyInventoryAdjustmentUseCase.Output.Failure(IOException("boom"))
         )
         val viewModel = buildViewModel(
             inventory = FakeGetInventoryUseCase(inventoryOf(sampleItem)),
-            updateQuantity = update,
+            applyAdjustment = update,
         )
 
         viewModel.onQuantityChanged(sampleItem, newQuantity = 5)
@@ -636,6 +663,9 @@ class PantryViewModelTest {
         val lotB = sampleItem.copy(id = "b", quantity = 3)
         val viewModel = buildViewModel(
             inventory = FakeGetInventoryUseCase(inventoryOf(lotA, lotB)),
+            applyAdjustment = FakeApplyInventoryAdjustmentUseCase(
+                ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 7, appliedDelta = 4)
+            ),
         )
 
         viewModel.onQuantityChanged(lotB, newQuantity = 7)
@@ -649,15 +679,93 @@ class PantryViewModelTest {
 
     @Test
     fun `onQuantityChanged does nothing when the quantity is unchanged`() = runTest {
-        val update = FakeUpdateInventoryQuantityUseCase()
+        val update = FakeApplyInventoryAdjustmentUseCase()
         val viewModel = buildViewModel(
             inventory = FakeGetInventoryUseCase(inventoryOf(sampleItem)),
-            updateQuantity = update,
+            applyAdjustment = update,
         )
 
         viewModel.onQuantityChanged(sampleItem, newQuantity = sampleItem.quantity)
 
         assertNull(update.lastInput)
+    }
+
+    @Test
+    fun `onQuantityChanged clears the estimated marker`() = runTest {
+        val estimatedItem = sampleItem.copy(estimated = true, estimateSource = EstimateSource.History)
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedItem)),
+            applyAdjustment = FakeApplyInventoryAdjustmentUseCase(
+                ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 5, appliedDelta = 3)
+            ),
+        )
+
+        viewModel.onQuantityChanged(estimatedItem, newQuantity = 5)
+
+        val items = (viewModel.uiState.value as PantryUiState.Success).lots
+        assertTrue(items.none { it.estimated })
+    }
+
+    @Test
+    fun `onConfirmEstimate persists a zero-delta confirmed adjustment and clears the marker`() = runTest {
+        val estimatedItem = sampleItem.copy(estimated = true, estimateSource = EstimateSource.History)
+        val update = FakeApplyInventoryAdjustmentUseCase(
+            ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 2, appliedDelta = 0)
+        )
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedItem)),
+            applyAdjustment = update,
+        )
+
+        viewModel.onConfirmEstimate(estimatedItem)
+
+        assertEquals(
+            ApplyInventoryAdjustment(id = "i1", delta = 0, reason = AdjustmentReason.Confirmed),
+            update.lastInput,
+        )
+        val lot = (viewModel.uiState.value as PantryUiState.Success).lots.single()
+        assertEquals(estimatedItem.quantity, lot.quantity)
+        assertTrue(!lot.estimated)
+    }
+
+    @Test
+    fun `onCorrectEstimate persists the delta as confirmed and updates the quantity`() = runTest {
+        val estimatedItem = sampleItem.copy(estimated = true, estimateSource = EstimateSource.ShelfLife)
+        val update = FakeApplyInventoryAdjustmentUseCase(
+            ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 4, appliedDelta = 2)
+        )
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedItem)),
+            applyAdjustment = update,
+        )
+
+        viewModel.onCorrectEstimate(estimatedItem, newQuantity = 4)
+
+        assertEquals(
+            ApplyInventoryAdjustment(id = "i1", delta = 2, reason = AdjustmentReason.Confirmed),
+            update.lastInput,
+        )
+        val lot = (viewModel.uiState.value as PantryUiState.Success).lots.single()
+        assertEquals(4, lot.quantity)
+        assertTrue(!lot.estimated)
+    }
+
+    @Test
+    fun `onConfirmEstimate reverts the marker and emits UpdateFailed when the save fails`() = runTest {
+        val estimatedItem = sampleItem.copy(estimated = true, estimateSource = EstimateSource.History)
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedItem)),
+            applyAdjustment = FakeApplyInventoryAdjustmentUseCase(
+                ApplyInventoryAdjustmentUseCase.Output.Failure(IOException("boom"))
+            ),
+        )
+
+        viewModel.onConfirmEstimate(estimatedItem)
+
+        // The lot still reads as estimated so the affordance survives the failure.
+        val lot = (viewModel.uiState.value as PantryUiState.Success).lots.single()
+        assertTrue(lot.estimated)
+        assertTrue(viewModel.events.first() is PantryEvent.UpdateFailed)
     }
 
     @Test
