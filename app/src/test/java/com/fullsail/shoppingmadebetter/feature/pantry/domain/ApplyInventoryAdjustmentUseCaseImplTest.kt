@@ -24,7 +24,6 @@ class ApplyInventoryAdjustmentUseCaseImplTest {
 
         override suspend fun getInventoryItems(): List<InventoryItemDto> = emptyList()
         override suspend fun deleteInventoryItem(id: String) = Unit
-        override suspend fun updateQuantity(id: String, quantity: Int) = Unit
         override suspend fun updateLocation(id: String, location: String) = Unit
         override suspend fun updateExpiry(id: String, expiresAt: LocalDate) = Unit
         override suspend fun updateLowStockThreshold(productId: String, threshold: Int?) = Unit

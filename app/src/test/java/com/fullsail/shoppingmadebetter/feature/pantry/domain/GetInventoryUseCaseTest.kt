@@ -11,6 +11,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.todayIn
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -34,8 +35,6 @@ class GetInventoryUseCaseTest {
             error?.let { throw it } ?: items
 
         override suspend fun deleteInventoryItem(id: String) = Unit
-
-        override suspend fun updateQuantity(id: String, quantity: Int) = Unit
 
         override suspend fun updateLocation(id: String, location: String) = Unit
 
@@ -151,6 +150,32 @@ class GetInventoryUseCaseTest {
             // Unrecognized -> Pantry.
             assertEquals(PantryLocation.Pantry, groups.getValue("p-unknown").lots.single().location)
         }
+
+    @Test
+    fun `execute marks a lot estimated only when its latest adjustment reason is auto`() = runTest {
+        val dtos = listOf(
+            dto("auto", null).copy(lastAdjustmentReason = "auto", estimateSource = "history"),
+            dto("confirmed", null).copy(lastAdjustmentReason = "confirmed", estimateSource = "shelf_life"),
+            dto("manual", null).copy(lastAdjustmentReason = "manual", estimateSource = "manual"),
+            dto("none", null),
+        )
+        val useCase = GetInventoryUseCaseImpl(FakePantryRepository(items = dtos), fixedClock)
+
+        val groups = useCase.execute(Unit).groupsByProduct()
+
+        val auto = groups.getValue("p-auto").lots.single()
+        assertTrue(auto.estimated)
+        assertEquals(EstimateSource.History, auto.estimateSource)
+        val confirmed = groups.getValue("p-confirmed").lots.single()
+        assertFalse(confirmed.estimated)
+        assertEquals(EstimateSource.ShelfLife, confirmed.estimateSource)
+        val manual = groups.getValue("p-manual").lots.single()
+        assertFalse(manual.estimated)
+        assertEquals(EstimateSource.Manual, manual.estimateSource)
+        val none = groups.getValue("p-none").lots.single()
+        assertFalse(none.estimated)
+        assertNull(none.estimateSource)
+    }
 
     @Test
     fun `execute groups repeat purchases of one product into a single group`() = runTest {

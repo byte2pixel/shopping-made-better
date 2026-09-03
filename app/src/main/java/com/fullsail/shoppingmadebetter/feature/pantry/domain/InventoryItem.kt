@@ -14,4 +14,7 @@ data class InventoryItem(
     val expiresInDays: Int?,
     val location: PantryLocation = PantryLocation.Pantry,
     val lowStockThreshold: Int? = null,
+    /** True when the quantity is an unconfirmed auto-adjustment estimate. */
+    val estimated: Boolean = false,
+    val estimateSource: EstimateSource? = null,
 )

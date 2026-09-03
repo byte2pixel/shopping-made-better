@@ -20,13 +20,6 @@ class PantryRepositoryImpl @Inject constructor(
         Unit
     }
 
-    override suspend fun updateQuantity(id: String, quantity: Int) = withContext(Dispatchers.IO) {
-        postgrest.from("inventory_items").update({ set("quantity", quantity) }) {
-            filter { eq("id", id) }
-        }
-        Unit
-    }
-
     override suspend fun updateLocation(id: String, location: String) = withContext(Dispatchers.IO) {
         postgrest.from("inventory_items").update({ set("location", location) }) {
             filter { eq("id", id) }

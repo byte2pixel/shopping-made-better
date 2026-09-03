@@ -49,6 +49,7 @@ import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.LabelChip
 import com.fullsail.shoppingmadebetter.core.ui.ProductImage
 import com.fullsail.shoppingmadebetter.core.ui.Stepper
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.EstimateSource
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.ProductGroup
@@ -168,6 +169,8 @@ private fun <T> expandSpring() = spring<T>(
  * @param onExpiryChange requests persisting a new shelf life (days from today) for one lot.
  * @param onLowStockThresholdChange requests persisting the product's low-stock threshold
  *   (`null` clears it).
+ * @param onConfirmEstimate confirms one lot's auto-adjusted quantity as-is.
+ * @param onCorrectEstimate replaces one lot's auto-adjusted quantity with the given count.
  */
 @Composable
 fun ProductCard(
@@ -181,6 +184,8 @@ fun ProductCard(
     onLocationChange: (InventoryItem, PantryLocation) -> Unit,
     onExpiryChange: (InventoryItem, Int) -> Unit,
     onLowStockThresholdChange: (Int?) -> Unit,
+    onConfirmEstimate: (InventoryItem) -> Unit,
+    onCorrectEstimate: (InventoryItem, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
@@ -215,6 +220,8 @@ fun ProductCard(
                             onQuantityChange = { newQuantity -> onQuantityChange(lot, newQuantity) },
                             onLocationChange = { newLocation -> onLocationChange(lot, newLocation) },
                             onExpiryChange = { newDays -> onExpiryChange(lot, newDays) },
+                            onConfirmEstimate = { onConfirmEstimate(lot) },
+                            onCorrectEstimate = { newQuantity -> onCorrectEstimate(lot, newQuantity) },
                         )
                     }
                 }
@@ -306,6 +313,8 @@ private fun ProductCardHeader(
  * One lot of the expanded card: the same quantity/location/expiry quick-action
  * chips as before, each committing against this lot, plus a per-lot remove.
  * Tapping the row itself (outside the chips) opens the product's detail screen.
+ * An auto-adjusted lot also shows an "est." chip that toggles an inline
+ * confirm-or-fix row underneath.
  */
 @Composable
 private fun LotRow(
@@ -315,33 +324,138 @@ private fun LotRow(
     onQuantityChange: (Int) -> Unit,
     onLocationChange: (PantryLocation) -> Unit,
     onExpiryChange: (Int) -> Unit,
+    onConfirmEstimate: () -> Unit,
+    onCorrectEstimate: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showEstimateConfirm by remember { mutableStateOf(false) }
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    onClickLabel = stringResource(R.string.pantry_card_lot_details),
+                    onClick = onClick,
+                )
+                .padding(start = 12.dp, end = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            LotQuantityChip(quantity = lot.quantity, onQuantityChange = onQuantityChange)
+            if (lot.estimated) {
+                EstimateChip(
+                    estimateSource = lot.estimateSource,
+                    onClick = { showEstimateConfirm = !showEstimateConfirm },
+                )
+            }
+            LocationChip(location = lot.location, onLocationChange = onLocationChange)
+            lot.expiresInDays?.let { days ->
+                ExpiryChip(
+                    bucket = expiryBucket(days),
+                    expiresInDays = days,
+                    onExpiryChange = onExpiryChange,
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            IconButton(onClick = onRemove) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_delete),
+                    contentDescription = stringResource(R.string.pantry_card_remove_lot),
+                )
+            }
+        }
+        AnimatedVisibility(visible = lot.estimated && showEstimateConfirm) {
+            EstimateConfirmRow(
+                quantity = lot.quantity,
+                onConfirm = {
+                    showEstimateConfirm = false
+                    onConfirmEstimate()
+                },
+                onCorrect = { newQuantity ->
+                    showEstimateConfirm = false
+                    onCorrectEstimate(newQuantity)
+                },
+            )
+        }
+    }
+}
+
+/**
+ * The "est." marker on an auto-adjusted lot. The label stays terse; the spoken
+ * description carries the estimate's basis. Tapping it toggles the lot's
+ * confirm-or-fix row.
+ */
+@Composable
+private fun EstimateChip(
+    estimateSource: EstimateSource?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LabelChip(
+        label = stringResource(R.string.pantry_estimate_chip),
+        accentColor = MaterialTheme.colorScheme.tertiary,
+        contentDescription = stringResource(
+            when (estimateSource) {
+                EstimateSource.History -> R.string.pantry_estimate_desc_history
+                EstimateSource.ShelfLife -> R.string.pantry_estimate_desc_shelf_life
+                else -> R.string.pantry_estimate_desc_generic
+            },
+        ),
+        onClick = onClick,
+        modifier = modifier,
+    )
+}
+
+/**
+ * The inline check under an estimated lot: "We estimated N left. Correct?".
+ * Yes confirms the number as-is via [onConfirm]; Fix opens the quantity stepper
+ * and commits the corrected count via [onCorrect] when the popup closes.
+ * Dismissing the popup unchanged commits nothing — that's a cancel, not a confirm.
+ */
+@Composable
+private fun EstimateConfirmRow(
+    quantity: Int,
+    onConfirm: () -> Unit,
+    onCorrect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var fixExpanded by remember { mutableStateOf(false) }
+    var draft by remember { mutableIntStateOf(quantity) }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(
-                onClickLabel = stringResource(R.string.pantry_card_lot_details),
-                onClick = onClick,
-            )
             .padding(start = 12.dp, end = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LotQuantityChip(quantity = lot.quantity, onQuantityChange = onQuantityChange)
-        LocationChip(location = lot.location, onLocationChange = onLocationChange)
-        lot.expiresInDays?.let { days ->
-            ExpiryChip(
-                bucket = expiryBucket(days),
-                expiresInDays = days,
-                onExpiryChange = onExpiryChange,
-            )
+        Text(
+            text = stringResource(R.string.pantry_estimate_confirm_question, quantity),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onConfirm) {
+            Text(text = stringResource(R.string.pantry_estimate_confirm_yes))
         }
-        Spacer(modifier = Modifier.weight(1f))
-        IconButton(onClick = onRemove) {
-            Icon(
-                painter = painterResource(R.drawable.ic_delete),
-                contentDescription = stringResource(R.string.pantry_card_remove_lot),
+        Box {
+            TextButton(
+                onClick = {
+                    draft = quantity
+                    fixExpanded = true
+                },
+            ) {
+                Text(text = stringResource(R.string.pantry_estimate_confirm_fix))
+            }
+            QuantityStepperPopup(
+                expanded = fixExpanded,
+                labelRes = R.string.pantry_quantity_edit_label,
+                draft = draft,
+                onDraftChange = { draft = it },
+                onDismissRequest = {
+                    fixExpanded = false
+                    if (draft != quantity) onCorrect(draft)
+                },
             )
         }
     }
@@ -548,33 +662,55 @@ private fun LotQuantityChip(
                 expanded = true
             },
         )
-        DropdownMenu(
+        QuantityStepperPopup(
             expanded = expanded,
+            labelRes = R.string.pantry_quantity_edit_label,
+            draft = draft,
+            onDraftChange = { draft = it },
             onDismissRequest = {
                 expanded = false
                 onQuantityChange(draft)
             },
-            shape = MaterialTheme.shapes.medium,
+        )
+    }
+}
+
+/**
+ * The anchored quantity-stepper popup shared by [LotQuantityChip] and
+ * [EstimateConfirmRow]'s Fix action. The caller owns the draft and decides what
+ * to commit on [onDismissRequest].
+ */
+@Composable
+private fun QuantityStepperPopup(
+    expanded: Boolean,
+    @StringRes labelRes: Int,
+    draft: Int,
+    onDraftChange: (Int) -> Unit,
+    onDismissRequest: () -> Unit,
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.pantry_quantity_edit_label),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Stepper(
-                    valueLabel = draft.toString(),
-                    onDecrement = { if (draft > MIN_QUANTITY) draft-- },
-                    onIncrement = { draft++ },
-                    decrementContentDescription = stringResource(R.string.pantry_quantity_decrease),
-                    incrementContentDescription = stringResource(R.string.pantry_quantity_increase),
-                    decrementEnabled = draft > MIN_QUANTITY,
-                )
-            }
+            Text(
+                text = stringResource(labelRes),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Stepper(
+                valueLabel = draft.toString(),
+                onDecrement = { if (draft > MIN_QUANTITY) onDraftChange(draft - 1) },
+                onIncrement = { onDraftChange(draft + 1) },
+                decrementContentDescription = stringResource(R.string.pantry_quantity_decrease),
+                incrementContentDescription = stringResource(R.string.pantry_quantity_increase),
+                decrementEnabled = draft > MIN_QUANTITY,
+            )
         }
     }
 }
@@ -663,6 +799,8 @@ private fun previewLot(
     expiresInDays: Int? = 4,
     location: PantryLocation = PantryLocation.Pantry,
     lowStockThreshold: Int? = null,
+    estimated: Boolean = false,
+    estimateSource: EstimateSource? = null,
 ) = InventoryItem(
     id = id,
     productId = "p1",
@@ -675,6 +813,8 @@ private fun previewLot(
     expiresInDays = expiresInDays,
     location = location,
     lowStockThreshold = lowStockThreshold,
+    estimated = estimated,
+    estimateSource = estimateSource,
 )
 
 private fun previewGroup(lots: List<InventoryItem>) = ProductGroup(
@@ -701,6 +841,8 @@ private fun ProductCardPreviewScaffold(group: ProductGroup, isExpanded: Boolean)
             onLocationChange = { _, _ -> },
             onExpiryChange = { _, _ -> },
             onLowStockThresholdChange = {},
+            onConfirmEstimate = {},
+            onCorrectEstimate = { _, _ -> },
             modifier = Modifier.padding(16.dp),
         )
     }
@@ -754,6 +896,25 @@ private fun ProductCardLowStockPreview() {
                 previewLot(id = "1", quantity = 1, expiresInDays = 2, lowStockThreshold = 5),
                 previewLot(id = "2", quantity = 2, expiresInDays = 6, lowStockThreshold = 5),
                 previewLot(id = "3", quantity = 0, expiresInDays = 14, lowStockThreshold = 5),
+            ),
+        ),
+        isExpanded = true,
+    )
+}
+
+@Preview(showBackground = true, name = "Estimated lot, expanded")
+@Composable
+private fun ProductCardEstimatedPreview() {
+    ProductCardPreviewScaffold(
+        group = previewGroup(
+            listOf(
+                previewLot(
+                    id = "1",
+                    quantity = 1,
+                    estimated = true,
+                    estimateSource = EstimateSource.History,
+                ),
+                previewLot(id = "2", quantity = 3, expiresInDays = 9),
             ),
         ),
         isExpanded = true,

@@ -20,4 +20,8 @@ data class InventoryItemDto(
     val lastAutoAdjustedAtEpoch: Long? = null,
     /** What the estimate was based on: `history`, `shelf_life` or `manual`. */
     val estimateSource: String? = null,
+    /** Reason of the lot's latest audit row; `auto` means an unconfirmed estimate. */
+    val lastAdjustmentReason: String? = null,
+    /** When the latest audit row was written, epoch seconds; `null` if none exists. */
+    val lastAdjustedAtEpoch: Long? = null,
 )

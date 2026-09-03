@@ -85,6 +85,15 @@
     <string name="pantry_quantity_decrease">Decrease quantity</string>
     <string name="pantry_quantity_increase">Increase quantity</string>
 
+    <!-- Pantry auto-adjusted lot estimate marker and inline confirm -->
+    <string name="pantry_estimate_chip">est.</string>
+    <string name="pantry_estimate_desc_history">Estimated, based on how often you buy this</string>
+    <string name="pantry_estimate_desc_shelf_life">Estimated, based on typical shelf life</string>
+    <string name="pantry_estimate_desc_generic">Estimated quantity</string>
+    <string name="pantry_estimate_confirm_question">We estimated %1$d left. Correct?</string>
+    <string name="pantry_estimate_confirm_yes">Yes</string>
+    <string name="pantry_estimate_confirm_fix">Fix</string>
+
     <!-- Pantry low stock threshold (per-item "running low" warning level) -->
     <string name="pantry_low_stock_label">Low stock alert</string>
     <string name="pantry_low_stock_off">Off</string>
