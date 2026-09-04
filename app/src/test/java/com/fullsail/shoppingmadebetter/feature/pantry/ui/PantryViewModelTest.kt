@@ -7,6 +7,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjus
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.EstimateSource
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAlertsUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAlertsUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
@@ -29,6 +31,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -207,9 +210,10 @@ class PantryViewModelTest {
         updateExpiry: FakeUpdateInventoryExpiryUseCase = FakeUpdateInventoryExpiryUseCase(),
         updateThreshold: FakeUpdateInventoryLowStockThresholdUseCase =
             FakeUpdateInventoryLowStockThresholdUseCase(),
+        alerts: GetPantryEstimateAlertsUseCase = GetPantryEstimateAlertsUseCaseImpl(),
     ) = PantryViewModel(
         inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, applyAdjustment,
-        updateLocation, updateExpiry, updateThreshold,
+        updateLocation, updateExpiry, updateThreshold, alerts,
     )
 
     @Test
@@ -946,5 +950,200 @@ class PantryViewModelTest {
         viewModel.dismissAddToListSheet()
 
         assertEquals(AddToListSheetState.Hidden, viewModel.addToListSheet.value)
+    }
+
+    // --- Zero-stock gate ---
+
+    private val emptyEstimatedItem = sampleItem.copy(
+        quantity = 0,
+        lastAdjustmentReason = AdjustmentReason.Auto,
+        estimateSource = EstimateSource.History,
+    )
+
+    @Test
+    fun `zeroStockAlert surfaces an auto-adjusted lot at zero once inventory loads`() = runTest {
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(emptyEstimatedItem)),
+        )
+
+        assertEquals("i1", viewModel.zeroStockAlert.value?.id)
+    }
+
+    @Test
+    fun `zeroStockAlert ignores an auto-adjusted lot that still has stock`() = runTest {
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(emptyEstimatedItem.copy(quantity = 2))),
+        )
+
+        assertNull(viewModel.zeroStockAlert.value)
+    }
+
+    @Test
+    fun `zeroStockAlert ignores a lot whose latest adjustment was dismissed`() = runTest {
+        val dismissed = emptyEstimatedItem.copy(lastAdjustmentReason = AdjustmentReason.Dismissed)
+        val viewModel = buildViewModel(inventory = FakeGetInventoryUseCase(inventoryOf(dismissed)))
+
+        assertNull(viewModel.zeroStockAlert.value)
+    }
+
+    @Test
+    fun `zeroStockAlert is null while the first load has not succeeded`() = runTest {
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(GetInventoryUseCase.Output.Failure(IOException("boom"))),
+        )
+
+        assertEquals(PantryUiState.Error, viewModel.uiState.value)
+        assertNull(viewModel.zeroStockAlert.value)
+    }
+
+    @Test
+    fun `onZeroStockOut confirms the lot at zero, opens the add-to-list sheet and clears the alert`() =
+        runTest {
+            val update = FakeApplyInventoryAdjustmentUseCase()
+            val viewModel = buildViewModel(
+                inventory = FakeGetInventoryUseCase(inventoryOf(emptyEstimatedItem)),
+                trips = FakeGetShoppingTripsUseCase(
+                    GetShoppingTripsUseCase.Output.Success(listOf(sampleTrip))
+                ),
+                applyAdjustment = update,
+            )
+
+            viewModel.onZeroStockOut(emptyEstimatedItem)
+
+            assertEquals(
+                ApplyInventoryAdjustment(id = "i1", delta = 0, reason = AdjustmentReason.Confirmed),
+                update.lastInput,
+            )
+            val sheet = viewModel.addToListSheet.value
+            assertTrue(sheet is AddToListSheetState.Visible && sheet.item.id == "i1")
+            assertNull(viewModel.zeroStockAlert.value)
+            val lot = (viewModel.uiState.value as PantryUiState.Success).lots.single()
+            assertEquals(AdjustmentReason.Confirmed, lot.lastAdjustmentReason)
+
+            viewModel.dismissAddToListSheet()
+
+            assertNull(viewModel.zeroStockAlert.value)
+        }
+
+    @Test
+    fun `onZeroStockStillHave persists the count as confirmed and clears the alert`() = runTest {
+        val update = FakeApplyInventoryAdjustmentUseCase(
+            ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 3, appliedDelta = 3)
+        )
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(emptyEstimatedItem)),
+            applyAdjustment = update,
+        )
+
+        viewModel.onZeroStockStillHave(emptyEstimatedItem, count = 3)
+
+        assertEquals(
+            ApplyInventoryAdjustment(id = "i1", delta = 3, reason = AdjustmentReason.Confirmed),
+            update.lastInput,
+        )
+        val lot = (viewModel.uiState.value as PantryUiState.Success).lots.single()
+        assertEquals(3, lot.quantity)
+        assertFalse(lot.estimated)
+        assertNull(viewModel.zeroStockAlert.value)
+    }
+
+    @Test
+    fun `onZeroStockDismissed persists a zero-delta dismissed adjustment and keeps the lot estimated`() =
+        runTest {
+            val update = FakeApplyInventoryAdjustmentUseCase()
+            val viewModel = buildViewModel(
+                inventory = FakeGetInventoryUseCase(inventoryOf(emptyEstimatedItem)),
+                applyAdjustment = update,
+            )
+
+            viewModel.onZeroStockDismissed(emptyEstimatedItem)
+
+            assertEquals(
+                ApplyInventoryAdjustment(id = "i1", delta = 0, reason = AdjustmentReason.Dismissed),
+                update.lastInput,
+            )
+            val lot = (viewModel.uiState.value as PantryUiState.Success).lots.single()
+            assertEquals(AdjustmentReason.Dismissed, lot.lastAdjustmentReason)
+            assertTrue(lot.estimated)
+            assertNull(viewModel.zeroStockAlert.value)
+        }
+
+    @Test
+    fun `onZeroStockDismissed does not re-prompt when the save fails`() = runTest {
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(emptyEstimatedItem)),
+            applyAdjustment = FakeApplyInventoryAdjustmentUseCase(
+                ApplyInventoryAdjustmentUseCase.Output.Failure(IOException("boom"))
+            ),
+        )
+
+        viewModel.onZeroStockDismissed(emptyEstimatedItem)
+
+        val lot = (viewModel.uiState.value as PantryUiState.Success).lots.single()
+        assertEquals(AdjustmentReason.Auto, lot.lastAdjustmentReason)
+        assertTrue(viewModel.events.first() is PantryEvent.UpdateFailed)
+        assertNull(viewModel.zeroStockAlert.value)
+    }
+
+    @Test
+    fun `zeroStockAlert moves to the next zero lot once the first is handled`() = runTest {
+        val first = emptyEstimatedItem.copy(id = "a", productId = "pa", expiresInDays = 1)
+        val second = emptyEstimatedItem.copy(id = "b", productId = "pb", expiresInDays = 5)
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(second, first)),
+        )
+        assertEquals("a", viewModel.zeroStockAlert.value?.id)
+
+        viewModel.onZeroStockDismissed(first)
+        assertEquals("b", viewModel.zeroStockAlert.value?.id)
+
+        viewModel.onZeroStockDismissed(second)
+        assertNull(viewModel.zeroStockAlert.value)
+    }
+
+    @Test
+    fun `zeroStockAlert is hidden while the add-to-list sheet is open`() = runTest {
+        val other = sampleItem.copy(id = "i2", productId = "p2")
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(emptyEstimatedItem, other)),
+            trips = FakeGetShoppingTripsUseCase(
+                GetShoppingTripsUseCase.Output.Success(listOf(sampleTrip))
+            ),
+        )
+
+        viewModel.onAddToListClicked(other)
+        assertNull(viewModel.zeroStockAlert.value)
+
+        viewModel.dismissAddToListSheet()
+        assertEquals("i1", viewModel.zeroStockAlert.value?.id)
+    }
+
+    @Test
+    fun `zeroStockAlert is hidden while the remove dialog is open`() = runTest {
+        val other = sampleItem.copy(id = "i2", productId = "p2")
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(emptyEstimatedItem, other)),
+        )
+
+        viewModel.onRemoveClicked(other)
+        assertNull(viewModel.zeroStockAlert.value)
+
+        viewModel.dismissRemove()
+        assertEquals("i1", viewModel.zeroStockAlert.value?.id)
+    }
+
+    @Test
+    fun `loadInventory refreshes the alert from the new inventory`() = runTest {
+        val inventory = FakeGetInventoryUseCase(inventoryOf(sampleItem))
+        val viewModel = buildViewModel(inventory = inventory)
+        assertNull(viewModel.zeroStockAlert.value)
+
+        inventory.output = inventoryOf(emptyEstimatedItem)
+        viewModel.loadInventory()
+        assertEquals("i1", viewModel.zeroStockAlert.value?.id)
+
+        inventory.output = inventoryOf(emptyEstimatedItem.copy(quantity = 2))
+        viewModel.loadInventory()
+        assertNull(viewModel.zeroStockAlert.value)
     }
 }

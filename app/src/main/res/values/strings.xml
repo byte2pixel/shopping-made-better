@@ -94,6 +94,16 @@
     <string name="pantry_estimate_confirm_yes">Yes</string>
     <string name="pantry_estimate_confirm_fix">Fix</string>
 
+    <!-- Pantry: zero-stock gate for an auto-adjusted lot -->
+    <string name="pantry_zero_stock_title">Out of stock?</string>
+    <string name="pantry_zero_stock_message">Looks like you\'re out of \"%1$s\". Add it to a shopping list?</string>
+    <string name="pantry_zero_stock_add_to_list">Add to list</string>
+    <string name="pantry_zero_stock_still_have">Still have some</string>
+    <string name="pantry_zero_stock_not_now">Not now</string>
+    <string name="pantry_zero_stock_how_many">How many do you have?</string>
+    <string name="pantry_zero_stock_save">Save</string>
+    <string name="pantry_zero_stock_back">Back</string>
+
     <!-- Pantry low stock threshold (per-item "running low" warning level) -->
     <string name="pantry_low_stock_label">Low stock alert</string>
     <string name="pantry_low_stock_off">Off</string>

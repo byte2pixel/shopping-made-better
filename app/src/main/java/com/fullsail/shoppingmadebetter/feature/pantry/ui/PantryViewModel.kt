@@ -8,6 +8,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjus
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAlerts
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAlertsUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
@@ -27,9 +29,12 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -90,6 +95,7 @@ class PantryViewModel @Inject constructor(
     private val updateInventoryLocationUseCase: UpdateInventoryLocationUseCase,
     private val updateInventoryExpiryUseCase: UpdateInventoryExpiryUseCase,
     private val updateInventoryLowStockThresholdUseCase: UpdateInventoryLowStockThresholdUseCase,
+    private val getPantryEstimateAlertsUseCase: GetPantryEstimateAlertsUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PantryUiState>(PantryUiState.Loading)
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
@@ -99,6 +105,22 @@ class PantryViewModel @Inject constructor(
 
     private val _removeConfirm = MutableStateFlow<InventoryItem?>(null)
     val removeConfirm: StateFlow<InventoryItem?> = _removeConfirm.asStateFlow()
+
+    /** Lots answered this session, so a failed write or a stale reload cannot re-prompt. */
+    private val _handledAlertLotIds = MutableStateFlow<Set<String>>(emptySet())
+
+    /** The zero-stock estimate to confirm now, if any; hidden while the sheet or remove dialog is up. */
+    val zeroStockAlert: StateFlow<InventoryItem?> = combine(
+        uiState, _handledAlertLotIds, addToListSheet, removeConfirm,
+    ) { state, handled, sheet, remove ->
+        if (state !is PantryUiState.Success || sheet !is AddToListSheetState.Hidden || remove != null) {
+            null
+        } else {
+            getPantryEstimateAlertsUseCase
+                .execute(GetPantryEstimateAlerts(state.productGroups))
+                .firstOrNull { it.id !in handled }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _events = Channel<PantryEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -263,6 +285,29 @@ class PantryViewModel @Inject constructor(
     /** Replaces [item]'s auto-adjusted quantity with the user's count as a `confirmed` adjustment. */
     fun onCorrectEstimate(item: InventoryItem, newQuantity: Int) {
         applyAdjustment(item, newQuantity, AdjustmentReason.Confirmed)
+    }
+
+    /** "Add to list": confirms [item] at zero and opens the add-to-list sheet for it. */
+    fun onZeroStockOut(item: InventoryItem) {
+        onAddToListClicked(item)
+        markAlertHandled(item)
+        onConfirmEstimate(item)
+    }
+
+    /** "Still have some": replaces the zero with the user's [count] as a `confirmed` adjustment. */
+    fun onZeroStockStillHave(item: InventoryItem, count: Int) {
+        markAlertHandled(item)
+        onCorrectEstimate(item, count)
+    }
+
+    /** "Not now": a zero-delta `dismissed` adjustment, so the lot is not asked about again. */
+    fun onZeroStockDismissed(item: InventoryItem) {
+        markAlertHandled(item)
+        applyAdjustment(item, item.quantity, AdjustmentReason.Dismissed)
+    }
+
+    private fun markAlertHandled(item: InventoryItem) {
+        _handledAlertLotIds.value = _handledAlertLotIds.value + item.id
     }
 
     /**
