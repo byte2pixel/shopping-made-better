@@ -58,6 +58,10 @@ sealed interface Dest {
     @Serializable
     data class ProductDetail(val productId: String) : Dest
 
+    /** This week's automatic pantry adjustments, reached from the digest card. */
+    @Serializable
+    data object AdjustmentDigest : Dest
+
     @Serializable
     data object History : Dest
 

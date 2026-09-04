@@ -7,6 +7,7 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentReason
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustment
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetAdjustmentDigestUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAlerts
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAlertsUseCase
@@ -102,6 +103,7 @@ class PantryViewModel @Inject constructor(
     private val getPantryEstimateAlertsUseCase: GetPantryEstimateAlertsUseCase,
     private val undoInventoryAdjustmentUseCase: UndoInventoryAdjustmentUseCase,
     private val getAutoAdjustEnabledUseCase: GetAutoAdjustEnabledUseCase,
+    private val getAdjustmentDigestUseCase: GetAdjustmentDigestUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PantryUiState>(PantryUiState.Loading)
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
@@ -128,6 +130,10 @@ class PantryViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** Lots in this week's digest; 0 hides the digest card. */
+    private val _digestLotCount = MutableStateFlow(0)
+    val digestLotCount: StateFlow<Int> = _digestLotCount.asStateFlow()
+
     private val _events = Channel<PantryEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
@@ -148,11 +154,15 @@ class PantryViewModel @Inject constructor(
         }
         viewModelScope.launch {
             val estimatesShown = async { estimatesShown() }
+            val digestLotCount = async { digestLotCount() }
             when (val out = getInventoryUseCase.execute(Unit)) {
-                is GetInventoryUseCase.Output.Success ->
+                is GetInventoryUseCase.Output.Success -> {
+                    val shown = estimatesShown.await()
                     _uiState.value = PantryUiState.Success(
-                        if (estimatesShown.await()) out.productGroups else out.productGroups.withoutEstimates(),
+                        if (shown) out.productGroups else out.productGroups.withoutEstimates(),
                     )
+                    _digestLotCount.value = if (shown) digestLotCount.await() else 0
+                }
 
                 is GetInventoryUseCase.Output.Failure ->
                     if (_uiState.value !is PantryUiState.Success) {
@@ -163,6 +173,13 @@ class PantryViewModel @Inject constructor(
             }
         }
     }
+
+    /** Distinct lots in this week's digest; a failed read hides the card rather than guessing. */
+    private suspend fun digestLotCount(): Int =
+        when (val out = getAdjustmentDigestUseCase.execute(Unit)) {
+            is GetAdjustmentDigestUseCase.Output.Success -> out.entries.distinctBy { it.lotId }.size
+            is GetAdjustmentDigestUseCase.Output.Failure -> 0
+        }
 
     /** False only when the user has turned auto-adjust off; a failed read keeps estimates visible. */
     private suspend fun estimatesShown(): Boolean =
@@ -314,8 +331,10 @@ class PantryViewModel @Inject constructor(
         updateLotInState(item.id) { it.copy(lastAdjustmentReason = AdjustmentReason.Undo) }
         viewModelScope.launch {
             when (val out = undoInventoryAdjustmentUseCase.execute(UndoInventoryAdjustment(adjustmentId))) {
-                is UndoInventoryAdjustmentUseCase.Output.Success ->
+                is UndoInventoryAdjustmentUseCase.Output.Success -> {
                     updateLotInState(item.id) { it.copy(quantity = out.newQuantity) }
+                    _digestLotCount.value = digestLotCount()
+                }
 
                 is UndoInventoryAdjustmentUseCase.Output.Failure -> {
                     updateLotInState(item.id) { item }

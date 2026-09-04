@@ -102,6 +102,36 @@
     <string name="pantry_estimate_confirm_fix">Fix</string>
     <string name="pantry_estimate_undo">Undo</string>
 
+    <!-- Pantry: weekly auto-adjustment digest -->
+    <string name="pantry_digest_card_label">Auto-adjust</string>
+    <plurals name="pantry_digest_card_title">
+        <item quantity="one">We updated %1$d item this week.</item>
+        <item quantity="other">We updated %1$d items this week.</item>
+    </plurals>
+    <string name="pantry_digest_card_action">Review</string>
+    <string name="pantry_digest_title">This week\'s adjustments</string>
+    <plurals name="pantry_digest_header">
+        <item quantity="one">%1$d adjustment this week</item>
+        <item quantity="other">%1$d adjustments this week</item>
+    </plurals>
+    <string name="pantry_digest_undo_all">Undo all (%1$d)</string>
+    <string name="pantry_digest_change">%1$d, now %2$d</string>
+    <string name="pantry_digest_why_history">Based on how often you buy this</string>
+    <string name="pantry_digest_why_shelf_life">Based on typical shelf life</string>
+    <string name="pantry_digest_today">Today</string>
+    <string name="pantry_digest_yesterday">Yesterday</string>
+    <plurals name="pantry_digest_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+    <string name="pantry_digest_empty">Nothing to review</string>
+    <string name="pantry_digest_undo_failed">Couldn\'t undo %1$s</string>
+    <plurals name="pantry_digest_undone">
+        <item quantity="one">Undid %1$d adjustment</item>
+        <item quantity="other">Undid %1$d adjustments</item>
+    </plurals>
+    <string name="pantry_digest_undone_partial">Undid %1$d of %2$d adjustments</string>
+
     <!-- Pantry: zero-stock gate for an auto-adjusted lot -->
     <string name="pantry_zero_stock_title">Out of stock?</string>
     <string name="pantry_zero_stock_message">Looks like you\'re out of \"%1$s\". Add it to a shopping list?</string>

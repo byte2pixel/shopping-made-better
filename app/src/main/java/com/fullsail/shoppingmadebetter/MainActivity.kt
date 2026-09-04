@@ -341,6 +341,7 @@ fun ShoppingMadeBetterApp(
             composable<Dest.Pantry> {
                 PantryScreen(
                     onProductClick = { id -> navController.navigate(Dest.ProductDetail(id)) },
+                    onReviewDigest = { navController.navigate(Dest.AdjustmentDigest) },
                 )
             }
             composable<Dest.ProductDetail> { entry ->
