@@ -51,6 +51,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.fullsail.shoppingmadebetter.feature.auth.ui.LoginScreen
 import com.fullsail.shoppingmadebetter.feature.auth.ui.SignUpScreen
+import com.fullsail.shoppingmadebetter.feature.pantry.ui.AdjustmentDigestScreen
 import com.fullsail.shoppingmadebetter.feature.pantry.ui.PantryScreen
 import com.fullsail.shoppingmadebetter.feature.product.ui.ProductDetailScreen
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListItemComparisonScreen
@@ -349,6 +350,9 @@ fun ShoppingMadeBetterApp(
                     productId = entry.toRoute<Dest.ProductDetail>().productId,
                     onTitleChange = navigationViewModel::setScreenTitle,
                 )
+            }
+            composable<Dest.AdjustmentDigest> {
+                AdjustmentDigestScreen(onTitleChange = navigationViewModel::setScreenTitle)
             }
             composable<Dest.History> {
                 HistoryScreen(
