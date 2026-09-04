@@ -23,12 +23,14 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLoca
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
+import com.fullsail.shoppingmadebetter.feature.profile.domain.GetAutoAdjustEnabledUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -99,6 +101,7 @@ class PantryViewModel @Inject constructor(
     private val updateInventoryLowStockThresholdUseCase: UpdateInventoryLowStockThresholdUseCase,
     private val getPantryEstimateAlertsUseCase: GetPantryEstimateAlertsUseCase,
     private val undoInventoryAdjustmentUseCase: UndoInventoryAdjustmentUseCase,
+    private val getAutoAdjustEnabledUseCase: GetAutoAdjustEnabledUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PantryUiState>(PantryUiState.Loading)
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
@@ -144,9 +147,12 @@ class PantryViewModel @Inject constructor(
             _uiState.value = PantryUiState.Loading
         }
         viewModelScope.launch {
+            val estimatesShown = async { estimatesShown() }
             when (val out = getInventoryUseCase.execute(Unit)) {
                 is GetInventoryUseCase.Output.Success ->
-                    _uiState.value = PantryUiState.Success(out.productGroups)
+                    _uiState.value = PantryUiState.Success(
+                        if (estimatesShown.await()) out.productGroups else out.productGroups.withoutEstimates(),
+                    )
 
                 is GetInventoryUseCase.Output.Failure ->
                     if (_uiState.value !is PantryUiState.Success) {
@@ -157,6 +163,17 @@ class PantryViewModel @Inject constructor(
             }
         }
     }
+
+    /** False only when the user has turned auto-adjust off; a failed read keeps estimates visible. */
+    private suspend fun estimatesShown(): Boolean =
+        when (val out = getAutoAdjustEnabledUseCase.execute(Unit)) {
+            is GetAutoAdjustEnabledUseCase.Output.Success -> out.enabled
+            is GetAutoAdjustEnabledUseCase.Output.Failure -> true
+        }
+
+    /** Drops every lot's latest reason so nothing reads as estimated, undoable or alerting. */
+    private fun List<ProductGroup>.withoutEstimates(): List<ProductGroup> =
+        map { group -> group.copy(lots = group.lots.map { it.copy(lastAdjustmentReason = null) }) }
 
     /** Opens the sheet for [item] and loads the user's shopping lists to pick from. */
     fun onAddToListClicked(item: InventoryItem) {

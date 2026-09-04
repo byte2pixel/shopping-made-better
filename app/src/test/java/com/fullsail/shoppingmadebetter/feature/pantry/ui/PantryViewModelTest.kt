@@ -22,6 +22,7 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLoca
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.groupInventoryByProduct
+import com.fullsail.shoppingmadebetter.feature.profile.domain.GetAutoAdjustEnabledUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
@@ -156,6 +157,14 @@ class PantryViewModelTest {
         }
     }
 
+    /** Fake auto-adjust flag: returns a settable [output]. */
+    private class FakeGetAutoAdjustEnabledUseCase(
+        var output: GetAutoAdjustEnabledUseCase.Output =
+            GetAutoAdjustEnabledUseCase.Output.Success(enabled = true),
+    ) : GetAutoAdjustEnabledUseCase {
+        override suspend fun execute(input: Unit) = output
+    }
+
     /** Fake location-update use case: records its input and returns a settable [output]. */
     private class FakeUpdateInventoryLocationUseCase(
         var output: UpdateInventoryLocationUseCase.Output = UpdateInventoryLocationUseCase.Output.Success,
@@ -228,9 +237,10 @@ class PantryViewModelTest {
             FakeUpdateInventoryLowStockThresholdUseCase(),
         alerts: GetPantryEstimateAlertsUseCase = GetPantryEstimateAlertsUseCaseImpl(),
         undoAdjustment: FakeUndoInventoryAdjustmentUseCase = FakeUndoInventoryAdjustmentUseCase(),
+        autoAdjust: FakeGetAutoAdjustEnabledUseCase = FakeGetAutoAdjustEnabledUseCase(),
     ) = PantryViewModel(
         inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, applyAdjustment,
-        updateLocation, updateExpiry, updateThreshold, alerts, undoAdjustment,
+        updateLocation, updateExpiry, updateThreshold, alerts, undoAdjustment, autoAdjust,
     )
 
     @Test
@@ -769,6 +779,45 @@ class PantryViewModelTest {
         val lot = (viewModel.uiState.value as PantryUiState.Success).lots.single()
         assertEquals(4, lot.quantity)
         assertTrue(!lot.estimated)
+    }
+
+    @Test
+    fun `loadInventory hides estimates and alerts when auto-adjust is off`() = runTest {
+        val estimatedItem = sampleItem.copy(quantity = 0, lastAdjustmentReason = AdjustmentReason.Auto, lastAdjustmentId = "a1")
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedItem)),
+            autoAdjust = FakeGetAutoAdjustEnabledUseCase(
+                GetAutoAdjustEnabledUseCase.Output.Success(enabled = false)
+            ),
+        )
+
+        val lot = (viewModel.uiState.value as PantryUiState.Success).lots.single()
+        assertNull(lot.lastAdjustmentReason)
+        assertFalse(lot.estimated)
+        assertFalse(lot.canUndo)
+        assertNull(viewModel.zeroStockAlert.value)
+    }
+
+    @Test
+    fun `loadInventory keeps estimates when auto-adjust is on or its read fails`() = runTest {
+        val estimatedItem = sampleItem.copy(quantity = 0, lastAdjustmentReason = AdjustmentReason.Auto, lastAdjustmentId = "a1")
+        val on = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedItem)),
+            autoAdjust = FakeGetAutoAdjustEnabledUseCase(
+                GetAutoAdjustEnabledUseCase.Output.Success(enabled = true)
+            ),
+        )
+        val unknown = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedItem)),
+            autoAdjust = FakeGetAutoAdjustEnabledUseCase(
+                GetAutoAdjustEnabledUseCase.Output.Failure(IOException("boom"))
+            ),
+        )
+
+        assertTrue((on.uiState.value as PantryUiState.Success).lots.single().estimated)
+        assertEquals(estimatedItem, on.zeroStockAlert.value)
+        assertTrue((unknown.uiState.value as PantryUiState.Success).lots.single().estimated)
+        assertEquals(estimatedItem, unknown.zeroStockAlert.value)
     }
 
     @Test
