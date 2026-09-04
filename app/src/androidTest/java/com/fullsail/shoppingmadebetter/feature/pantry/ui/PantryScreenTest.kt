@@ -372,7 +372,7 @@ class PantryScreenTest {
 
     @Test
     fun onlyAnEstimatedLotShowsTheEstChip() {
-        val estimatedMilk = milk.copy(estimated = true, estimateSource = EstimateSource.History)
+        val estimatedMilk = milk.copy(lastAdjustmentReason = AdjustmentReason.Auto, estimateSource = EstimateSource.History)
         setScreen(
             inventory = FakeGetInventoryUseCase(inventoryOf(estimatedMilk, expiringYogurt)),
         )
@@ -393,7 +393,7 @@ class PantryScreenTest {
         val applyAdjustment = FakeApplyInventoryAdjustmentUseCase(
             ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 2, appliedDelta = 0)
         )
-        val estimatedMilk = milk.copy(estimated = true, estimateSource = EstimateSource.ShelfLife)
+        val estimatedMilk = milk.copy(lastAdjustmentReason = AdjustmentReason.Auto, estimateSource = EstimateSource.ShelfLife)
         setScreen(
             inventory = FakeGetInventoryUseCase(inventoryOf(estimatedMilk)),
             applyAdjustment = applyAdjustment,
@@ -425,7 +425,7 @@ class PantryScreenTest {
         val applyAdjustment = FakeApplyInventoryAdjustmentUseCase(
             ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 3, appliedDelta = 1)
         )
-        val estimatedMilk = milk.copy(estimated = true, estimateSource = EstimateSource.History)
+        val estimatedMilk = milk.copy(lastAdjustmentReason = AdjustmentReason.Auto, estimateSource = EstimateSource.History)
         setScreen(
             inventory = FakeGetInventoryUseCase(inventoryOf(estimatedMilk)),
             applyAdjustment = applyAdjustment,

@@ -266,13 +266,12 @@ class PantryViewModel @Inject constructor(
     }
 
     /**
-     * Optimistically sets [item]'s quantity to [newQuantity] and clears its estimated
-     * marker (any adjustment supersedes the `auto` audit row), persists the change with
-     * [reason], and reverts with a snackbar if the save fails. On success the quantity
-     * reconciles to what the backend applied, since it floors at zero.
+     * Optimistically sets [item]'s quantity to [newQuantity] and latest reason to [reason],
+     * persists the change, and reverts with a snackbar if the save fails. On success the
+     * quantity reconciles to what the backend applied, since it floors at zero.
      */
     private fun applyAdjustment(item: InventoryItem, newQuantity: Int, reason: AdjustmentReason) {
-        updateLotInState(item.id) { it.copy(quantity = newQuantity, estimated = false) }
+        updateLotInState(item.id) { it.copy(quantity = newQuantity, lastAdjustmentReason = reason) }
         viewModelScope.launch {
             val out = applyInventoryAdjustmentUseCase.execute(
                 ApplyInventoryAdjustment(item.id, newQuantity - item.quantity, reason),

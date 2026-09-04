@@ -692,7 +692,7 @@ class PantryViewModelTest {
 
     @Test
     fun `onQuantityChanged clears the estimated marker`() = runTest {
-        val estimatedItem = sampleItem.copy(estimated = true, estimateSource = EstimateSource.History)
+        val estimatedItem = sampleItem.copy(lastAdjustmentReason = AdjustmentReason.Auto, estimateSource = EstimateSource.History)
         val viewModel = buildViewModel(
             inventory = FakeGetInventoryUseCase(inventoryOf(estimatedItem)),
             applyAdjustment = FakeApplyInventoryAdjustmentUseCase(
@@ -708,7 +708,7 @@ class PantryViewModelTest {
 
     @Test
     fun `onConfirmEstimate persists a zero-delta confirmed adjustment and clears the marker`() = runTest {
-        val estimatedItem = sampleItem.copy(estimated = true, estimateSource = EstimateSource.History)
+        val estimatedItem = sampleItem.copy(lastAdjustmentReason = AdjustmentReason.Auto, estimateSource = EstimateSource.History)
         val update = FakeApplyInventoryAdjustmentUseCase(
             ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 2, appliedDelta = 0)
         )
@@ -730,7 +730,7 @@ class PantryViewModelTest {
 
     @Test
     fun `onCorrectEstimate persists the delta as confirmed and updates the quantity`() = runTest {
-        val estimatedItem = sampleItem.copy(estimated = true, estimateSource = EstimateSource.ShelfLife)
+        val estimatedItem = sampleItem.copy(lastAdjustmentReason = AdjustmentReason.Auto, estimateSource = EstimateSource.ShelfLife)
         val update = FakeApplyInventoryAdjustmentUseCase(
             ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 4, appliedDelta = 2)
         )
@@ -752,7 +752,7 @@ class PantryViewModelTest {
 
     @Test
     fun `onConfirmEstimate reverts the marker and emits UpdateFailed when the save fails`() = runTest {
-        val estimatedItem = sampleItem.copy(estimated = true, estimateSource = EstimateSource.History)
+        val estimatedItem = sampleItem.copy(lastAdjustmentReason = AdjustmentReason.Auto, estimateSource = EstimateSource.History)
         val viewModel = buildViewModel(
             inventory = FakeGetInventoryUseCase(inventoryOf(estimatedItem)),
             applyAdjustment = FakeApplyInventoryAdjustmentUseCase(

@@ -152,9 +152,10 @@ class GetInventoryUseCaseTest {
         }
 
     @Test
-    fun `execute marks a lot estimated only when its latest adjustment reason is auto`() = runTest {
+    fun `execute maps the latest adjustment reason and derives estimated from it`() = runTest {
         val dtos = listOf(
             dto("auto", null).copy(lastAdjustmentReason = "auto", estimateSource = "history"),
+            dto("dismissed", null).copy(lastAdjustmentReason = "dismissed", estimateSource = "history"),
             dto("confirmed", null).copy(lastAdjustmentReason = "confirmed", estimateSource = "shelf_life"),
             dto("manual", null).copy(lastAdjustmentReason = "manual", estimateSource = "manual"),
             dto("none", null),
@@ -164,17 +165,35 @@ class GetInventoryUseCaseTest {
         val groups = useCase.execute(Unit).groupsByProduct()
 
         val auto = groups.getValue("p-auto").lots.single()
+        assertEquals(AdjustmentReason.Auto, auto.lastAdjustmentReason)
         assertTrue(auto.estimated)
         assertEquals(EstimateSource.History, auto.estimateSource)
+        val dismissed = groups.getValue("p-dismissed").lots.single()
+        assertEquals(AdjustmentReason.Dismissed, dismissed.lastAdjustmentReason)
+        assertTrue(dismissed.estimated)
         val confirmed = groups.getValue("p-confirmed").lots.single()
+        assertEquals(AdjustmentReason.Confirmed, confirmed.lastAdjustmentReason)
         assertFalse(confirmed.estimated)
         assertEquals(EstimateSource.ShelfLife, confirmed.estimateSource)
         val manual = groups.getValue("p-manual").lots.single()
+        assertEquals(AdjustmentReason.Manual, manual.lastAdjustmentReason)
         assertFalse(manual.estimated)
         assertEquals(EstimateSource.Manual, manual.estimateSource)
         val none = groups.getValue("p-none").lots.single()
+        assertNull(none.lastAdjustmentReason)
         assertFalse(none.estimated)
         assertNull(none.estimateSource)
+    }
+
+    @Test
+    fun `execute maps an unknown adjustment reason to null`() = runTest {
+        val dtos = listOf(dto("bogus", null).copy(lastAdjustmentReason = "bogus"))
+        val useCase = GetInventoryUseCaseImpl(FakePantryRepository(items = dtos), fixedClock)
+
+        val lot = useCase.execute(Unit).groupsByProduct().getValue("p-bogus").lots.single()
+
+        assertNull(lot.lastAdjustmentReason)
+        assertFalse(lot.estimated)
     }
 
     @Test
