@@ -16,6 +16,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfir
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustmentUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustmentUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
@@ -79,4 +81,9 @@ abstract class PantryModule {
     abstract fun bindGetPantryEstimateAlertsUseCase(
         impl: GetPantryEstimateAlertsUseCaseImpl,
     ): GetPantryEstimateAlertsUseCase
+
+    @Binds
+    abstract fun bindUndoInventoryAdjustmentUseCase(
+        impl: UndoInventoryAdjustmentUseCaseImpl,
+    ): UndoInventoryAdjustmentUseCase
 }

@@ -39,6 +39,8 @@ class UpdateInventoryExpiryUseCaseImplTest {
         override suspend fun updateLowStockThreshold(productId: String, threshold: Int?) = Unit
         override suspend fun applyInventoryAdjustment(id: String, delta: Int, reason: String) =
             InventoryAdjustmentResultDto(inventoryItemId = id, delta = 0.0, newQuantity = 0.0)
+        override suspend fun undoInventoryAdjustment(adjustmentId: String) =
+            InventoryAdjustmentResultDto(inventoryItemId = "", delta = 0.0, newQuantity = 0.0)
     }
 
     private val fixedClock = object : Clock {

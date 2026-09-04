@@ -38,6 +38,8 @@ class ApplyInventoryAdjustmentUseCaseImplTest {
             lastReason = reason
             return result
         }
+        override suspend fun undoInventoryAdjustment(adjustmentId: String) =
+            InventoryAdjustmentResultDto(inventoryItemId = "", delta = 0.0, newQuantity = 0.0)
     }
 
     @Test
