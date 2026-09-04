@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.domain
 
+import com.fullsail.shoppingmadebetter.feature.pantry.data.AdjustmentDigestEntryDto
 import com.fullsail.shoppingmadebetter.feature.pantry.data.InventoryAdjustmentResultDto
 import com.fullsail.shoppingmadebetter.feature.pantry.data.InventoryItemDto
 import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryRepository
@@ -33,6 +34,7 @@ class UndoInventoryAdjustmentUseCaseImplTest {
             lastAdjustmentId = adjustmentId
             return result
         }
+        override suspend fun getAdjustmentDigest(): List<AdjustmentDigestEntryDto> = emptyList()
     }
 
     @Test

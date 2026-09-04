@@ -72,4 +72,10 @@ class PantryRepositoryImpl @Inject constructor(
                 buildJsonObject { put("p_adjustment_id", adjustmentId) },
             ).decodeSingle<InventoryAdjustmentResultDto>()
         }
+
+    override suspend fun getAdjustmentDigest(): List<AdjustmentDigestEntryDto> =
+        withContext(Dispatchers.IO) {
+            postgrest.from("inventory_adjustments_detail").select()
+                .decodeList<AdjustmentDigestEntryDto>()
+        }
 }
