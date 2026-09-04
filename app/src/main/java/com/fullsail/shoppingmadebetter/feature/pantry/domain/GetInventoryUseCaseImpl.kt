@@ -37,6 +37,7 @@ class GetInventoryUseCaseImpl @Inject constructor(
         lowStockThreshold = lowStockThreshold,
         lastAdjustmentReason = AdjustmentReason.fromDbValue(lastAdjustmentReason),
         estimateSource = EstimateSource.fromDbValue(estimateSource),
+        lastAdjustmentId = lastAdjustmentId,
     )
 
     private companion object {

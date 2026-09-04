@@ -15,9 +15,15 @@ data class InventoryItem(
     /** Reason on the lot's latest audit row; `null` when it has none. */
     val lastAdjustmentReason: AdjustmentReason? = null,
     val estimateSource: EstimateSource? = null,
+    /** Id of the lot's latest audit row; `null` when it has none. */
+    val lastAdjustmentId: String? = null,
 ) {
     /** True while the quantity is an unconfirmed estimate (`auto`, or `dismissed` without confirming). */
     val estimated: Boolean
         get() = lastAdjustmentReason == AdjustmentReason.Auto ||
             lastAdjustmentReason == AdjustmentReason.Dismissed
+
+    /** True while the latest audit row is an `auto` adjustment the user can reverse. */
+    val canUndo: Boolean
+        get() = lastAdjustmentReason == AdjustmentReason.Auto && lastAdjustmentId != null
 }

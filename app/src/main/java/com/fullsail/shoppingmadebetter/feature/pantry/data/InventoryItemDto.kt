@@ -24,4 +24,6 @@ data class InventoryItemDto(
     val lastAdjustmentReason: String? = null,
     /** When the latest audit row was written, epoch seconds; `null` if none exists. */
     val lastAdjustedAtEpoch: Long? = null,
+    /** Id of the lot's latest audit row; `null` if none exists. */
+    val lastAdjustmentId: String? = null,
 )
