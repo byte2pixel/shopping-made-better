@@ -13,6 +13,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfir
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustment
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustmentUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiry
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocation
@@ -140,6 +142,20 @@ class PantryViewModelTest {
         }
     }
 
+    /** Fake undo use case: records the last input and returns a settable [output]. */
+    private class FakeUndoInventoryAdjustmentUseCase(
+        var output: UndoInventoryAdjustmentUseCase.Output =
+            UndoInventoryAdjustmentUseCase.Output.Success(newQuantity = 3, appliedDelta = 2),
+    ) : UndoInventoryAdjustmentUseCase {
+        var lastInput: UndoInventoryAdjustment? = null
+        override suspend fun execute(
+            input: UndoInventoryAdjustment,
+        ): UndoInventoryAdjustmentUseCase.Output {
+            lastInput = input
+            return output
+        }
+    }
+
     /** Fake location-update use case: records its input and returns a settable [output]. */
     private class FakeUpdateInventoryLocationUseCase(
         var output: UpdateInventoryLocationUseCase.Output = UpdateInventoryLocationUseCase.Output.Success,
@@ -211,9 +227,10 @@ class PantryViewModelTest {
         updateThreshold: FakeUpdateInventoryLowStockThresholdUseCase =
             FakeUpdateInventoryLowStockThresholdUseCase(),
         alerts: GetPantryEstimateAlertsUseCase = GetPantryEstimateAlertsUseCaseImpl(),
+        undoAdjustment: FakeUndoInventoryAdjustmentUseCase = FakeUndoInventoryAdjustmentUseCase(),
     ) = PantryViewModel(
         inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, applyAdjustment,
-        updateLocation, updateExpiry, updateThreshold, alerts,
+        updateLocation, updateExpiry, updateThreshold, alerts, undoAdjustment,
     )
 
     @Test
@@ -752,6 +769,59 @@ class PantryViewModelTest {
         val lot = (viewModel.uiState.value as PantryUiState.Success).lots.single()
         assertEquals(4, lot.quantity)
         assertTrue(!lot.estimated)
+    }
+
+    @Test
+    fun `onUndoEstimate reverses the latest auto adjustment and reconciles the quantity`() = runTest {
+        val estimatedItem = sampleItem.copy(quantity = 1, lastAdjustmentReason = AdjustmentReason.Auto, lastAdjustmentId = "a1")
+        val undo = FakeUndoInventoryAdjustmentUseCase(
+            UndoInventoryAdjustmentUseCase.Output.Success(newQuantity = 3, appliedDelta = 2)
+        )
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedItem)),
+            undoAdjustment = undo,
+        )
+
+        viewModel.onUndoEstimate(estimatedItem)
+
+        assertEquals(UndoInventoryAdjustment(adjustmentId = "a1"), undo.lastInput)
+        val lot = (viewModel.uiState.value as PantryUiState.Success).lots.single()
+        assertEquals(3, lot.quantity)
+        assertEquals(AdjustmentReason.Undo, lot.lastAdjustmentReason)
+        assertFalse(lot.estimated)
+        assertFalse(lot.canUndo)
+    }
+
+    @Test
+    fun `onUndoEstimate restores the lot and emits UpdateFailed when the undo fails`() = runTest {
+        val estimatedItem = sampleItem.copy(quantity = 1, lastAdjustmentReason = AdjustmentReason.Auto, lastAdjustmentId = "a1")
+        val undo = FakeUndoInventoryAdjustmentUseCase(
+            UndoInventoryAdjustmentUseCase.Output.Failure(IOException("boom"))
+        )
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedItem)),
+            undoAdjustment = undo,
+        )
+
+        viewModel.onUndoEstimate(estimatedItem)
+
+        assertEquals(estimatedItem, (viewModel.uiState.value as PantryUiState.Success).lots.single())
+        assertEquals(PantryEvent.UpdateFailed("Milk"), viewModel.events.first())
+    }
+
+    @Test
+    fun `onUndoEstimate ignores a lot whose latest adjustment is not auto`() = runTest {
+        val dismissedItem = sampleItem.copy(lastAdjustmentReason = AdjustmentReason.Dismissed, lastAdjustmentId = "a1")
+        val undo = FakeUndoInventoryAdjustmentUseCase()
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(dismissedItem)),
+            undoAdjustment = undo,
+        )
+
+        viewModel.onUndoEstimate(dismissedItem)
+
+        assertNull(undo.lastInput)
+        assertEquals(dismissedItem, (viewModel.uiState.value as PantryUiState.Success).lots.single())
     }
 
     @Test

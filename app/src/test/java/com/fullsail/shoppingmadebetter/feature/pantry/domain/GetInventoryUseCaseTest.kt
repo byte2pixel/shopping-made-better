@@ -44,6 +44,9 @@ class GetInventoryUseCaseTest {
 
         override suspend fun applyInventoryAdjustment(id: String, delta: Int, reason: String) =
             InventoryAdjustmentResultDto(inventoryItemId = id, delta = 0.0, newQuantity = 0.0)
+
+        override suspend fun undoInventoryAdjustment(adjustmentId: String) =
+            InventoryAdjustmentResultDto(inventoryItemId = "", delta = 0.0, newQuantity = 0.0)
     }
 
     private val fixedClock = object : Clock {
@@ -154,8 +157,8 @@ class GetInventoryUseCaseTest {
     @Test
     fun `execute maps the latest adjustment reason and derives estimated from it`() = runTest {
         val dtos = listOf(
-            dto("auto", null).copy(lastAdjustmentReason = "auto", estimateSource = "history"),
-            dto("dismissed", null).copy(lastAdjustmentReason = "dismissed", estimateSource = "history"),
+            dto("auto", null).copy(lastAdjustmentReason = "auto", estimateSource = "history", lastAdjustmentId = "a1"),
+            dto("dismissed", null).copy(lastAdjustmentReason = "dismissed", estimateSource = "history", lastAdjustmentId = "a2"),
             dto("confirmed", null).copy(lastAdjustmentReason = "confirmed", estimateSource = "shelf_life"),
             dto("manual", null).copy(lastAdjustmentReason = "manual", estimateSource = "manual"),
             dto("none", null),
@@ -168,9 +171,12 @@ class GetInventoryUseCaseTest {
         assertEquals(AdjustmentReason.Auto, auto.lastAdjustmentReason)
         assertTrue(auto.estimated)
         assertEquals(EstimateSource.History, auto.estimateSource)
+        assertEquals("a1", auto.lastAdjustmentId)
+        assertTrue(auto.canUndo)
         val dismissed = groups.getValue("p-dismissed").lots.single()
         assertEquals(AdjustmentReason.Dismissed, dismissed.lastAdjustmentReason)
         assertTrue(dismissed.estimated)
+        assertFalse(dismissed.canUndo)
         val confirmed = groups.getValue("p-confirmed").lots.single()
         assertEquals(AdjustmentReason.Confirmed, confirmed.lastAdjustmentReason)
         assertFalse(confirmed.estimated)
@@ -183,6 +189,8 @@ class GetInventoryUseCaseTest {
         assertNull(none.lastAdjustmentReason)
         assertFalse(none.estimated)
         assertNull(none.estimateSource)
+        assertNull(none.lastAdjustmentId)
+        assertFalse(none.canUndo)
     }
 
     @Test

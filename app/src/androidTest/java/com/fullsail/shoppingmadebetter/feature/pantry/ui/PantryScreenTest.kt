@@ -25,6 +25,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustment
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustmentUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiry
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocation
@@ -114,6 +116,19 @@ class PantryScreenTest {
         override suspend fun execute(
             input: ApplyInventoryAdjustment,
         ): ApplyInventoryAdjustmentUseCase.Output {
+            lastInput = input
+            return output
+        }
+    }
+
+    private class FakeUndoInventoryAdjustmentUseCase(
+        var output: UndoInventoryAdjustmentUseCase.Output =
+            UndoInventoryAdjustmentUseCase.Output.Success(newQuantity = 3, appliedDelta = 1),
+    ) : UndoInventoryAdjustmentUseCase {
+        var lastInput: UndoInventoryAdjustment? = null
+        override suspend fun execute(
+            input: UndoInventoryAdjustment,
+        ): UndoInventoryAdjustmentUseCase.Output {
             lastInput = input
             return output
         }
@@ -231,11 +246,12 @@ class PantryScreenTest {
         updateThreshold: UpdateInventoryLowStockThresholdUseCase =
             FakeUpdateInventoryLowStockThresholdUseCase(),
         alerts: GetPantryEstimateAlertsUseCase = GetPantryEstimateAlertsUseCaseImpl(),
+        undoAdjustment: UndoInventoryAdjustmentUseCase = FakeUndoInventoryAdjustmentUseCase(),
         onProductClick: (String) -> Unit = {},
     ) {
         val viewModel = PantryViewModel(
             inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, applyAdjustment,
-            updateLocation, updateExpiry, updateThreshold, alerts,
+            updateLocation, updateExpiry, updateThreshold, alerts, undoAdjustment,
         )
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
@@ -450,6 +466,53 @@ class PantryScreenTest {
             ApplyInventoryAdjustment(id = "i1", delta = 1, reason = AdjustmentReason.Confirmed),
             applyAdjustment.lastInput,
         )
+    }
+
+    @Test
+    fun undoingAnEstimateReversesItsLatestAutoAdjustment() {
+        val undoAdjustment = FakeUndoInventoryAdjustmentUseCase(
+            UndoInventoryAdjustmentUseCase.Output.Success(newQuantity = 3, appliedDelta = 1)
+        )
+        val estimatedMilk = milk.copy(
+            lastAdjustmentReason = AdjustmentReason.Auto,
+            estimateSource = EstimateSource.History,
+            lastAdjustmentId = "a1",
+        )
+        setScreen(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedMilk)),
+            undoAdjustment = undoAdjustment,
+        )
+        toggleCard("2% Milk")
+
+        // Tapping the est. chip reveals the inline check; Undo reverses the auto row.
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_estimate_desc_history))
+            .performClick()
+        composeTestRule.onNodeWithText(string(R.string.pantry_estimate_undo)).performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals(UndoInventoryAdjustment(adjustmentId = "a1"), undoAdjustment.lastInput)
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_estimate_desc_history))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun aDismissedLotOffersYesAndFixButNoUndo() {
+        val dismissedMilk = milk.copy(
+            lastAdjustmentReason = AdjustmentReason.Dismissed,
+            estimateSource = EstimateSource.History,
+            lastAdjustmentId = "a1",
+        )
+        setScreen(inventory = FakeGetInventoryUseCase(inventoryOf(dismissedMilk)))
+        toggleCard("2% Milk")
+
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_estimate_desc_history))
+            .performClick()
+        composeTestRule.onNodeWithText(string(R.string.pantry_estimate_confirm_yes)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(string(R.string.pantry_estimate_confirm_fix)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(string(R.string.pantry_estimate_undo)).assertDoesNotExist()
     }
 
     @Test

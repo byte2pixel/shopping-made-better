@@ -15,6 +15,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.ProductGroup
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustment
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustmentUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiry
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocation
@@ -96,6 +98,7 @@ class PantryViewModel @Inject constructor(
     private val updateInventoryExpiryUseCase: UpdateInventoryExpiryUseCase,
     private val updateInventoryLowStockThresholdUseCase: UpdateInventoryLowStockThresholdUseCase,
     private val getPantryEstimateAlertsUseCase: GetPantryEstimateAlertsUseCase,
+    private val undoInventoryAdjustmentUseCase: UndoInventoryAdjustmentUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PantryUiState>(PantryUiState.Loading)
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
@@ -285,6 +288,24 @@ class PantryViewModel @Inject constructor(
     /** Replaces [item]'s auto-adjusted quantity with the user's count as a `confirmed` adjustment. */
     fun onCorrectEstimate(item: InventoryItem, newQuantity: Int) {
         applyAdjustment(item, newQuantity, AdjustmentReason.Confirmed)
+    }
+
+    /** Reverses [item]'s latest `auto` adjustment; the quantity reconciles to what the backend restored. */
+    fun onUndoEstimate(item: InventoryItem) {
+        val adjustmentId = item.lastAdjustmentId
+        if (!item.canUndo || adjustmentId == null) return
+        updateLotInState(item.id) { it.copy(lastAdjustmentReason = AdjustmentReason.Undo) }
+        viewModelScope.launch {
+            when (val out = undoInventoryAdjustmentUseCase.execute(UndoInventoryAdjustment(adjustmentId))) {
+                is UndoInventoryAdjustmentUseCase.Output.Success ->
+                    updateLotInState(item.id) { it.copy(quantity = out.newQuantity) }
+
+                is UndoInventoryAdjustmentUseCase.Output.Failure -> {
+                    updateLotInState(item.id) { item }
+                    _events.send(PantryEvent.UpdateFailed(item.name))
+                }
+            }
+        }
     }
 
     /** "Add to list": confirms [item] at zero and opens the add-to-list sheet for it. */

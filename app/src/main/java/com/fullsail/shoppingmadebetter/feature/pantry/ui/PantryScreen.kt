@@ -140,6 +140,7 @@ fun PantryScreen(
             onLowStockThresholdChange = viewModel::onLowStockThresholdChanged,
             onConfirmEstimate = viewModel::onConfirmEstimate,
             onCorrectEstimate = viewModel::onCorrectEstimate,
+            onUndoEstimate = viewModel::onUndoEstimate,
         )
         SnackbarHost(
             hostState = snackbarHostState,
@@ -189,6 +190,7 @@ private fun PantryContent(
     onLowStockThresholdChange: (InventoryItem, Int?) -> Unit,
     onConfirmEstimate: (InventoryItem) -> Unit,
     onCorrectEstimate: (InventoryItem, Int) -> Unit,
+    onUndoEstimate: (InventoryItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -258,6 +260,7 @@ private fun PantryContent(
                                 },
                                 onConfirmEstimate = onConfirmEstimate,
                                 onCorrectEstimate = onCorrectEstimate,
+                                onUndoEstimate = onUndoEstimate,
                                 modifier = Modifier.animateItem(),
                             )
                         }

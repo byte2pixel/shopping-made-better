@@ -1,5 +1,5 @@
 -- ============================================================
--- pgTAP tests: pantry_items_by_expire lastAdjustmentReason columns
+-- pgTAP tests: pantry_items_by_expire latest-adjustment columns
 -- ============================================================
 -- Run with `npx supabase test db`. The transaction rolls back, so the
 -- fixtures and table clears below never persist. now() is frozen per
@@ -9,7 +9,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(7);
+select plan(9);
 
 -- ------------------------------------------------------------
 -- Fixtures. Clear the tables the view reads so seeded data cannot
@@ -76,8 +76,8 @@ select columns_are('public', 'pantry_items_by_expire',
   array['id', 'productId', 'name', 'brand', 'description', 'size', 'quantity',
         'imageUrl', 'expiryDate', 'location', 'lowStockThreshold',
         'lastAutoAdjustedAtEpoch', 'estimateSource',
-        'lastAdjustmentReason', 'lastAdjustedAtEpoch'],
-  'view keeps every existing column and adds the two new ones');
+        'lastAdjustmentReason', 'lastAdjustedAtEpoch', 'lastAdjustmentId'],
+  'view keeps every existing column and adds lastAdjustmentId');
 
 select ok(
   (select c.reloptions @> array['security_invoker=true']
@@ -94,9 +94,10 @@ set local request.jwt.claims =
 
 select ok(
   (select "lastAdjustmentReason" is null and "lastAdjustedAtEpoch" is null
+      and "lastAdjustmentId" is null
    from public.pantry_items_by_expire
    where id = 'cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcd01'),
-  'lot with no audit rows has null reason and epoch');
+  'lot with no audit rows has null reason, epoch and id');
 
 reset role;
 
@@ -105,9 +106,10 @@ reset role;
 -- confirmed row supersedes it.
 -- ------------------------------------------------------------
 insert into public.inventory_adjustments
-  (inventory_item_id, user_id, delta, reason, created_at)
+  (id, inventory_item_id, user_id, delta, reason, created_at)
 values
-  ('cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcd01', 'dddddddd-dddd-dddd-dddd-dddddddddd01',
+  ('adadadad-adad-adad-adad-adadadadad11',
+   'cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcd01', 'dddddddd-dddd-dddd-dddd-dddddddddd01',
    -1, 'auto', now() - interval '1 hour');
 
 set local role authenticated;
@@ -123,12 +125,20 @@ select is(
   'auto|true',
   'auto row surfaces as lastAdjustmentReason with its epoch');
 
+select is(
+  (select "lastAdjustmentId"
+   from public.pantry_items_by_expire
+   where id = 'cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcd01'),
+  'adadadad-adad-adad-adad-adadadadad11'::uuid,
+  'auto row surfaces as lastAdjustmentId');
+
 reset role;
 
 insert into public.inventory_adjustments
-  (inventory_item_id, user_id, delta, reason, created_at)
+  (id, inventory_item_id, user_id, delta, reason, created_at)
 values
-  ('cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcd01', 'dddddddd-dddd-dddd-dddd-dddddddddd01',
+  ('adadadad-adad-adad-adad-adadadadad12',
+   'cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcd01', 'dddddddd-dddd-dddd-dddd-dddddddddd01',
    0, 'confirmed', now());
 
 set local role authenticated;
@@ -141,6 +151,13 @@ select is(
    where id = 'cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcd01'),
   'confirmed',
   'later confirmed row supersedes the auto row');
+
+select is(
+  (select "lastAdjustmentId"
+   from public.pantry_items_by_expire
+   where id = 'cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcd01'),
+  'adadadad-adad-adad-adad-adadadadad12'::uuid,
+  'lastAdjustmentId follows the newest row');
 
 -- ------------------------------------------------------------
 -- RLS: user 2 sees only their own lot

@@ -65,7 +65,7 @@ values
   ('cccccccc-cccc-cccc-cccc-cccccccccc01', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01',
    'ffffffff-ffff-ffff-ffff-ffffffffff01', 3, 'ea', 'pantry',
    current_date - 10, null, now() - interval '5 days', 0.6000),
-  -- undo +1: pending kept
+  -- undo +1: pending reset
   ('cccccccc-cccc-cccc-cccc-cccccccccc02', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01',
    'ffffffff-ffff-ffff-ffff-ffffffffff01', 2, 'ea', 'pantry',
    current_date - 10, null, now() - interval '5 days', 0.4000),
@@ -148,7 +148,7 @@ select is(
   'confirmed: audit row records -1 under the reason given');
 
 -- ------------------------------------------------------------
--- undo +1: restores, keeps pending fraction
+-- undo +1: restores, resets pending fraction
 -- ------------------------------------------------------------
 select ok(
   (select r.new_quantity = 3
@@ -161,8 +161,8 @@ select is(
           || (ii.last_auto_adjusted_at = now())::text
    from public.inventory_items ii
    where ii.id = 'cccccccc-cccc-cccc-cccc-cccccccccc02'),
-  '3.000|0.4000|true',
-  'undo: quantity 3, pending fraction untouched, lot stamped');
+  '3.000|0.0000|true',
+  'undo: quantity 3, pending fraction reset, lot stamped');
 
 select is(
   (select a.delta::text || '|' || a.reason from public.inventory_adjustments a

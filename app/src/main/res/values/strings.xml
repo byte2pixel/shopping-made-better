@@ -93,6 +93,7 @@
     <string name="pantry_estimate_confirm_question">We estimated %1$d left. Correct?</string>
     <string name="pantry_estimate_confirm_yes">Yes</string>
     <string name="pantry_estimate_confirm_fix">Fix</string>
+    <string name="pantry_estimate_undo">Undo</string>
 
     <!-- Pantry: zero-stock gate for an auto-adjusted lot -->
     <string name="pantry_zero_stock_title">Out of stock?</string>
