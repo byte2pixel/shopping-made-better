@@ -34,6 +34,7 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLoca
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.groupInventoryByProduct
+import com.fullsail.shoppingmadebetter.feature.profile.domain.GetAutoAdjustEnabledUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
@@ -132,6 +133,13 @@ class PantryScreenTest {
             lastInput = input
             return output
         }
+    }
+
+    private class FakeGetAutoAdjustEnabledUseCase(
+        private val output: GetAutoAdjustEnabledUseCase.Output =
+            GetAutoAdjustEnabledUseCase.Output.Success(enabled = true),
+    ) : GetAutoAdjustEnabledUseCase {
+        override suspend fun execute(input: Unit) = output
     }
 
     private class FakeUpdateInventoryLocationUseCase(
@@ -247,11 +255,12 @@ class PantryScreenTest {
             FakeUpdateInventoryLowStockThresholdUseCase(),
         alerts: GetPantryEstimateAlertsUseCase = GetPantryEstimateAlertsUseCaseImpl(),
         undoAdjustment: UndoInventoryAdjustmentUseCase = FakeUndoInventoryAdjustmentUseCase(),
+        autoAdjust: GetAutoAdjustEnabledUseCase = FakeGetAutoAdjustEnabledUseCase(),
         onProductClick: (String) -> Unit = {},
     ) {
         val viewModel = PantryViewModel(
             inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, applyAdjustment,
-            updateLocation, updateExpiry, updateThreshold, alerts, undoAdjustment,
+            updateLocation, updateExpiry, updateThreshold, alerts, undoAdjustment, autoAdjust,
         )
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
@@ -513,6 +522,20 @@ class PantryScreenTest {
         composeTestRule.onNodeWithText(string(R.string.pantry_estimate_confirm_yes)).assertIsDisplayed()
         composeTestRule.onNodeWithText(string(R.string.pantry_estimate_confirm_fix)).assertIsDisplayed()
         composeTestRule.onNodeWithText(string(R.string.pantry_estimate_undo)).assertDoesNotExist()
+    }
+
+    @Test
+    fun anEstimatedLotShowsNoEstChipWhenAutoAdjustIsOff() {
+        val estimatedMilk = milk.copy(lastAdjustmentReason = AdjustmentReason.Auto, estimateSource = EstimateSource.History)
+        setScreen(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedMilk)),
+            autoAdjust = FakeGetAutoAdjustEnabledUseCase(
+                GetAutoAdjustEnabledUseCase.Output.Success(enabled = false)
+            ),
+        )
+        toggleCard("2% Milk")
+
+        composeTestRule.onAllNodesWithText(string(R.string.pantry_estimate_chip)).assertCountEquals(0)
     }
 
     @Test

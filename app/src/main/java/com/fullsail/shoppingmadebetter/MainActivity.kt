@@ -25,6 +25,7 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -181,6 +182,10 @@ fun ShoppingMadeBetterApp(
         gesturesEnabled = drawerState.isOpen || currentTab != null,
         drawerContent = {
             AppDrawer(
+                onProfile = {
+                    scope.launch { drawerState.close() }
+                    navController.navigate(Dest.Profile) { launchSingleTop = true }
+                },
                 onLogout = {
                     scope.launch { drawerState.close() }
                     navigationViewModel.logout()
@@ -385,19 +390,23 @@ fun ShoppingMadeBetterApp(
 }
 
 /**
- * The app's navigation drawer, opened from the top-bar menu on tab screens. The
- * upper area is a placeholder for future menu items (change password, onboarding
- * preferences, ...); [onLogout] at the bottom signs the user out for now.
+ * The app's navigation drawer, opened from the top-bar menu on tab screens.
+ * [onProfile] opens Profile & Settings; [onLogout] at the bottom signs the user out.
  */
 @Composable
-private fun AppDrawer(onLogout: () -> Unit) {
+private fun AppDrawer(onProfile: () -> Unit, onLogout: () -> Unit) {
     ModalDrawerSheet {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
         ) {
-            // Placeholder top section for future menu items; the weight pushes logout down.
+            NavigationDrawerItem(
+                label = { Text(stringResource(R.string.menu_profile)) },
+                selected = false,
+                onClick = onProfile,
+            )
+            // The weight pushes logout to the bottom.
             Spacer(modifier = Modifier.weight(1f))
             Button(
                 onClick = onLogout,

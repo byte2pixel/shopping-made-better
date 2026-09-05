@@ -13,7 +13,14 @@
     <string name="nav_menu">Menu</string>
 
     <!-- Navigation drawer menu -->
+    <string name="menu_profile">Profile &amp; Settings</string>
     <string name="menu_logout">Log out</string>
+
+    <!-- Profile & Settings screen -->
+    <string name="profile_pantry_header">Pantry</string>
+    <string name="profile_auto_adjust_title">Auto-adjust pantry quantities</string>
+    <string name="profile_auto_adjust_description">Lowers quantities based on how often you buy each item.</string>
+    <string name="profile_auto_adjust_failed">Couldn\'t update auto-adjust</string>
 
     <!-- Authentication (sign in / sign up) -->
     <string name="auth_sign_in">Sign In</string>
