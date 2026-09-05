@@ -12,8 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.launch
+
 sealed interface MealsUiState {
     object Loading : MealsUiState
     data class Success(
@@ -126,7 +125,6 @@ class MealsViewModel @Inject constructor(
         }
     }
 
-
     fun quickAddIngredient(ingredientId: String, title: String) {
         val currentState = _uiState.value
         if (currentState is MealsUiState.Success) {
@@ -141,7 +139,7 @@ class MealsViewModel @Inject constructor(
         }
     }
 
-    fun addMealToList(mealId: String) {
+    fun addMealToShoppingList(mealId: String) {
         val currentState = _uiState.value
         if (currentState is MealsUiState.Success) {
             viewModelScope.launch {
@@ -149,7 +147,7 @@ class MealsViewModel @Inject constructor(
                     val activeListId = "DEFAULT_LIST_ID"
                     repository.addMealToShoppingList(mealId, activeListId)
                 } catch (e: Exception) {
-                    println("Error in addMealToList: ${e.message}")
+                    println("Error in addMealToShoppingList: ${e.message}")
                 }
             }
         }
@@ -169,7 +167,11 @@ class MealsViewModel @Inject constructor(
 
     fun toggleFavorite(mealId: String, isCurrentlyFavorite: Boolean) {
         viewModelScope.launch {
-            repository.toggleFavoriteMeal(mealId, !isCurrentlyFavorite)
+            try {
+                repository.toggleFavoriteMeal(mealId, !isCurrentlyFavorite)
+            } catch (e: Exception) {
+                println("Error in toggleFavorite: ${e.message}")
+            }
         }
     }
 }
