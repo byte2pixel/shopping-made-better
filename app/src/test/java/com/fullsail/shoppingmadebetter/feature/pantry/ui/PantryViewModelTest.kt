@@ -6,6 +6,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjus
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.EstimateSource
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentDigestEntry
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetAdjustmentDigestUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAlertsUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAlertsUseCaseImpl
@@ -143,6 +145,18 @@ class PantryViewModelTest {
         }
     }
 
+    /** Fake digest use case: returns a settable [output] and counts the calls. */
+    private class FakeGetAdjustmentDigestUseCase(
+        var output: GetAdjustmentDigestUseCase.Output =
+            GetAdjustmentDigestUseCase.Output.Success(emptyList()),
+    ) : GetAdjustmentDigestUseCase {
+        var callCount = 0
+        override suspend fun execute(input: Unit): GetAdjustmentDigestUseCase.Output {
+            callCount++
+            return output
+        }
+    }
+
     /** Fake undo use case: records the last input and returns a settable [output]. */
     private class FakeUndoInventoryAdjustmentUseCase(
         var output: UndoInventoryAdjustmentUseCase.Output =
@@ -238,9 +252,11 @@ class PantryViewModelTest {
         alerts: GetPantryEstimateAlertsUseCase = GetPantryEstimateAlertsUseCaseImpl(),
         undoAdjustment: FakeUndoInventoryAdjustmentUseCase = FakeUndoInventoryAdjustmentUseCase(),
         autoAdjust: FakeGetAutoAdjustEnabledUseCase = FakeGetAutoAdjustEnabledUseCase(),
+        digest: FakeGetAdjustmentDigestUseCase = FakeGetAdjustmentDigestUseCase(),
     ) = PantryViewModel(
         inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, applyAdjustment,
         updateLocation, updateExpiry, updateThreshold, alerts, undoAdjustment, autoAdjust,
+        digest,
     )
 
     @Test
@@ -1264,5 +1280,110 @@ class PantryViewModelTest {
         inventory.output = inventoryOf(emptyEstimatedItem.copy(quantity = 2))
         viewModel.loadInventory()
         assertNull(viewModel.zeroStockAlert.value)
+    }
+    private fun digestEntry(adjustmentId: String, lotId: String) = AdjustmentDigestEntry(
+        adjustmentId = adjustmentId,
+        lotId = lotId,
+        productId = "p1",
+        productName = "Jasmine Rice",
+        imageUrl = "",
+        delta = -1,
+        quantityNow = 2,
+        productQuantity = 2,
+        daysAgo = 0,
+    )
+
+    @Test
+    fun `loadInventory counts the distinct lots in the digest`() = runTest {
+        val viewModel = buildViewModel(
+            digest = FakeGetAdjustmentDigestUseCase(
+                GetAdjustmentDigestUseCase.Output.Success(
+                    listOf(
+                        digestEntry("a1", lotId = "lot1"),
+                        digestEntry("a2", lotId = "lot1"),
+                        digestEntry("a3", lotId = "lot2"),
+                    )
+                )
+            ),
+        )
+
+        // Two adjustments on one lot are one item to review.
+        assertEquals(2, viewModel.digestLotCount.value)
+    }
+
+    @Test
+    fun `loadInventory hides the digest card when auto-adjust is off`() = runTest {
+        val viewModel = buildViewModel(
+            autoAdjust = FakeGetAutoAdjustEnabledUseCase(
+                GetAutoAdjustEnabledUseCase.Output.Success(enabled = false)
+            ),
+            digest = FakeGetAdjustmentDigestUseCase(
+                GetAdjustmentDigestUseCase.Output.Success(listOf(digestEntry("a1", lotId = "lot1")))
+            ),
+        )
+
+        assertEquals(0, viewModel.digestLotCount.value)
+    }
+
+    @Test
+    fun `loadInventory hides the digest card when the digest read fails`() = runTest {
+        val viewModel = buildViewModel(
+            digest = FakeGetAdjustmentDigestUseCase(
+                GetAdjustmentDigestUseCase.Output.Failure(IOException("boom"))
+            ),
+        )
+
+        assertEquals(0, viewModel.digestLotCount.value)
+    }
+
+    @Test
+    fun `onUndoEstimate re-reads the digest so the card count drops`() = runTest {
+        val estimatedItem = sampleItem.copy(
+            quantity = 1,
+            lastAdjustmentReason = AdjustmentReason.Auto,
+            lastAdjustmentId = "a1",
+        )
+        val digest = FakeGetAdjustmentDigestUseCase(
+            GetAdjustmentDigestUseCase.Output.Success(
+                listOf(digestEntry("a1", lotId = "lot1"), digestEntry("a2", lotId = "lot2"))
+            )
+        )
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedItem)),
+            digest = digest,
+        )
+        assertEquals(2, viewModel.digestLotCount.value)
+
+        digest.output = GetAdjustmentDigestUseCase.Output.Success(
+            listOf(digestEntry("a2", lotId = "lot2"))
+        )
+        viewModel.onUndoEstimate(estimatedItem)
+
+        assertEquals(2, digest.callCount)
+        assertEquals(1, viewModel.digestLotCount.value)
+    }
+
+    @Test
+    fun `onUndoEstimate leaves the digest count alone when the undo fails`() = runTest {
+        val estimatedItem = sampleItem.copy(
+            quantity = 1,
+            lastAdjustmentReason = AdjustmentReason.Auto,
+            lastAdjustmentId = "a1",
+        )
+        val digest = FakeGetAdjustmentDigestUseCase(
+            GetAdjustmentDigestUseCase.Output.Success(listOf(digestEntry("a1", lotId = "lot1")))
+        )
+        val viewModel = buildViewModel(
+            inventory = FakeGetInventoryUseCase(inventoryOf(estimatedItem)),
+            undoAdjustment = FakeUndoInventoryAdjustmentUseCase(
+                UndoInventoryAdjustmentUseCase.Output.Failure(IOException("boom"))
+            ),
+            digest = digest,
+        )
+
+        viewModel.onUndoEstimate(estimatedItem)
+
+        assertEquals(1, digest.callCount)
+        assertEquals(1, viewModel.digestLotCount.value)
     }
 }

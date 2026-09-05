@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.domain
 
+import com.fullsail.shoppingmadebetter.feature.pantry.data.AdjustmentDigestEntryDto
 import com.fullsail.shoppingmadebetter.feature.pantry.data.InventoryAdjustmentResultDto
 import com.fullsail.shoppingmadebetter.feature.pantry.data.InventoryItemDto
 import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryRepository
@@ -37,6 +38,7 @@ class UpdateInventoryLowStockThresholdUseCaseImplTest {
             InventoryAdjustmentResultDto(inventoryItemId = id, delta = 0.0, newQuantity = 0.0)
         override suspend fun undoInventoryAdjustment(adjustmentId: String) =
             InventoryAdjustmentResultDto(inventoryItemId = "", delta = 0.0, newQuantity = 0.0)
+        override suspend fun getAdjustmentDigest(): List<AdjustmentDigestEntryDto> = emptyList()
     }
 
     @Test

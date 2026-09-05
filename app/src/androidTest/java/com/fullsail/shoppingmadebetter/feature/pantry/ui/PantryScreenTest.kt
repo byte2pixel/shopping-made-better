@@ -19,6 +19,8 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjus
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.EstimateSource
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentDigestEntry
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetAdjustmentDigestUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAlertsUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAlertsUseCaseImpl
@@ -42,6 +44,7 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -133,6 +136,13 @@ class PantryScreenTest {
             lastInput = input
             return output
         }
+    }
+
+    private class FakeGetAdjustmentDigestUseCase(
+        private val output: GetAdjustmentDigestUseCase.Output =
+            GetAdjustmentDigestUseCase.Output.Success(emptyList()),
+    ) : GetAdjustmentDigestUseCase {
+        override suspend fun execute(input: Unit) = output
     }
 
     private class FakeGetAutoAdjustEnabledUseCase(
@@ -256,15 +266,22 @@ class PantryScreenTest {
         alerts: GetPantryEstimateAlertsUseCase = GetPantryEstimateAlertsUseCaseImpl(),
         undoAdjustment: UndoInventoryAdjustmentUseCase = FakeUndoInventoryAdjustmentUseCase(),
         autoAdjust: GetAutoAdjustEnabledUseCase = FakeGetAutoAdjustEnabledUseCase(),
+        digest: GetAdjustmentDigestUseCase = FakeGetAdjustmentDigestUseCase(),
         onProductClick: (String) -> Unit = {},
+        onReviewDigest: () -> Unit = {},
     ) {
         val viewModel = PantryViewModel(
             inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, applyAdjustment,
             updateLocation, updateExpiry, updateThreshold, alerts, undoAdjustment, autoAdjust,
+            digest,
         )
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
-                PantryScreen(onProductClick = onProductClick, viewModel = viewModel)
+                PantryScreen(
+                onProductClick = onProductClick,
+                onReviewDigest = onReviewDigest,
+                viewModel = viewModel,
+            )
             }
         }
     }
@@ -896,5 +913,50 @@ class PantryScreenTest {
         composeTestRule
             .onNodeWithText(string(R.string.pantry_zero_stock_message, "2% Milk"))
             .assertIsDisplayed()
+    }
+    private fun digestEntry(lotId: String) = AdjustmentDigestEntry(
+        adjustmentId = "a-$lotId",
+        lotId = lotId,
+        productId = "p1",
+        productName = "Jasmine Rice",
+        imageUrl = "",
+        delta = -1,
+        quantityNow = 2,
+        productQuantity = 2,
+        daysAgo = 0,
+    )
+
+    private fun digestOf(vararg lotIds: String) = FakeGetAdjustmentDigestUseCase(
+        GetAdjustmentDigestUseCase.Output.Success(lotIds.map { digestEntry(it) })
+    )
+
+    @Test
+    fun digestCardShowsTheLotCount() {
+        setScreen(digest = digestOf("lot1", "lot2"))
+
+        composeTestRule
+            .onNodeWithText(quantityString(R.plurals.pantry_digest_card_title, 2, 2))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun digestCardIsAbsentWithNothingToReview() {
+        setScreen(digest = digestOf())
+
+        composeTestRule
+            .onNode(hasClickLabel(string(R.string.pantry_digest_card_action)))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun tappingTheDigestCardOpensTheDigest() {
+        var reviewed = false
+        setScreen(digest = digestOf("lot1"), onReviewDigest = { reviewed = true })
+
+        composeTestRule
+            .onNode(hasClickLabel(string(R.string.pantry_digest_card_action)))
+            .performClick()
+
+        assertTrue(reviewed)
     }
 }

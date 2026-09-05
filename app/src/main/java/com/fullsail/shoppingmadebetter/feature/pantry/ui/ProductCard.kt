@@ -104,7 +104,7 @@ internal fun stockLevel(quantity: Int, lowStockThreshold: Int?): StockLevel = wh
 
 /** The chip accent color for a stock severity. */
 @Composable
-private fun stockAccent(level: StockLevel): Color {
+internal fun stockAccent(level: StockLevel): Color {
     val dark = isSystemInDarkTheme()
     return when (level) {
         StockLevel.Out -> MaterialTheme.colorScheme.error
