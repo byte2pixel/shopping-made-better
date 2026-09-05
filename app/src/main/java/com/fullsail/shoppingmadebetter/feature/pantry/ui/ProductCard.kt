@@ -49,6 +49,7 @@ import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.LabelChip
 import com.fullsail.shoppingmadebetter.core.ui.ProductImage
 import com.fullsail.shoppingmadebetter.core.ui.Stepper
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentReason
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.EstimateSource
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
@@ -799,7 +800,7 @@ private fun previewLot(
     expiresInDays: Int? = 4,
     location: PantryLocation = PantryLocation.Pantry,
     lowStockThreshold: Int? = null,
-    estimated: Boolean = false,
+    lastAdjustmentReason: AdjustmentReason? = null,
     estimateSource: EstimateSource? = null,
 ) = InventoryItem(
     id = id,
@@ -813,7 +814,7 @@ private fun previewLot(
     expiresInDays = expiresInDays,
     location = location,
     lowStockThreshold = lowStockThreshold,
-    estimated = estimated,
+    lastAdjustmentReason = lastAdjustmentReason,
     estimateSource = estimateSource,
 )
 
@@ -911,7 +912,7 @@ private fun ProductCardEstimatedPreview() {
                 previewLot(
                     id = "1",
                     quantity = 1,
-                    estimated = true,
+                    lastAdjustmentReason = AdjustmentReason.Auto,
                     estimateSource = EstimateSource.History,
                 ),
                 previewLot(id = "2", quantity = 3, expiresInDays = 9),

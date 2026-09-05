@@ -35,7 +35,7 @@ class GetInventoryUseCaseImpl @Inject constructor(
         expiresInDays = expiryDate?.let { today.daysUntil(it) },
         location = PantryLocation.fromDbValue(location),
         lowStockThreshold = lowStockThreshold,
-        estimated = lastAdjustmentReason == AdjustmentReason.Auto.toDbValue(),
+        lastAdjustmentReason = AdjustmentReason.fromDbValue(lastAdjustmentReason),
         estimateSource = EstimateSource.fromDbValue(estimateSource),
     )
 

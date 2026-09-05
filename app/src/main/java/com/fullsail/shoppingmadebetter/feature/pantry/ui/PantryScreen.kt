@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
@@ -67,6 +68,7 @@ fun PantryScreen(
     val uiState by viewModel.uiState.collectAsState()
     val sheetState by viewModel.addToListSheet.collectAsState()
     val removeConfirm by viewModel.removeConfirm.collectAsState()
+    val zeroStockAlert by viewModel.zeroStockAlert.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val resources = LocalResources.current
 
@@ -160,6 +162,17 @@ fun PantryScreen(
             onConfirm = viewModel::confirmRemove,
             onDismiss = viewModel::dismissRemove,
         )
+    }
+
+    zeroStockAlert?.let { lot ->
+        key(lot.id) {
+            ZeroStockAlertDialog(
+                lot = lot,
+                onOut = { viewModel.onZeroStockOut(lot) },
+                onStillHave = { count -> viewModel.onZeroStockStillHave(lot, count) },
+                onDismiss = { viewModel.onZeroStockDismissed(lot) },
+            )
+        }
     }
 }
 
