@@ -150,7 +150,7 @@ fun ShoppingListsScreen(
                     else -> {}
                 }
                 FloatingActionButton(onClick = {onItemComparison(Dest.ShoppingListItemComparison)}, modifier = Modifier.align(
-                    Alignment.BottomEnd).padding(bottom = 40.dp, end = 16.dp).size(60.dp), shape = CircleShape ) {
+                    Alignment.BottomEnd).padding(bottom = 70.dp, end = 16.dp).size(60.dp), shape = CircleShape ) {
                     Icon(painterResource(id = R.drawable.ic_add), contentDescription = "add", Modifier.size(24.dp))}
             }
         }
