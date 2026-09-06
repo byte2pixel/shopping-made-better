@@ -66,7 +66,7 @@ class ShoppingListItemsViewModel @Inject constructor(
     val events = _events.receiveAsFlow()
 
 
-    init { }
+    //init { }
     fun addItem(item : InsertItem, listId : String, itemName : String)
     {
         //_uiState.value = ShoppingListItemsState.Loading
@@ -133,8 +133,8 @@ class ShoppingListItemsViewModel @Inject constructor(
         _checkedItems.value = current
     }
 
-    fun clearCheckedItems(listId: String) {
-        _checkedItems.value.forEach { deleteItems(it, listId) }
+    fun clearCheckedItems() {
+        _checkedItems.value.forEach { deleteItems(it) }
         _checkedItems.value = emptyList()
     }
     fun getItems(input : String)  {
@@ -152,7 +152,7 @@ class ShoppingListItemsViewModel @Inject constructor(
         }
     }
 
-    fun checkItem(id : String, state : Boolean, listId : String){
+    fun checkItem(id : String, state : Boolean){
         viewModelScope.launch{
             when (val out = getIsCheckedUseCase.execute(isChecked(id, state))) {
                 is isCheckedUseCase.Output.Success ->
@@ -181,7 +181,7 @@ class ShoppingListItemsViewModel @Inject constructor(
         }
     }
 
-    fun deleteItems(input : String, listId : String? = null)
+    fun deleteItems(input : String)
     {
         viewModelScope.launch {
              when (val out = getDeleteItemsUseCase.execute(input)) {

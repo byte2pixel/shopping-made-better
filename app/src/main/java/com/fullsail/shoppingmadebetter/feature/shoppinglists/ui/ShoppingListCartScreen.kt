@@ -37,7 +37,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.core.text.isDigitsOnly
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListItems
@@ -69,8 +68,8 @@ fun ShoppingListCartScreen(
 
                 TextButton(modifier = Modifier.fillMaxWidth(), onClick = {  showDialog = false
                     viewModel.markAllPurchased(listId)
-                    checkedItems.forEach { viewModel.deleteItems(it, listId) }
-                    viewModel.clearCheckedItems(listId)}) {
+                    checkedItems.forEach { viewModel.deleteItems(it) }
+                    viewModel.clearCheckedItems()}) {
                     Text(text = "Yes", textAlign = TextAlign.Right)
                 }
             },
@@ -140,21 +139,21 @@ fun ShoppingListCartScreen(
                                 CartRow(it, viewModel, onItemCrossed = {
                                     if (toggledDelete)
                                     {
-                                        viewModel.deleteItems(it.id , listId)
+                                        viewModel.deleteItems(it.id)
                                     }else
                                     {
                                         viewModel.toggleItemCheck(it.id)
-                                        viewModel.checkItem(it.id, true, listId)
+                                        viewModel.checkItem(it.id, true)
                                     }
 
                                 }, onItemUncrossed = {
                                     if (toggledDelete)
                                     {
-                                        viewModel.deleteItems(it.id , listId)
+                                        viewModel.deleteItems(it.id)
                                     }else
                                     {
                                         viewModel.toggleItemCheck(it.id)
-                                        viewModel.checkItem(it.id, false, listId)
+                                        viewModel.checkItem(it.id, false)
                                     }
                                 }, listId,onInfoScreen)
                             }
@@ -166,20 +165,20 @@ fun ShoppingListCartScreen(
                                     CartRow(it, viewModel, onItemCrossed = {
                                         if (toggledDelete)
                                         {
-                                            viewModel.deleteItems(it.id , listId)
+                                            viewModel.deleteItems(it.id )
                                         }else
                                         {
                                             viewModel.toggleItemCheck(it.id)
-                                            viewModel.checkItem(it.id, true, listId)
+                                            viewModel.checkItem(it.id, true)
                                         }
 
                                     }, onItemUncrossed = {
                                         if (toggledDelete)
                                         {
-                                            viewModel.deleteItems(it.id , listId)
+                                            viewModel.deleteItems(it.id )
                                         }else {
                                             viewModel.toggleItemCheck(it.id)
-                                            viewModel.checkItem(it.id, false, listId)
+                                            viewModel.checkItem(it.id, false)
                                         }
                                     }, listId,onInfoScreen)
                                 }
@@ -197,20 +196,20 @@ fun ShoppingListCartScreen(
                                     CartRow(it, viewModel, onItemCrossed = {
                                         if (toggledDelete)
                                         {
-                                            viewModel.deleteItems(it.id , listId)
+                                            viewModel.deleteItems(it.id )
                                         }
                                         else {
                                             viewModel.toggleItemCheck(it.id)
-                                            viewModel.checkItem(it.id, true, listId)
+                                            viewModel.checkItem(it.id, true)
                                         }
                                     }, onItemUncrossed = {
                                         if (toggledDelete)
                                         {
-                                            viewModel.deleteItems(it.id , listId)
+                                            viewModel.deleteItems(it.id )
                                         }
                                         else{
                                             viewModel.toggleItemCheck(it.id)
-                                            viewModel.checkItem(it.id, false, listId)
+                                            viewModel.checkItem(it.id, false)
                                         }
                                     }, listId,onInfoScreen)
                                 }
@@ -236,7 +235,7 @@ fun ShoppingListCartScreen(
     }
 }
 @Composable
-fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onItemCrossed: () -> Unit, onItemUncrossed : () -> Unit, listId : String, onInfoScreen :(dest : Dest) -> Unit,) {
+fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onItemCrossed: () -> Unit, onItemUncrossed : () -> Unit, listId : String, onInfoScreen :(dest : Dest) -> Unit) {
 
     var optionsShown by remember{ mutableStateOf(false)}
     Card(Modifier.fillMaxWidth().clickable(onClick = {
@@ -324,6 +323,7 @@ fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onI
                 }
             }
             else {
+                Text(item.quantity.toString(), style = MaterialTheme.typography.bodyLarge)
                 IconButton(onClick = {
                     optionsShown = true
 
