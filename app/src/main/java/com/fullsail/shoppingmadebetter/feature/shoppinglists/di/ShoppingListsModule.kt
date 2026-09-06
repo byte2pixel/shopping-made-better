@@ -4,6 +4,8 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRe
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepositoryImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetItemDetailsUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetItemDetailsUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetShoppingListItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetShoppingListItemsUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RemoveListUseCase
@@ -12,6 +14,8 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameShoppi
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameShoppingListUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.UpdateQuantityUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.UpdateQuantityUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isCheckedUseCase
@@ -50,6 +54,15 @@ abstract class ShoppingListsModule {
     abstract fun bindInsertShoppingList(
         impl: ShoppingListUseCaseImpl,
     ): ShoppingListUseCase
+
+    @Binds
+    abstract fun bindQuantityUpdate(
+        impl: UpdateQuantityUseCaseImpl,
+    ): UpdateQuantityUseCase
+    @Binds
+    abstract fun bindItemDetail(
+        impl: GetItemDetailsUseCaseImpl,
+    ): GetItemDetailsUseCase
 
     @Binds
     abstract fun bindRenameShoppingList(

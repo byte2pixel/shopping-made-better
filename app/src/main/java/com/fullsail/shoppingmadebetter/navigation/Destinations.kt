@@ -39,6 +39,8 @@ sealed interface Dest {
    @Serializable
    data class ShoppingListCartScreen(val listId : String) : Dest
     @Serializable
+    data class InformationScreen(val productId : String) : Dest
+    @Serializable
     data object Cart : Dest
 
     @Serializable

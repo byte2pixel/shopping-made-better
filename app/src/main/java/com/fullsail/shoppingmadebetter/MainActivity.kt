@@ -81,6 +81,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.fullsail.shoppingmadebetter.feature.meals.ui.MealsScreen
 import com.fullsail.shoppingmadebetter.feature.meals.ui.MealsViewModel
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.InformationScreen
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -234,7 +235,10 @@ fun ShoppingMadeBetterApp(
             }
 
             composable<Dest.ShoppingListCartScreen>{
-                ShoppingListCartScreen( listId = it.toRoute<Dest.ShoppingListCartScreen>().listId )
+                ShoppingListCartScreen( listId = it.toRoute<Dest.ShoppingListCartScreen>().listId, onInfoScreen = {navController.navigate(it)} )
+            }
+            composable<Dest.InformationScreen>{
+                InformationScreen(productId = it.toRoute<Dest.InformationScreen>().productId)
             }
             composable<Dest.ShoppingListItemsScreen>{
                 ShoppingListItemsScreen( listId = it.toRoute<Dest.ShoppingListItemsScreen>().listId , onItemComparison = {navController.navigate(it)})
