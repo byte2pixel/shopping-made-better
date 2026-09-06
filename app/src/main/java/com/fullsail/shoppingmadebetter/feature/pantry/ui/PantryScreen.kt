@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
@@ -49,6 +50,9 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
 /** Persists the set of selected dashboard filters across configuration changes. */
+/** Stable key for the digest card, so it is not confused with a product row. */
+private const val DIGEST_KEY = "adjustment_digest"
+
 private val filterSetSaver = listSaver<Set<PantryDashboardFilter>, String>(
     save = { selected -> selected.map { it.name } },
     restore = { names -> names.map { PantryDashboardFilter.valueOf(it) }.toSet() },
@@ -57,16 +61,20 @@ private val filterSetSaver = listSaver<Set<PantryDashboardFilter>, String>(
 /**
  * @param onProductClick opens the detail screen for the tapped lot's product. Lots of the
  *   same product share one detail screen
+ * @param onReviewDigest opens this week's automatic adjustments
  */
 @Composable
 fun PantryScreen(
     onProductClick: (String) -> Unit,
+    onReviewDigest: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PantryViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val sheetState by viewModel.addToListSheet.collectAsState()
     val removeConfirm by viewModel.removeConfirm.collectAsState()
+    val zeroStockAlert by viewModel.zeroStockAlert.collectAsState()
+    val digestLotCount by viewModel.digestLotCount.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val resources = LocalResources.current
 
@@ -130,6 +138,8 @@ fun PantryScreen(
             uiState = uiState,
             onRetry = viewModel::loadInventory,
             onProductClick = onProductClick,
+            digestLotCount = digestLotCount,
+            onReviewDigest = onReviewDigest,
             onAddToListClick = viewModel::onAddToListClicked,
             onRemoveClick = viewModel::onRemoveClicked,
             onQuantityChange = viewModel::onQuantityChanged,
@@ -138,6 +148,7 @@ fun PantryScreen(
             onLowStockThresholdChange = viewModel::onLowStockThresholdChanged,
             onConfirmEstimate = viewModel::onConfirmEstimate,
             onCorrectEstimate = viewModel::onCorrectEstimate,
+            onUndoEstimate = viewModel::onUndoEstimate,
         )
         SnackbarHost(
             hostState = snackbarHostState,
@@ -161,6 +172,17 @@ fun PantryScreen(
             onDismiss = viewModel::dismissRemove,
         )
     }
+
+    zeroStockAlert?.let { lot ->
+        key(lot.id) {
+            ZeroStockAlertDialog(
+                lot = lot,
+                onOut = { viewModel.onZeroStockOut(lot) },
+                onStillHave = { count -> viewModel.onZeroStockStillHave(lot, count) },
+                onDismiss = { viewModel.onZeroStockDismissed(lot) },
+            )
+        }
+    }
 }
 
 @Composable
@@ -168,6 +190,8 @@ private fun PantryContent(
     uiState: PantryUiState,
     onRetry: () -> Unit,
     onProductClick: (String) -> Unit,
+    digestLotCount: Int,
+    onReviewDigest: () -> Unit,
     onAddToListClick: (InventoryItem) -> Unit,
     onRemoveClick: (InventoryItem) -> Unit,
     onQuantityChange: (InventoryItem, Int) -> Unit,
@@ -176,6 +200,7 @@ private fun PantryContent(
     onLowStockThresholdChange: (InventoryItem, Int?) -> Unit,
     onConfirmEstimate: (InventoryItem) -> Unit,
     onCorrectEstimate: (InventoryItem, Int) -> Unit,
+    onUndoEstimate: (InventoryItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -227,6 +252,16 @@ private fun PantryContent(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
+                        // The digest spans the whole pantry, so the filters do not apply to it.
+                        if (digestLotCount > 0) {
+                            item(key = DIGEST_KEY) {
+                                AdjustmentDigestCard(
+                                    lotCount = digestLotCount,
+                                    onReview = onReviewDigest,
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
+                        }
                         items(visibleGroups, key = { it.productId }) { group ->
                             // UI-only state, keyed by the item key, survives scrolling away and config changes.
                             var isExpanded by rememberSaveable { mutableStateOf(false) }
@@ -245,6 +280,7 @@ private fun PantryContent(
                                 },
                                 onConfirmEstimate = onConfirmEstimate,
                                 onCorrectEstimate = onCorrectEstimate,
+                                onUndoEstimate = onUndoEstimate,
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -303,6 +339,6 @@ private fun RemoveFromPantryDialog(
 @Composable
 private fun PantryScreenPreview() {
     ShoppingMadeBetterTheme {
-        PantryScreen(onProductClick = {})
+        PantryScreen(onProductClick = {}, onReviewDigest = {})
     }
 }

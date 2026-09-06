@@ -8,12 +8,18 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjus
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetAdjustmentDigestUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetAdjustmentDigestUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAlertsUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAlertsUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustmentUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustmentUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
@@ -72,4 +78,19 @@ abstract class PantryModule {
     abstract fun bindApplyInventoryAdjustmentUseCase(
         impl: ApplyInventoryAdjustmentUseCaseImpl,
     ): ApplyInventoryAdjustmentUseCase
+
+    @Binds
+    abstract fun bindGetPantryEstimateAlertsUseCase(
+        impl: GetPantryEstimateAlertsUseCaseImpl,
+    ): GetPantryEstimateAlertsUseCase
+
+    @Binds
+    abstract fun bindUndoInventoryAdjustmentUseCase(
+        impl: UndoInventoryAdjustmentUseCaseImpl,
+    ): UndoInventoryAdjustmentUseCase
+
+    @Binds
+    abstract fun bindGetAdjustmentDigestUseCase(
+        impl: GetAdjustmentDigestUseCaseImpl,
+    ): GetAdjustmentDigestUseCase
 }

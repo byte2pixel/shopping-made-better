@@ -31,4 +31,16 @@ interface PantryRepository {
      * RLS scopes it to the current user.
      */
     suspend fun applyInventoryAdjustment(id: String, delta: Int, reason: String): InventoryAdjustmentResultDto
+
+    /**
+     * Reverses the `auto` audit row [adjustmentId] via the `undo_inventory_adjustment` RPC,
+     * which writes the compensating `undo` row. RLS scopes it to the current user.
+     */
+    suspend fun undoInventoryAdjustment(adjustmentId: String): InventoryAdjustmentResultDto
+
+    /**
+     * Reads this week's automatic adjustments from `inventory_adjustments_detail`, newest
+     * first. The view drops reversed and superseded rows; RLS scopes it to the current user.
+     */
+    suspend fun getAdjustmentDigest(): List<AdjustmentDigestEntryDto>
 }

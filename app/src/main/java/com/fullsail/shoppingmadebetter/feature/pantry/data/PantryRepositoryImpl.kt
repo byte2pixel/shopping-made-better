@@ -64,4 +64,18 @@ class PantryRepositoryImpl @Inject constructor(
             },
         ).decodeSingle<InventoryAdjustmentResultDto>()
     }
+
+    override suspend fun undoInventoryAdjustment(adjustmentId: String): InventoryAdjustmentResultDto =
+        withContext(Dispatchers.IO) {
+            postgrest.rpc(
+                "undo_inventory_adjustment",
+                buildJsonObject { put("p_adjustment_id", adjustmentId) },
+            ).decodeSingle<InventoryAdjustmentResultDto>()
+        }
+
+    override suspend fun getAdjustmentDigest(): List<AdjustmentDigestEntryDto> =
+        withContext(Dispatchers.IO) {
+            postgrest.from("inventory_adjustments_detail").select()
+                .decodeList<AdjustmentDigestEntryDto>()
+        }
 }

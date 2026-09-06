@@ -49,6 +49,7 @@ import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.LabelChip
 import com.fullsail.shoppingmadebetter.core.ui.ProductImage
 import com.fullsail.shoppingmadebetter.core.ui.Stepper
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentReason
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.EstimateSource
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
@@ -103,7 +104,7 @@ internal fun stockLevel(quantity: Int, lowStockThreshold: Int?): StockLevel = wh
 
 /** The chip accent color for a stock severity. */
 @Composable
-private fun stockAccent(level: StockLevel): Color {
+internal fun stockAccent(level: StockLevel): Color {
     val dark = isSystemInDarkTheme()
     return when (level) {
         StockLevel.Out -> MaterialTheme.colorScheme.error
@@ -171,6 +172,7 @@ private fun <T> expandSpring() = spring<T>(
  *   (`null` clears it).
  * @param onConfirmEstimate confirms one lot's auto-adjusted quantity as-is.
  * @param onCorrectEstimate replaces one lot's auto-adjusted quantity with the given count.
+ * @param onUndoEstimate reverses one lot's latest automatic adjustment.
  */
 @Composable
 fun ProductCard(
@@ -186,6 +188,7 @@ fun ProductCard(
     onLowStockThresholdChange: (Int?) -> Unit,
     onConfirmEstimate: (InventoryItem) -> Unit,
     onCorrectEstimate: (InventoryItem, Int) -> Unit,
+    onUndoEstimate: (InventoryItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
@@ -222,6 +225,7 @@ fun ProductCard(
                             onExpiryChange = { newDays -> onExpiryChange(lot, newDays) },
                             onConfirmEstimate = { onConfirmEstimate(lot) },
                             onCorrectEstimate = { newQuantity -> onCorrectEstimate(lot, newQuantity) },
+                            onUndoEstimate = { onUndoEstimate(lot) },
                         )
                     }
                 }
@@ -326,6 +330,7 @@ private fun LotRow(
     onExpiryChange: (Int) -> Unit,
     onConfirmEstimate: () -> Unit,
     onCorrectEstimate: (Int) -> Unit,
+    onUndoEstimate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showEstimateConfirm by remember { mutableStateOf(false) }
@@ -367,6 +372,11 @@ private fun LotRow(
         AnimatedVisibility(visible = lot.estimated && showEstimateConfirm) {
             EstimateConfirmRow(
                 quantity = lot.quantity,
+                canUndo = lot.canUndo,
+                onUndo = {
+                    showEstimateConfirm = false
+                    onUndoEstimate()
+                },
                 onConfirm = {
                     showEstimateConfirm = false
                     onConfirmEstimate()
@@ -411,10 +421,13 @@ private fun EstimateChip(
  * Yes confirms the number as-is via [onConfirm]; Fix opens the quantity stepper
  * and commits the corrected count via [onCorrect] when the popup closes.
  * Dismissing the popup unchanged commits nothing — that's a cancel, not a confirm.
+ * Undo, shown when [canUndo], reverses the latest automatic adjustment via [onUndo].
  */
 @Composable
 private fun EstimateConfirmRow(
     quantity: Int,
+    canUndo: Boolean,
+    onUndo: () -> Unit,
     onConfirm: () -> Unit,
     onCorrect: (Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -435,6 +448,11 @@ private fun EstimateConfirmRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )
+        if (canUndo) {
+            TextButton(onClick = onUndo) {
+                Text(text = stringResource(R.string.pantry_estimate_undo))
+            }
+        }
         TextButton(onClick = onConfirm) {
             Text(text = stringResource(R.string.pantry_estimate_confirm_yes))
         }
@@ -799,8 +817,9 @@ private fun previewLot(
     expiresInDays: Int? = 4,
     location: PantryLocation = PantryLocation.Pantry,
     lowStockThreshold: Int? = null,
-    estimated: Boolean = false,
+    lastAdjustmentReason: AdjustmentReason? = null,
     estimateSource: EstimateSource? = null,
+    lastAdjustmentId: String? = null,
 ) = InventoryItem(
     id = id,
     productId = "p1",
@@ -813,8 +832,9 @@ private fun previewLot(
     expiresInDays = expiresInDays,
     location = location,
     lowStockThreshold = lowStockThreshold,
-    estimated = estimated,
+    lastAdjustmentReason = lastAdjustmentReason,
     estimateSource = estimateSource,
+    lastAdjustmentId = lastAdjustmentId,
 )
 
 private fun previewGroup(lots: List<InventoryItem>) = ProductGroup(
@@ -843,6 +863,7 @@ private fun ProductCardPreviewScaffold(group: ProductGroup, isExpanded: Boolean)
             onLowStockThresholdChange = {},
             onConfirmEstimate = {},
             onCorrectEstimate = { _, _ -> },
+            onUndoEstimate = {},
             modifier = Modifier.padding(16.dp),
         )
     }
@@ -911,8 +932,9 @@ private fun ProductCardEstimatedPreview() {
                 previewLot(
                     id = "1",
                     quantity = 1,
-                    estimated = true,
+                    lastAdjustmentReason = AdjustmentReason.Auto,
                     estimateSource = EstimateSource.History,
+                    lastAdjustmentId = "a1",
                 ),
                 previewLot(id = "2", quantity = 3, expiresInDays = 9),
             ),

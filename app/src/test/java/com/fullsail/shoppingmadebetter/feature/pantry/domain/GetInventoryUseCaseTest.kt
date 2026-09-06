@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.domain
 
+import com.fullsail.shoppingmadebetter.feature.pantry.data.AdjustmentDigestEntryDto
 import com.fullsail.shoppingmadebetter.feature.pantry.data.InventoryAdjustmentResultDto
 import com.fullsail.shoppingmadebetter.feature.pantry.data.InventoryItemDto
 import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryRepository
@@ -44,6 +45,11 @@ class GetInventoryUseCaseTest {
 
         override suspend fun applyInventoryAdjustment(id: String, delta: Int, reason: String) =
             InventoryAdjustmentResultDto(inventoryItemId = id, delta = 0.0, newQuantity = 0.0)
+
+        override suspend fun undoInventoryAdjustment(adjustmentId: String) =
+            InventoryAdjustmentResultDto(inventoryItemId = "", delta = 0.0, newQuantity = 0.0)
+
+        override suspend fun getAdjustmentDigest(): List<AdjustmentDigestEntryDto> = emptyList()
     }
 
     private val fixedClock = object : Clock {
@@ -152,9 +158,10 @@ class GetInventoryUseCaseTest {
         }
 
     @Test
-    fun `execute marks a lot estimated only when its latest adjustment reason is auto`() = runTest {
+    fun `execute maps the latest adjustment reason and derives estimated from it`() = runTest {
         val dtos = listOf(
-            dto("auto", null).copy(lastAdjustmentReason = "auto", estimateSource = "history"),
+            dto("auto", null).copy(lastAdjustmentReason = "auto", estimateSource = "history", lastAdjustmentId = "a1"),
+            dto("dismissed", null).copy(lastAdjustmentReason = "dismissed", estimateSource = "history", lastAdjustmentId = "a2"),
             dto("confirmed", null).copy(lastAdjustmentReason = "confirmed", estimateSource = "shelf_life"),
             dto("manual", null).copy(lastAdjustmentReason = "manual", estimateSource = "manual"),
             dto("none", null),
@@ -164,17 +171,40 @@ class GetInventoryUseCaseTest {
         val groups = useCase.execute(Unit).groupsByProduct()
 
         val auto = groups.getValue("p-auto").lots.single()
+        assertEquals(AdjustmentReason.Auto, auto.lastAdjustmentReason)
         assertTrue(auto.estimated)
         assertEquals(EstimateSource.History, auto.estimateSource)
+        assertEquals("a1", auto.lastAdjustmentId)
+        assertTrue(auto.canUndo)
+        val dismissed = groups.getValue("p-dismissed").lots.single()
+        assertEquals(AdjustmentReason.Dismissed, dismissed.lastAdjustmentReason)
+        assertTrue(dismissed.estimated)
+        assertFalse(dismissed.canUndo)
         val confirmed = groups.getValue("p-confirmed").lots.single()
+        assertEquals(AdjustmentReason.Confirmed, confirmed.lastAdjustmentReason)
         assertFalse(confirmed.estimated)
         assertEquals(EstimateSource.ShelfLife, confirmed.estimateSource)
         val manual = groups.getValue("p-manual").lots.single()
+        assertEquals(AdjustmentReason.Manual, manual.lastAdjustmentReason)
         assertFalse(manual.estimated)
         assertEquals(EstimateSource.Manual, manual.estimateSource)
         val none = groups.getValue("p-none").lots.single()
+        assertNull(none.lastAdjustmentReason)
         assertFalse(none.estimated)
         assertNull(none.estimateSource)
+        assertNull(none.lastAdjustmentId)
+        assertFalse(none.canUndo)
+    }
+
+    @Test
+    fun `execute maps an unknown adjustment reason to null`() = runTest {
+        val dtos = listOf(dto("bogus", null).copy(lastAdjustmentReason = "bogus"))
+        val useCase = GetInventoryUseCaseImpl(FakePantryRepository(items = dtos), fixedClock)
+
+        val lot = useCase.execute(Unit).groupsByProduct().getValue("p-bogus").lots.single()
+
+        assertNull(lot.lastAdjustmentReason)
+        assertFalse(lot.estimated)
     }
 
     @Test

@@ -7,29 +7,39 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentReason
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustment
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.DeleteInventoryItemUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetAdjustmentDigestUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAlerts
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAlertsUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.ProductGroup
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustment
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustmentUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiry
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryExpiryUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLocationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
+import com.fullsail.shoppingmadebetter.feature.profile.domain.GetAutoAdjustEnabledUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -90,6 +100,10 @@ class PantryViewModel @Inject constructor(
     private val updateInventoryLocationUseCase: UpdateInventoryLocationUseCase,
     private val updateInventoryExpiryUseCase: UpdateInventoryExpiryUseCase,
     private val updateInventoryLowStockThresholdUseCase: UpdateInventoryLowStockThresholdUseCase,
+    private val getPantryEstimateAlertsUseCase: GetPantryEstimateAlertsUseCase,
+    private val undoInventoryAdjustmentUseCase: UndoInventoryAdjustmentUseCase,
+    private val getAutoAdjustEnabledUseCase: GetAutoAdjustEnabledUseCase,
+    private val getAdjustmentDigestUseCase: GetAdjustmentDigestUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PantryUiState>(PantryUiState.Loading)
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
@@ -99,6 +113,26 @@ class PantryViewModel @Inject constructor(
 
     private val _removeConfirm = MutableStateFlow<InventoryItem?>(null)
     val removeConfirm: StateFlow<InventoryItem?> = _removeConfirm.asStateFlow()
+
+    /** Lots answered this session, so a failed write or a stale reload cannot re-prompt. */
+    private val _handledAlertLotIds = MutableStateFlow<Set<String>>(emptySet())
+
+    /** The zero-stock estimate to confirm now, if any; hidden while the sheet or remove dialog is up. */
+    val zeroStockAlert: StateFlow<InventoryItem?> = combine(
+        uiState, _handledAlertLotIds, addToListSheet, removeConfirm,
+    ) { state, handled, sheet, remove ->
+        if (state !is PantryUiState.Success || sheet !is AddToListSheetState.Hidden || remove != null) {
+            null
+        } else {
+            getPantryEstimateAlertsUseCase
+                .execute(GetPantryEstimateAlerts(state.productGroups))
+                .firstOrNull { it.id !in handled }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Lots in this week's digest; 0 hides the digest card. */
+    private val _digestLotCount = MutableStateFlow(0)
+    val digestLotCount: StateFlow<Int> = _digestLotCount.asStateFlow()
 
     private val _events = Channel<PantryEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -119,9 +153,16 @@ class PantryViewModel @Inject constructor(
             _uiState.value = PantryUiState.Loading
         }
         viewModelScope.launch {
+            val estimatesShown = async { estimatesShown() }
+            val digestLotCount = async { digestLotCount() }
             when (val out = getInventoryUseCase.execute(Unit)) {
-                is GetInventoryUseCase.Output.Success ->
-                    _uiState.value = PantryUiState.Success(out.productGroups)
+                is GetInventoryUseCase.Output.Success -> {
+                    val shown = estimatesShown.await()
+                    _uiState.value = PantryUiState.Success(
+                        if (shown) out.productGroups else out.productGroups.withoutEstimates(),
+                    )
+                    _digestLotCount.value = if (shown) digestLotCount.await() else 0
+                }
 
                 is GetInventoryUseCase.Output.Failure ->
                     if (_uiState.value !is PantryUiState.Success) {
@@ -132,6 +173,24 @@ class PantryViewModel @Inject constructor(
             }
         }
     }
+
+    /** Distinct lots in this week's digest; a failed read hides the card rather than guessing. */
+    private suspend fun digestLotCount(): Int =
+        when (val out = getAdjustmentDigestUseCase.execute(Unit)) {
+            is GetAdjustmentDigestUseCase.Output.Success -> out.entries.distinctBy { it.lotId }.size
+            is GetAdjustmentDigestUseCase.Output.Failure -> 0
+        }
+
+    /** False only when the user has turned auto-adjust off; a failed read keeps estimates visible. */
+    private suspend fun estimatesShown(): Boolean =
+        when (val out = getAutoAdjustEnabledUseCase.execute(Unit)) {
+            is GetAutoAdjustEnabledUseCase.Output.Success -> out.enabled
+            is GetAutoAdjustEnabledUseCase.Output.Failure -> true
+        }
+
+    /** Drops every lot's latest reason so nothing reads as estimated, undoable or alerting. */
+    private fun List<ProductGroup>.withoutEstimates(): List<ProductGroup> =
+        map { group -> group.copy(lots = group.lots.map { it.copy(lastAdjustmentReason = null) }) }
 
     /** Opens the sheet for [item] and loads the user's shopping lists to pick from. */
     fun onAddToListClicked(item: InventoryItem) {
@@ -265,14 +324,56 @@ class PantryViewModel @Inject constructor(
         applyAdjustment(item, newQuantity, AdjustmentReason.Confirmed)
     }
 
+    /** Reverses [item]'s latest `auto` adjustment; the quantity reconciles to what the backend restored. */
+    fun onUndoEstimate(item: InventoryItem) {
+        val adjustmentId = item.lastAdjustmentId
+        if (!item.canUndo || adjustmentId == null) return
+        updateLotInState(item.id) { it.copy(lastAdjustmentReason = AdjustmentReason.Undo) }
+        viewModelScope.launch {
+            when (val out = undoInventoryAdjustmentUseCase.execute(UndoInventoryAdjustment(adjustmentId))) {
+                is UndoInventoryAdjustmentUseCase.Output.Success -> {
+                    updateLotInState(item.id) { it.copy(quantity = out.newQuantity) }
+                    _digestLotCount.value = digestLotCount()
+                }
+
+                is UndoInventoryAdjustmentUseCase.Output.Failure -> {
+                    updateLotInState(item.id) { item }
+                    _events.send(PantryEvent.UpdateFailed(item.name))
+                }
+            }
+        }
+    }
+
+    /** "Add to list": confirms [item] at zero and opens the add-to-list sheet for it. */
+    fun onZeroStockOut(item: InventoryItem) {
+        onAddToListClicked(item)
+        markAlertHandled(item)
+        onConfirmEstimate(item)
+    }
+
+    /** "Still have some": replaces the zero with the user's [count] as a `confirmed` adjustment. */
+    fun onZeroStockStillHave(item: InventoryItem, count: Int) {
+        markAlertHandled(item)
+        onCorrectEstimate(item, count)
+    }
+
+    /** "Not now": a zero-delta `dismissed` adjustment, so the lot is not asked about again. */
+    fun onZeroStockDismissed(item: InventoryItem) {
+        markAlertHandled(item)
+        applyAdjustment(item, item.quantity, AdjustmentReason.Dismissed)
+    }
+
+    private fun markAlertHandled(item: InventoryItem) {
+        _handledAlertLotIds.value = _handledAlertLotIds.value + item.id
+    }
+
     /**
-     * Optimistically sets [item]'s quantity to [newQuantity] and clears its estimated
-     * marker (any adjustment supersedes the `auto` audit row), persists the change with
-     * [reason], and reverts with a snackbar if the save fails. On success the quantity
-     * reconciles to what the backend applied, since it floors at zero.
+     * Optimistically sets [item]'s quantity to [newQuantity] and latest reason to [reason],
+     * persists the change, and reverts with a snackbar if the save fails. On success the
+     * quantity reconciles to what the backend applied, since it floors at zero.
      */
     private fun applyAdjustment(item: InventoryItem, newQuantity: Int, reason: AdjustmentReason) {
-        updateLotInState(item.id) { it.copy(quantity = newQuantity, estimated = false) }
+        updateLotInState(item.id) { it.copy(quantity = newQuantity, lastAdjustmentReason = reason) }
         viewModelScope.launch {
             val out = applyInventoryAdjustmentUseCase.execute(
                 ApplyInventoryAdjustment(item.id, newQuantity - item.quantity, reason),

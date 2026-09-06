@@ -120,7 +120,7 @@ from (values
   ('21219491_EA',    1, 'jar',    'pantry',  0.10, 0.30),  -- Peanut Butter       (365d) fresh
   ('21535597_EA',    3, 'pouch',  'pantry',  0.05, 0.25),  -- Jasmine Rice pouch  (365d) fresh
   ('21469394_EA',    2, 'bag',    'freezer', 0.10, 0.30),  -- Jerk Chicken Wings  (180d) fresh (frozen)
-  ('21496426_EA',    1, 'bag',    'freezer', 0.05, 0.25)   -- Frozen Red Raspberries (180d) fresh (frozen)
+  ('21496426_EA',    2, 'bag',    'freezer', 0.05, 0.25)   -- Frozen Red Raspberries (180d) fresh (frozen)
 ) as v(source_product_id, quantity, unit, location, used_lo, used_hi)
 join public.products p on p.source_product_id = v.source_product_id;
 
@@ -226,7 +226,7 @@ join public.products pr on pr.id = p.product_id;
 
 -- 6) Pantry <-> history alignment. Sections 3 and 5 pick disjoint product
 --    sets, so no pantry lot would get a consumption rate and the nightly
---    adjustment job would have nothing visible to do. Add three pantry
+--    adjustment job would have nothing visible to do. Add five pantry
 --    staples to the two ALDI trips 93 days apart; the estimator then derives
 --    a history rate of (4 - 2) / 93 = 0.0215/day for each, and the apply run
 --    visibly adjusts those lots. Idempotent because section 5 recreates
@@ -240,9 +240,62 @@ from (values
   ('21219491_EA',  3, 2, 4.99),  -- Peanut Butter
   ('21219491_EA', 96, 2, 4.99),
   ('21535597_EA',  3, 2, 3.29),  -- Jasmine Rice pouch
-  ('21535597_EA', 96, 2, 3.29)
+  ('21535597_EA', 96, 2, 3.29),
+  ('21469394_EA',  3, 2, 8.99),  -- Jerk Chicken Wings
+  ('21469394_EA', 96, 2, 8.99),
+  ('21496426_EA',  3, 2, 3.79),  -- Frozen Red Raspberries
+  ('21496426_EA', 96, 2, 3.79)
 ) as v(source_product_id, days_ago, qty, price)
 join public.products p on p.source_product_id = v.source_product_id
 join public.purchase_history ph
   on ph.user_id = '11111111-1111-1111-1111-111111111111'
  and ph.purchased_at::date = current_date - v.days_ago;
+
+-- 7) A week of automatic adjustments, so the digest (SCRUM-224) has something to
+--    show after a reset. Rates come from section 6; the 50-day stamp gives each
+--    staple a budget of 1.075, so the job removes one unit per lot. Peanut Butter
+--    (1) reaches zero for the zero-stock gate, Jasmine Rice (3 -> 2) lands on its
+--    low-stock threshold, and the Mac & Cheese row is undone, so the digest lists
+--    four of the five.
+select public.estimate_consumption_rates();
+
+update public.inventory_items ii
+   set last_auto_adjusted_at = now() - interval '50 days'
+  from public.products p
+ where p.id = ii.product_id
+   and ii.user_id = '11111111-1111-1111-1111-111111111111'
+   and p.source_product_id in
+       ('21125083_EA', '21219491_EA', '21535597_EA', '21469394_EA', '21496426_EA');
+
+select public.apply_consumption_adjustments();
+
+-- Spread the new rows over the last five days so the digest is not all one day.
+with ranked as (
+  select a.id, row_number() over (order by a.inventory_item_id) as rn
+    from public.inventory_adjustments a
+   where a.user_id = '11111111-1111-1111-1111-111111111111'
+     and a.reason = 'auto'
+)
+update public.inventory_adjustments a
+   set created_at = now() - ranked.rn * interval '1 day'
+  from ranked
+ where a.id = ranked.id;
+
+-- Jasmine Rice sits at its threshold after the adjustment, so its row reads "Low".
+insert into public.user_product_stock_settings (user_id, product_id, low_stock_threshold)
+select '11111111-1111-1111-1111-111111111111', p.id, 2
+  from public.products p
+ where p.source_product_id = '21535597_EA'
+on conflict (user_id, product_id) do update
+  set low_stock_threshold = excluded.low_stock_threshold;
+
+-- One row already undone, so the digest and the pantry disagree by one on purpose.
+select * from public.undo_inventory_adjustment((
+  select a.id
+    from public.inventory_adjustments a
+    join public.inventory_items ii on ii.id = a.inventory_item_id
+    join public.products p on p.id = ii.product_id
+   where ii.user_id = '11111111-1111-1111-1111-111111111111'
+     and p.source_product_id = '21125083_EA'
+     and a.reason = 'auto'
+   limit 1));
