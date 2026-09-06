@@ -214,7 +214,7 @@ fun MealDetailsScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = { viewModel.addMealToShoppingList(mealId) },
+                onClick = { viewModel.addMealToList(mealId) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
             ) {
