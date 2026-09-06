@@ -21,4 +21,16 @@ enum class AdjustmentReason {
         Undo -> "undo"
         Dismissed -> "dismissed"
     }
+
+    companion object {
+        /** Maps the raw database string; `null` or unknown means no audit row. */
+        fun fromDbValue(value: String?): AdjustmentReason? = when (value) {
+            "auto" -> Auto
+            "manual" -> Manual
+            "confirmed" -> Confirmed
+            "undo" -> Undo
+            "dismissed" -> Dismissed
+            else -> null
+        }
+    }
 }

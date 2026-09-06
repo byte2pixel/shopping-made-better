@@ -294,6 +294,10 @@ render before auth and data-entry flows are complete. It is defined in
 `[db.seed] sql_paths` list in `supabase/config.toml` (loaded **after** `seed.sql`
 so its rows can reference the seeded stores and products).
 
+The seed also runs the consumption estimator and the auto-adjustment job, so the
+demo account starts with a week of automatic adjustments for the pantry digest to
+list — one of them already undone.
+
 **Sign-in credentials** (email confirmation is disabled locally, so this works
 immediately from the app's sign-in screen):
 

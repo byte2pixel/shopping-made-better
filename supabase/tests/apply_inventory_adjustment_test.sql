@@ -8,7 +8,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(27);
+select plan(30);
 
 -- ------------------------------------------------------------
 -- Fixtures. Clear the function's output so seeded data cannot shift
@@ -56,7 +56,7 @@ values
   ('ffffffff-ffff-ffff-ffff-ffffffffff01', 'TEST-APPLY-01', 9992001,
    'Apply Adj Item', '1 ea', 'ea', '', 'SOLD_BY_EACH', 'ea', null, 'unclassified');
 
--- Lots cc01..cc06 belong to user 1, cc07 to user 2.
+-- Lots cc01..cc06 and cc08 belong to user 1, cc07 to user 2.
 insert into public.inventory_items
   (id, user_id, product_id, quantity, unit, location,
    purchased_at, expires_at, last_auto_adjusted_at, pending_fraction)
@@ -65,7 +65,7 @@ values
   ('cccccccc-cccc-cccc-cccc-cccccccccc01', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01',
    'ffffffff-ffff-ffff-ffff-ffffffffff01', 3, 'ea', 'pantry',
    current_date - 10, null, now() - interval '5 days', 0.6000),
-  -- undo +1: pending kept
+  -- undo +1: pending reset
   ('cccccccc-cccc-cccc-cccc-cccccccccc02', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01',
    'ffffffff-ffff-ffff-ffff-ffffffffff01', 2, 'ea', 'pantry',
    current_date - 10, null, now() - interval '5 days', 0.4000),
@@ -88,7 +88,11 @@ values
   -- user 2's lot
   ('cccccccc-cccc-cccc-cccc-cccccccccc07', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02',
    'ffffffff-ffff-ffff-ffff-ffffffffff01', 2, 'ea', 'pantry',
-   current_date - 10, null, null, 0);
+   current_date - 10, null, null, 0),
+  -- dismissed 0 on an empty lot: audit row only, pending kept, stamped
+  ('cccccccc-cccc-cccc-cccc-cccccccccc08', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb01',
+   'ffffffff-ffff-ffff-ffff-ffffffffff01', 0, 'ea', 'pantry',
+   current_date - 10, null, now() - interval '5 days', 0.2500);
 
 -- ------------------------------------------------------------
 -- Function shape
@@ -144,7 +148,7 @@ select is(
   'confirmed: audit row records -1 under the reason given');
 
 -- ------------------------------------------------------------
--- undo +1: restores, keeps pending fraction
+-- undo +1: restores, resets pending fraction
 -- ------------------------------------------------------------
 select ok(
   (select r.new_quantity = 3
@@ -157,8 +161,8 @@ select is(
           || (ii.last_auto_adjusted_at = now())::text
    from public.inventory_items ii
    where ii.id = 'cccccccc-cccc-cccc-cccc-cccccccccc02'),
-  '3.000|0.4000|true',
-  'undo: quantity 3, pending fraction untouched, lot stamped');
+  '3.000|0.0000|true',
+  'undo: quantity 3, pending fraction reset, lot stamped');
 
 select is(
   (select a.delta::text || '|' || a.reason from public.inventory_adjustments a
@@ -203,6 +207,29 @@ select ok(
    where a.inventory_item_id = 'cccccccc-cccc-cccc-cccc-cccccccccc04'
      and a.reason = 'confirmed' and a.delta = 0),
   'confirmed 0 still writes one zero-delta audit row');
+
+-- ------------------------------------------------------------
+-- dismissed 0: "not now" on the zero-stock gate audits without changing the lot
+-- ------------------------------------------------------------
+select ok(
+  (select r.delta = 0 and r.new_quantity = 0
+   from public.apply_inventory_adjustment(
+     'cccccccc-cccc-cccc-cccc-cccccccccc08', 0, 'dismissed') r),
+  'dismissed 0 on an empty lot returns delta 0 and quantity 0');
+
+select is(
+  (select ii.quantity::text || '|' || ii.pending_fraction::text || '|'
+          || (ii.last_auto_adjusted_at = now())::text
+   from public.inventory_items ii
+   where ii.id = 'cccccccc-cccc-cccc-cccc-cccccccccc08'),
+  '0.000|0.2500|true',
+  'dismissed keeps quantity and pending fraction, stamps the lot');
+
+select ok(
+  (select count(*) = 1 from public.inventory_adjustments a
+   where a.inventory_item_id = 'cccccccc-cccc-cccc-cccc-cccccccccc08'
+     and a.reason = 'dismissed' and a.delta = 0),
+  'dismissed 0 writes one zero-delta audit row');
 
 -- ------------------------------------------------------------
 -- No once-per-day guard: explicit deltas apply every time
@@ -281,12 +308,12 @@ select is(
 -- ------------------------------------------------------------
 select is(
   (select count(*)::int from public.inventory_adjustments),
-  7,
+  8,
   'one audit row per successful call');
 
 select is(
   (select count(*)::int from public.inventory_items),
-  7,
+  8,
   'no lot was deleted');
 
 select * from finish();
