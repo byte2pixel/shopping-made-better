@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.data
 
+import ItemDetailsDto
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 
@@ -15,7 +16,8 @@ interface ShoppingListRepository {
     suspend fun renameList(listId : String, newName : String)
     suspend fun completeShoppingTrip(listId : String)
     suspend fun toggleCheckBox(id : String, value: Boolean)
-
+    suspend fun updateQuantity(id: String, newQuantity: Int)
     /** Flags every item on [listId] as checked in one request. */
     suspend fun checkAllItems(listId : String)
+    suspend fun getItemDetails(id : String) : ItemDetailsDto
 }

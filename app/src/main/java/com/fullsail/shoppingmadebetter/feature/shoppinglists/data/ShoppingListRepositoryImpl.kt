@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.data
 
+import ItemDetailsDto
 import android.util.Log
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
@@ -108,6 +109,28 @@ class ShoppingListRepositoryImpl @Inject constructor(
                 eq("id", listId)
             }
         }
+    }
+
+    override suspend fun updateQuantity(id: String, newQuantity: Int) {
+        postgrest.from("shopping_list_items").update(
+            {
+                set("quantity",newQuantity)
+            }
+        ){
+            filter{
+                eq("id", id)
+            }
+        }
+    }
+    override suspend fun getItemDetails(id : String) : ItemDetailsDto
+    {
+       return postgrest.from("products")
+            .select {
+                filter {
+                    eq("id", id )
+                }
+            }
+            .decodeSingle<ItemDetailsDto>()
     }
 
     override suspend fun completeShoppingTrip(listId: String) {

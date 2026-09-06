@@ -5,10 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetShoppingListItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListItems
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.UpdateQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isChecked
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isCheckedUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.QuantityUpdate
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CheckAllItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CompleteShoppingTripUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -51,6 +53,7 @@ class ShoppingListItemsViewModel @Inject constructor(
     private val getIsCheckedUseCase : isCheckedUseCase,
     private val insertItemUseCase: InsertItemUseCase,
     private val checkAllItemsUseCase: CheckAllItemsUseCase,
+    private val updateQuantityUseCase: UpdateQuantityUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ShoppingListItemsState>(ShoppingListItemsState.Loading)
@@ -64,19 +67,61 @@ class ShoppingListItemsViewModel @Inject constructor(
 
 
     init { }
-    fun addItem(item : InsertItem, listId : String)
+    fun addItem(item : InsertItem, listId : String, itemName : String)
     {
         //_uiState.value = ShoppingListItemsState.Loading
         viewModelScope.launch {
-           when( insertItemUseCase.execute(item))
+           when( val addedItem = insertItemUseCase.execute(item))
            {
-               is InsertItemUseCase.Output.Success ->
-                   getItems(listId) // refresh the list since now it should be empty.
+               is InsertItemUseCase.Output.Success-> {
+                   val currentState = _uiState.value
+                   if (currentState is ShoppingListItemsState.Success)
+                   {
+                       _uiState.value = ShoppingListItemsState.Success(currentState.items +
+                               ShoppingListItems(addedItem.insertedItemId, listId, item.productId, item.quantity, itemName, false))
+                   }
+           }
+                  // getItems(listId) // refresh the list since now it should be empty.
                is InsertItemUseCase.Output.Failure ->
                    _uiState.value = ShoppingListItemsState.Error
            }
 
         }
+    }
+    fun updateQuantity(id : String, newQuantity:Int )
+    {
+        viewModelScope.launch {
+            when(updateQuantityUseCase.execute(QuantityUpdate(id, newQuantity))){
+                is UpdateQuantityUseCase.Output.Success-> {
+                    val currentState = _uiState.value
+                    if (currentState is ShoppingListItemsState.Success)
+                    {
+                        val newItemList = currentState.items.map{
+                            if (it.id == id)
+                            {
+                                it.copy(quantity = newQuantity)
+                            }
+                            else {
+                                it
+                            }
+                        }
+                        _uiState.value = ShoppingListItemsState.Success(newItemList)
+                    }
+                }
+                is UpdateQuantityUseCase.Output.Failure ->{}
+            }
+        }
+    }
+    fun increaseQuantity(item : ShoppingListItems)
+    {
+        updateQuantity(item.id , item.quantity + 1)
+    }
+    fun decreaseQuantity(item:ShoppingListItems)
+    {
+        if (item.quantity > 1){
+            updateQuantity(item.id, item.quantity - 1)
+        }
+
     }
     fun toggleItemCheck(itemId: String) {
         val current = _checkedItems.value.toMutableList()
@@ -112,7 +157,21 @@ class ShoppingListItemsViewModel @Inject constructor(
             when (val out = getIsCheckedUseCase.execute(isChecked(id, state))) {
                 is isCheckedUseCase.Output.Success ->
                 {
-                    getItems(listId)
+                    val currentState = _uiState.value
+                    if (currentState is ShoppingListItemsState.Success) {
+                        val newCheckedItems = currentState.items.map{
+                            if (it.id == id)
+                            {
+                                it.copy(checked=state)
+                            }
+                            else{
+                                it
+                            }
+                        }
+                        _uiState.value = ShoppingListItemsState.Success(newCheckedItems)
+                    }
+
+
                 }
                 is isCheckedUseCase.Output.Failure ->
                     ShoppingListItemsState.Error
@@ -124,18 +183,18 @@ class ShoppingListItemsViewModel @Inject constructor(
 
     fun deleteItems(input : String, listId : String? = null)
     {
-        _uiState.value = ShoppingListItemsState.Loading
         viewModelScope.launch {
-            _uiState.value = when (val out = getDeleteItemsUseCase.execute(input)) {
+             when (val out = getDeleteItemsUseCase.execute(input)) {
                 is DeleteItemsUseCase.Output.Success -> {
-                    if (listId != null)
-                    {
-                        getItems(listId)
+                    val currentState = _uiState.value
+                    if (currentState is ShoppingListItemsState.Success) {
+                        val postDeletedList = currentState.items.filter { it.id != input }
+                        _uiState.value = ShoppingListItemsState.Success(postDeletedList)
                     }
-                    ShoppingListItemsState.DeleteSuccess
-                }
-                is DeleteItemsUseCase.Output.Failure ->
-                    ShoppingListItemsState.Error
+
+                    }
+                 is DeleteItemsUseCase.Output.Failure ->
+                     ShoppingListItemsState.Error
             }
         }
 
