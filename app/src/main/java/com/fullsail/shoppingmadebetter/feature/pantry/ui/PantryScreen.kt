@@ -37,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -248,7 +249,11 @@ private fun PantryContent(
                     )
                     HorizontalDivider()
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
+                        // Clips animateItem fade-outs, which foundation draws outside the list's own
+                        // scroll clip, so cards removed by a filter cannot paint over the dashboard.
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clipToBounds(),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
