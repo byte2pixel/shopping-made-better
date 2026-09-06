@@ -228,7 +228,10 @@ fun ShoppingListCartScreen(
         } else {
             MaterialTheme.colorScheme.primary
         },onClick = {
-            showDialog = true
+            if (checkedItems.isNotEmpty()){
+                showDialog = true
+            }
+
 
         }, modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding( 20.dp)
         ) { Text("Complete List")}
