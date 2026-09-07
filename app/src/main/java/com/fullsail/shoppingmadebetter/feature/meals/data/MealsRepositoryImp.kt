@@ -25,7 +25,6 @@ class MealsRepositoryImpl @Inject constructor(
 
     override suspend fun fetchMeals(): List<MealDto> {
         return try {
-
             val dbMeals = supabaseClient.postgrest["meals"]
                 .select()
                 .decodeList<DbMeal>()
@@ -38,7 +37,6 @@ class MealsRepositoryImpl @Inject constructor(
             val pantryProductIds = pantryItems.mapNotNull { it.productId }.toSet()
 
             if (dbMeals.isEmpty()) {
-                // If Supabase has no records, automatically fall back to fetching live recipes from the public API source
                 recipeApiDataSource.fetchRecipesFromApi()
             } else {
                 dbMeals.map { dbMeal ->
@@ -68,9 +66,30 @@ class MealsRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            println("Supabase Error fetching meals, attempting API fallback: ${e.message}")
-            recipeApiDataSource.fetchRecipesFromApi()
+            println("Supabase Error fetching meals, attempting mock fallback: ${e.message}")
+            getMockFallbackMeals()
         }
+    }
+
+    private fun getMockFallbackMeals(): List<MealDto> {
+        return listOf(
+            MealDto(
+                id = "mock-1",
+                title = "Classic Chicken Alfredo",
+                matchPercentage = "100% Match",
+                itemCount = 4,
+                totalPrice = "$14.50",
+                category = "Can Make"
+            ),
+            MealDto(
+                id = "mock-2",
+                title = "Garlic Butter Steak Bites",
+                matchPercentage = "75% Match",
+                itemCount = 5,
+                totalPrice = "$18.99",
+                category = "Almost There"
+            )
+        )
     }
 
     override suspend fun fetchIngredientsForMeal(mealId: String): List<MealIngredientDto> {
@@ -111,11 +130,8 @@ class MealsRepositoryImpl @Inject constructor(
 
             if (mealIngredients.isNotEmpty()) {
                 val shoppingListItems = mealIngredients.map { ingredient ->
-
-
                     val safeQuantity: Double = ingredient.quantity ?: 1.0
                     val safeUnit: String = ingredient.unit ?: ""
-
 
                     val displayTitle = if (safeUnit.isNotBlank()) {
                         "$safeQuantity $safeUnit of ${ingredient.ingredientName}"
@@ -143,10 +159,8 @@ class MealsRepositoryImpl @Inject constructor(
     override suspend fun toggleFavoriteMeal(mealId: String, isFavorite: Boolean) {
         try {
             if (isFavorite) {
-
                 supabaseClient.postgrest["favorite_meals"].insert(mapOf("meal_id" to mealId))
             } else {
-
                 supabaseClient.postgrest["favorite_meals"].delete { filter { eq("meal_id", mealId) } }
             }
         } catch (e: Exception) {
