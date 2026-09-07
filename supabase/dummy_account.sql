@@ -11,7 +11,8 @@
 --   * (Re)creates a confirmed demo auth user you can sign in with.
 --   * Ensures the profile row exists.
 --   * (Re)creates a second demo user and puts both in "Demo Household"
---     (invite code DEMO2026) with the demo user as head.
+--     (invite code DEMO2026) with the demo user as head, then gives it
+--     two lots, one of them the same milk as the demo pantry.
 --   * Replaces the demo user's inventory with a fresh mock pantry.
 --   * Replaces the demo user's shopping trips (summarized by the
 --     shopping_trip_summaries view from migration 20260708015853).
@@ -179,6 +180,23 @@ from (values
   ('21469394_EA',    2, 'bag',    'freezer', 0.10, 0.30),  -- Jerk Chicken Wings  (180d) fresh (frozen)
   ('21496426_EA',    2, 'bag',    'freezer', 0.05, 0.25)   -- Frozen Red Raspberries (180d) fresh (frozen)
 ) as v(source_product_id, quantity, unit, location, used_lo, used_hi)
+join public.products p on p.source_product_id = v.source_product_id;
+
+-- 3b) demo2's lots. Milk is also in the demo pantry, so that card mixes owners.
+delete from public.inventory_items
+where user_id = '22222222-2222-2222-2222-222222222222';
+
+insert into public.inventory_items (
+  user_id, product_id, quantity, unit, location, purchased_at
+)
+select
+  '22222222-2222-2222-2222-222222222222',
+  p.id, v.quantity, v.unit, v.location,
+  current_date - v.days_ago
+from (values
+  ('20962518_EA', 1, 'carton', 'fridge', 2),   -- Milk, 2%
+  ('21219491_EA', 1, 'jar',    'pantry', 5)    -- Peanut Butter
+) as v(source_product_id, quantity, unit, location, days_ago)
 join public.products p on p.source_product_id = v.source_product_id;
 
 -- 4) Demo shopping trips (moved here from migration 20260708015853). These
