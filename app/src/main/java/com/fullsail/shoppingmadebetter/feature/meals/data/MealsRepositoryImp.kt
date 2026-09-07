@@ -19,7 +19,8 @@ private data class DbMeal(
 
 class MealsRepositoryImpl @Inject constructor(
     private val supabaseClient: SupabaseClient,
-    private val pantryRepository: PantryRepository
+    private val pantryRepository: PantryRepository,
+    private val recipeApiDataSource: RecipeApiDataSource
 ) : MealsRepository {
 
     override suspend fun fetchMeals(): List<MealDto> {
@@ -36,35 +37,39 @@ class MealsRepositoryImpl @Inject constructor(
             }
             val pantryProductIds = pantryItems.mapNotNull { it.productId }.toSet()
 
-            dbMeals.map { dbMeal ->
-                val ingredients = fetchIngredientsForMeal(dbMeal.id)
-                val totalIngredients = ingredients.size
+            if (dbMeals.isEmpty()) {
+                // If Supabase has no records, automatically fall back to fetching live recipes from the public API source
+                recipeApiDataSource.fetchRecipesFromApi()
+            } else {
+                dbMeals.map { dbMeal ->
+                    val ingredients = fetchIngredientsForMeal(dbMeal.id)
+                    val totalIngredients = ingredients.size
 
-                // Count how many ingredients the user already has in their pantry
-                val ownedCount = ingredients.count { it.productId != null && pantryProductIds.contains(it.productId) }
+                    val ownedCount = ingredients.count { it.productId != null && pantryProductIds.contains(it.productId) }
 
-                val matchPercentage = if (totalIngredients > 0) {
-                    val percent = (ownedCount.toFloat() / totalIngredients) * 100
-                    "${percent.toInt()}% Match"
-                } else {
-                    "0% Match"
+                    val matchPercentage = if (totalIngredients > 0) {
+                        val percent = (ownedCount.toFloat() / totalIngredients) * 100
+                        "${percent.toInt()}% Match"
+                    } else {
+                        "0% Match"
+                    }
+
+                    val missingCount = totalIngredients - ownedCount
+                    val category = if (missingCount == 0) "Can Make" else "Almost There"
+
+                    MealDto(
+                        id = dbMeal.id,
+                        title = dbMeal.name,
+                        matchPercentage = matchPercentage,
+                        itemCount = totalIngredients,
+                        totalPrice = "$0.00",
+                        category = category
+                    )
                 }
-
-                val missingCount = totalIngredients - ownedCount
-                val category = if (missingCount == 0) "Can Make" else "Almost There"
-
-                MealDto(
-                    id = dbMeal.id,
-                    title = dbMeal.name,
-                    matchPercentage = matchPercentage,
-                    itemCount = totalIngredients,
-                    totalPrice = "$0.00",
-                    category = category
-                )
             }
         } catch (e: Exception) {
-            println("Supabase Error fetching meals: ${e.message}")
-            emptyList()
+            println("Supabase Error fetching meals, attempting API fallback: ${e.message}")
+            recipeApiDataSource.fetchRecipesFromApi()
         }
     }
 
