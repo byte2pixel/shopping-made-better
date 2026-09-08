@@ -160,7 +160,8 @@ fun ShoppingListCartScreen(
                         }
 
                             Text("Checked")
-                            LazyColumn(Modifier.weight(1f).padding(16.dp)) {
+                            LazyColumn(Modifier.weight(1f).padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),) {
                                 items(state.items.filter { it.checked }, key = { it.id }) {
                                     CartRow(it, viewModel, onItemCrossed = {
                                         if (toggledDelete)
@@ -341,7 +342,16 @@ fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onI
             }
         } else {
             Text(item.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, textDecoration = TextDecoration.LineThrough)
-
+            IconButton(onClick = {
+                onInfoScreen(Dest.InformationScreen(item.productId))
+            })
+            {
+                Icon(
+                    painterResource(id = R.drawable.ic_info),
+                    contentDescription = "information",
+                    Modifier.size(24.dp)
+                )
+            }
 
         }
         }
