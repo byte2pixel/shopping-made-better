@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.data
 
+import ItemDetailsDto
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 
@@ -45,7 +46,12 @@ internal open class FakeShoppingListRepository : ShoppingListRepository {
     override suspend fun toggleCheckBox(id: String, value: Boolean): Unit =
         notStubbed("toggleCheckBox")
 
+    override suspend fun updateQuantity(id: String, newQuantity: Int): Unit =
+        notStubbed("updateQuantity")
+
     override suspend fun checkAllItems(listId: String): Unit = notStubbed("checkAllItems")
+
+    override suspend fun getItemDetails(id: String): ItemDetailsDto = notStubbed("getItemDetails")
 
     private fun notStubbed(method: String): Nothing =
         throw NotImplementedError("$method was called but this fake does not stub it")
