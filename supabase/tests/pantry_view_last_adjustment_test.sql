@@ -76,8 +76,9 @@ select columns_are('public', 'pantry_items_by_expire',
   array['id', 'productId', 'name', 'brand', 'description', 'size', 'quantity',
         'imageUrl', 'expiryDate', 'location', 'lowStockThreshold',
         'lastAutoAdjustedAtEpoch', 'estimateSource',
-        'lastAdjustmentReason', 'lastAdjustedAtEpoch', 'lastAdjustmentId'],
-  'view keeps every existing column and adds lastAdjustmentId');
+        'lastAdjustmentReason', 'lastAdjustedAtEpoch', 'lastAdjustmentId',
+        'addedBy', 'isOwn'],
+  'view keeps every existing column and adds addedBy and isOwn');
 
 select ok(
   (select c.reloptions @> array['security_invoker=true']

@@ -4,9 +4,10 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
 /**
- * One row of the `product_details` view: the catalog record plus the current user's
- * pantry position for it. [quantity] is the total on hand across every lot (0 when the
- * product isn't held) and [expiryDate] is the soonest-expiring lot, if any.
+ * One row of the `product_details` view: the catalog record plus the household's pantry
+ * position for it. [quantity] is the total on hand across every household lot (0 when
+ * nobody holds it), [expiryDate] is the soonest-expiring lot, if any, and
+ * [lowStockThreshold] is the current user's own setting.
  */
 @Serializable
 data class ProductDetailDto(
