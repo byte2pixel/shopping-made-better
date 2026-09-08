@@ -10,6 +10,8 @@
 -- This file is self-contained and idempotent:
 --   * (Re)creates a confirmed demo auth user you can sign in with.
 --   * Ensures the profile row exists.
+--   * (Re)creates a second demo user and puts both in "Demo Household"
+--     (invite code DEMO2026) with the demo user as head.
 --   * Replaces the demo user's inventory with a fresh mock pantry.
 --   * Replaces the demo user's shopping trips (summarized by the
 --     shopping_trip_summaries view from migration 20260708015853).
@@ -18,12 +20,14 @@
 --
 -- Sign-in credentials (email confirmations are disabled in config.toml,
 -- so this works immediately from the app's sign-in screen):
---     email:    demo@smb.test
---     password: password123
+--     email:    demo@smb.test    password: password123   (household head)
+--     email:    demo2@smb.test   password: password123   (member)
 -- ------------------------------------------------------------
 
--- Fixed UUID so the account + its data are easy to find/remove.
---   demo user id: 11111111-1111-1111-1111-111111111111
+-- Fixed UUIDs so the accounts + their data are easy to find/remove.
+--   demo user id:  11111111-1111-1111-1111-111111111111
+--   demo2 user id: 22222222-2222-2222-2222-222222222222
+--   household id:  33333333-3333-3333-3333-333333333333
 
 -- 1) Confirmed auth user. Direct inserts into auth.* are unusual, but
 --    it's the only way to create a user without going through the app.
@@ -78,6 +82,59 @@ on conflict (id) do nothing;
 update public.profiles
    set auto_adjust_enabled = true
  where id = '11111111-1111-1111-1111-111111111111';
+
+-- 2b) Second demo user, sharing "Demo Household" with the demo user as head.
+--     Left opted out of auto-adjust so the estimator run below is unchanged.
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, created_at, updated_at,
+  raw_app_meta_data, raw_user_meta_data,
+  confirmation_token, recovery_token,
+  email_change, email_change_token_new, email_change_token_current,
+  phone_change, phone_change_token, reauthentication_token
+)
+values (
+  '00000000-0000-0000-0000-000000000000',
+  '22222222-2222-2222-2222-222222222222',
+  'authenticated', 'authenticated',
+  'demo2@smb.test',
+  crypt('password123', gen_salt('bf')),
+  now(), now(), now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"display_name":"Demo Roommate"}',
+  '', '',
+  '', '', '',
+  '', '', ''
+)
+on conflict (id) do nothing;
+
+insert into auth.identities (
+  id, user_id, provider_id, identity_data, provider,
+  last_sign_in_at, created_at, updated_at
+)
+values (
+  gen_random_uuid(),
+  '22222222-2222-2222-2222-222222222222',
+  '22222222-2222-2222-2222-222222222222',
+  '{"sub":"22222222-2222-2222-2222-222222222222","email":"demo2@smb.test"}',
+  'email', now(), now(), now()
+)
+on conflict do nothing;
+
+insert into public.profiles (id, display_name)
+values ('22222222-2222-2222-2222-222222222222', 'Demo Roommate')
+on conflict (id) do nothing;
+
+insert into public.households (id, name, invite_code)
+values ('33333333-3333-3333-3333-333333333333', 'Demo Household', 'DEMO2026')
+on conflict (id) do update
+  set name = excluded.name, invite_code = excluded.invite_code;
+
+update public.profiles
+   set household_id = '33333333-3333-3333-3333-333333333333',
+       is_household_head = (id = '11111111-1111-1111-1111-111111111111')
+ where id in ('11111111-1111-1111-1111-111111111111',
+              '22222222-2222-2222-2222-222222222222');
 
 -- 3) Mock pantry. Clear first so re-running this file is idempotent, then
 --    insert. Products are matched by their stable source_product_id, so

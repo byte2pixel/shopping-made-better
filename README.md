@@ -301,12 +301,13 @@ list — one of them already undone.
 **Sign-in credentials** (email confirmation is disabled locally, so this works
 immediately from the app's sign-in screen):
 
-| Field    | Value           |
-|----------|-----------------|
-| Email    | `demo@smb.test` |
-| Password | `password123`   |
+| Account                 | Email            | Password      |
+|-------------------------|------------------|---------------|
+| Demo Shopper (head)     | `demo@smb.test`  | `password123` |
+| Demo Roommate (member)  | `demo2@smb.test` | `password123` |
 
-The account also seeds pantry items and two demo shopping trips for that user.
+Both accounts are in "Demo Household", invite code `DEMO2026`. The demo
+account also seeds pantry items and two demo shopping trips.
 
 > **Note:** This is throwaway local test data — never commit real credentials or
 > use it for anything deployed.
