@@ -331,7 +331,8 @@ fun ShoppingMadeBetterApp(
                 ProfileScreen(
                     onNavigateToChangePassword = { navController.navigate(Dest.ChangePassword) },
                     onNavigateBack = { navController.popBackStack() },
-                    onEditPreferences = { navController.navigate(Dest.Onboarding) }
+                    onEditPreferences = { navController.navigate(Dest.Onboarding) },
+                    onSignOut = navigationViewModel::logout,
                 )
             }
 

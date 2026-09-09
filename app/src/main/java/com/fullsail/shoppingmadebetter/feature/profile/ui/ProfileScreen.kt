@@ -24,6 +24,7 @@ fun ProfileScreen(
     onNavigateToChangePassword: () -> Unit,
     onNavigateBack: () -> Unit,
     onEditPreferences: () -> Unit,
+    onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ProfileSettingsViewModel = hiltViewModel(),
 ) {
@@ -118,7 +119,7 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             TextButton(
-                onClick = { /* TODO: Ticketed for future sprint - Handle logout */ },
+                onClick = onSignOut,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
                 Text("Sign Out", color = MaterialTheme.colorScheme.error)
