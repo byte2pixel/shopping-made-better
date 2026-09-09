@@ -333,4 +333,35 @@
     </plurals>
     <string name="history_buy_again_partial">Added %1$d, but %2$d couldn\'t be added</string>
     <string name="history_buy_again_failed">Couldn\'t add these items</string>
+
+    <!-- Household screen (Profile & Settings > Manage household) -->
+    <string name="household_title">Household</string>
+    <string name="household_back">Back</string>
+    <string name="household_section">Household</string>
+    <string name="household_manage">Manage household</string>
+    <string name="household_create_title">Create a household</string>
+    <string name="household_name_hint">Household name</string>
+    <string name="household_create">Create</string>
+    <string name="household_join_title">Join with a code</string>
+    <string name="household_code_hint">Invite code</string>
+    <string name="household_join">Join</string>
+    <string name="household_invite_code">Invite code</string>
+    <string name="household_copy">Copy code</string>
+    <string name="household_share">Share code</string>
+    <string name="household_share_text">Join my household in Shopping Made Better with code %1$s</string>
+    <string name="household_members">Members</string>
+    <string name="household_you">You</string>
+    <string name="household_head">Head</string>
+    <string name="household_leave">Leave household</string>
+    <string name="household_leave_confirm_title">Leave household?</string>
+    <string name="household_leave_confirm_body">You will stop seeing shared pantry items.</string>
+    <string name="household_cancel">Cancel</string>
+    <string name="household_code_copied">Code copied</string>
+    <string name="household_load_error">Couldn\'t load your household</string>
+    <string name="household_error_create">Couldn\'t create the household</string>
+    <string name="household_error_invalid_code">That code doesn\'t match a household</string>
+    <string name="household_error_already_member">You\'re already in a household</string>
+    <string name="household_error_join">Couldn\'t join the household</string>
+    <string name="household_error_leave_head">Couldn\'t leave the household because you are the owner</string>
+    <string name="household_error_leave">Couldn\'t leave the household</string>
 </resources>
