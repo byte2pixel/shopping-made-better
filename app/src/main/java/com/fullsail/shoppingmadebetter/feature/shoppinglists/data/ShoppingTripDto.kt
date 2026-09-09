@@ -11,4 +11,5 @@ data class ShoppingTripDto(
     @SerialName("store_name") val storeName: String,
     @SerialName("item_count") val itemCount: Int,
     @SerialName("total_cost") val totalCost: Double,
+    @SerialName("sort_order") val sortOrder : Int,
 )

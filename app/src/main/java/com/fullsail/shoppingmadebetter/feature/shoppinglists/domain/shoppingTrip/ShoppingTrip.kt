@@ -7,4 +7,5 @@ data class ShoppingTrip(
     val storeName: String,
     val itemCount: Int,
     val totalCost: Double,
+    val sortOrder : Int,
 )

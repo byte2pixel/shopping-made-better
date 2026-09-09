@@ -114,6 +114,17 @@ fun ShoppingListsScreen(
 
             Box(modifier.fillMaxSize())
             {
+                Row(Modifier.fillMaxWidth())
+                {
+                    IconButton(onClick = {
+                        viewModel.sortListsByCreated()
+                    }) { Icon(painterResource(id = R.drawable.ic_cake), contentDescription = "SortByCreated", Modifier.size(24.dp))}
+                    IconButton(onClick = {
+                        viewModel.sortListsByUpdated()
+                    }) { Icon(painterResource(id = R.drawable.ic_update), contentDescription = "SortByUpdated", Modifier.size(24.dp))}
+
+                }
+
                 when (val state = uiState)
                 {
                     ShoppingTripsUiState.Loading ->
@@ -129,7 +140,7 @@ fun ShoppingListsScreen(
                         } else
                         {
                             LazyColumn(
-                                Modifier.fillMaxSize().padding(16.dp),
+                                Modifier.fillMaxSize().padding(top= 60.dp, start = 16.dp,end = 16.dp    ),
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
 

@@ -14,6 +14,10 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameShoppi
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameShoppingListUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.SortListCreatedUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.SortListCreatedUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.SortListUpdatedUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.SortListUpdatedUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.UpdateQuantityUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.UpdateQuantityUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
@@ -50,6 +54,14 @@ abstract class ShoppingListsModule {
     abstract fun bindGetShoppingTripsUseCase(
         impl: GetShoppingTripsUseCaseImpl,
     ): GetShoppingTripsUseCase
+    @Binds
+    abstract fun bindSortByCreatedUseCase(
+        impl: SortListCreatedUseCaseImpl,
+    ): SortListCreatedUseCase
+    @Binds
+    abstract fun bindSortByUpdatedUseCase(
+        impl: SortListUpdatedUseCaseImpl,
+    ): SortListUpdatedUseCase
     @Binds
     abstract fun bindInsertShoppingList(
         impl: ShoppingListUseCaseImpl,

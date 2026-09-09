@@ -19,5 +19,7 @@ interface ShoppingListRepository {
     suspend fun updateQuantity(id: String, newQuantity: Int)
     /** Flags every item on [listId] as checked in one request. */
     suspend fun checkAllItems(listId : String)
+    suspend fun sortListByCreated()
+    suspend fun sortListByUpdated()
     suspend fun getItemDetails(id : String) : ItemDetailsDto
 }

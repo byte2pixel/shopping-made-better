@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RemoveListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameList
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameShoppingListUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.SortListCreatedUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.SortListUpdatedUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,12 +28,46 @@ class ShoppingTripsViewModel @Inject constructor(
     private val getShoppingTripsUseCase: GetShoppingTripsUseCase,
     private val getRemoveListUseCase: RemoveListUseCase,
     private val getRenameListUseCase: RenameShoppingListUseCase,
+    private val getSortListCreatedUseCase: SortListCreatedUseCase,
+    private val getSortListUpdatedUseCase: SortListUpdatedUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ShoppingTripsUiState>(ShoppingTripsUiState.Loading)
     val uiState: StateFlow<ShoppingTripsUiState> = _uiState.asStateFlow()
 
     init { load() }
+    fun sortListsByCreated()
+    {
+        viewModelScope.launch {
+            when(val out  = getSortListCreatedUseCase.execute(Unit))
+            {
+               is SortListCreatedUseCase.Output.Success -> {
+                   load()
+                }
+
+              is SortListCreatedUseCase.Output.Failure ->
+                {
+
+                }
+            }
+        }
+    }
+    fun sortListsByUpdated()
+    {
+        viewModelScope.launch {
+            when(val out  = getSortListUpdatedUseCase.execute(Unit))
+            {
+                is SortListUpdatedUseCase.Output.Success -> {
+                    load()
+                }
+
+                is SortListUpdatedUseCase.Output.Failure ->
+                {
+
+                }
+            }
+        }
+    }
     fun removeList (listName : String)
     {
         _uiState.value = ShoppingTripsUiState.Loading
