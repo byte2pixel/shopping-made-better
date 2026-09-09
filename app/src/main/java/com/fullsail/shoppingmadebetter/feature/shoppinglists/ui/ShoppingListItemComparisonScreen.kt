@@ -282,7 +282,6 @@ fun ShoppingListItemComparisonScreen(
             ItemComparisonUIState.Error ->
                 Text("Search suggestions couldn't be loaded")
             is ItemComparisonUIState.SearchSuccess -> {
-
                 searchResults = state.products.map { it.productName }
                 filteredResults = searchResults.filter {
                     it.contains(textFieldState.text, ignoreCase = true)
@@ -323,6 +322,13 @@ fun ShoppingListItemComparisonScreen(
             onExpandedChange = { expanded = it },
         ) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
+                if (filteredResults.isEmpty() && textFieldState.text != "")
+                {
+                    Text("No results could be found")
+                }
+                else {
+
+
                 filteredResults.forEach { result ->
                     Row(Modifier.border(width = 1.dp , color = Color.Black)) {
                     ListItem(
@@ -337,6 +343,7 @@ fun ShoppingListItemComparisonScreen(
                             .fillMaxWidth()
                     )
 
+                }
                 }
                 }
             }
