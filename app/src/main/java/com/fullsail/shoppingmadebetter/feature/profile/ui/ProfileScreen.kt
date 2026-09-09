@@ -24,6 +24,7 @@ fun ProfileScreen(
     onNavigateToChangePassword: () -> Unit,
     onNavigateBack: () -> Unit,
     onEditPreferences: () -> Unit,
+    onNavigateToHousehold: () -> Unit,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ProfileSettingsViewModel = hiltViewModel(),
@@ -100,6 +101,21 @@ fun ProfileScreen(
                 enabled = autoAdjustEnabled,
                 onToggled = viewModel::onAutoAdjustToggled,
             )
+
+            Divider()
+
+            Text(
+                text = stringResource(R.string.household_section),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            OutlinedButton(
+                onClick = onNavigateToHousehold,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.household_manage))
+            }
 
             Divider()
 
