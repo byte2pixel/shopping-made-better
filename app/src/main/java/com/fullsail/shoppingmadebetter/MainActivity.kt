@@ -51,6 +51,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.fullsail.shoppingmadebetter.feature.auth.ui.LoginScreen
 import com.fullsail.shoppingmadebetter.feature.auth.ui.SignUpScreen
+import com.fullsail.shoppingmadebetter.feature.household.ui.HouseholdScreen
 import com.fullsail.shoppingmadebetter.feature.pantry.ui.AdjustmentDigestScreen
 import com.fullsail.shoppingmadebetter.feature.pantry.ui.PantryScreen
 import com.fullsail.shoppingmadebetter.feature.product.ui.ProductDetailScreen
@@ -158,7 +159,8 @@ fun ShoppingMadeBetterApp(
                         !destination.hasRoute(Dest.SignUp::class) &&
                         !destination.hasRoute(Dest.Onboarding::class) &&
                         !destination.hasRoute(Dest.Profile::class) &&
-                        !destination.hasRoute(Dest.ChangePassword::class)
+                        !destination.hasRoute(Dest.ChangePassword::class) &&
+                        !destination.hasRoute(Dest.Household::class)
 
             // Pass ALL 3 parameters: routeName, tab, showChrome
             navigationViewModel.onDestinationChanged(
@@ -332,6 +334,7 @@ fun ShoppingMadeBetterApp(
                     onNavigateToChangePassword = { navController.navigate(Dest.ChangePassword) },
                     onNavigateBack = { navController.popBackStack() },
                     onEditPreferences = { navController.navigate(Dest.Onboarding) },
+                    onNavigateToHousehold = { navController.navigate(Dest.Household) },
                     onSignOut = navigationViewModel::logout,
                 )
             }
@@ -341,6 +344,10 @@ fun ShoppingMadeBetterApp(
                     viewModel = hiltViewModel(),
                     onNavigateBack = { navController.popBackStack() }
                 )
+            }
+
+            composable<Dest.Household> {
+                HouseholdScreen(onNavigateBack = { navController.popBackStack() })
             }
 
             composable<Dest.Cart> { CartScreen() }

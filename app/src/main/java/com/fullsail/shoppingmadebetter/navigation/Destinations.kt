@@ -51,6 +51,10 @@ sealed interface Dest {
 
     @Serializable
     data object ChangePassword : Dest
+
+    /** Create, join or leave a household; reached from Profile & Settings. */
+    @Serializable
+    data object Household : Dest
     /**
      * A detail screen for one product, reached from a pantry lot row and from a past
      * trip's line item on History. Keyed on the product rather than a pantry row, so a
