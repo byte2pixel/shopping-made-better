@@ -495,12 +495,16 @@ private fun AppBottomBar(
 ) {
     NavigationBar {
         TopLevelDestination.entries.forEach { tab ->
-            val label = stringResource(tab.label)
             NavigationBarItem(
                 selected = tab == currentTab,
                 onClick = { onTabSelected(tab) },
-                icon = { Icon(painter = painterResource(tab.icon), contentDescription = label) },
-                label = { Text(label) },
+                icon = {
+                    Icon(
+                        painter = painterResource(tab.icon),
+                        contentDescription = stringResource(tab.label),
+                        modifier = Modifier.size(32.dp),
+                    )
+                },
             )
         }
     }
