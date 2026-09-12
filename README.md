@@ -35,10 +35,9 @@ price comparisons rather than guesses.
 
 ## Features
 
-The app is organized around five top-level areas:
+The app is organized around four top-level areas:
 
 - **Shopping Lists** — create and manage grocery lists for your next trip.
-- **Cart** — track items you're actively buying and see running totals.
 - **Pantry** — keep an inventory of what you already have at home.
 - **History** — review past shopping trips and purchases.
 - **Meals** — plan meals and generate the ingredients you need.
@@ -360,7 +359,7 @@ individual features are built out.
 
 ## Known Issues
 
-- The five main tab screens (Shopping Lists, Cart, Pantry, History, Meals) are currently
+- The four main tab screens (Shopping Lists, Pantry, History, Meals) are currently
   placeholders pending feature implementation.
 - Authentication is not yet wired up; the Login screen is a placeholder gate.
 

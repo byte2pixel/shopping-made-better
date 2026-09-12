@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
  * Type-safe navigation destinations for the app.
  *
  * Each destination is a [Serializable] route object consumed by the type-safe
- * Navigation Compose APIs (`composable<Dest.Cart> { }`, `navController.navigate(Dest.Cart)`).
+ * Navigation Compose APIs (`composable<Dest.Pantry> { }`, `navController.navigate(Dest.Pantry)`).
  */
 sealed interface Dest {
     /**
@@ -40,8 +40,6 @@ sealed interface Dest {
    data class ShoppingListCartScreen(val listId : String) : Dest
     @Serializable
     data class InformationScreen(val productId : String) : Dest
-    @Serializable
-    data object Cart : Dest
 
     @Serializable
     data object Pantry : Dest
@@ -93,7 +91,7 @@ sealed interface Dest {
 }
 
 /**
- * The five top-level destinations shown in the bottom navigation bar, in display order.
+ * The four top-level destinations shown in the bottom navigation bar, in display order.
  */
 enum class TopLevelDestination(
     val route: Dest,
@@ -101,7 +99,6 @@ enum class TopLevelDestination(
     @param:DrawableRes val icon: Int,
 ) {
     SHOPPING_LISTS(Dest.ShoppingLists, R.string.tab_shopping_lists, R.drawable.ic_shopping_lists),
-    CART(Dest.Cart, R.string.tab_cart, R.drawable.ic_cart),
     PANTRY(Dest.Pantry, R.string.tab_pantry, R.drawable.ic_pantry),
     HISTORY(Dest.History, R.string.tab_history, R.drawable.ic_history),
     MEALS(Dest.Meals, R.string.tab_meals, R.drawable.ic_meals),
