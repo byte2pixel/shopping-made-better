@@ -387,13 +387,217 @@ private fun MealNotFoundState(
     }
 }
 
+@Composable
+fun MealDetailsContent(
+    mealTitle: String,
+    categoryName: String,
+    matchPercentage: Int,
+    imageUrl: String,
+    calories: String,
+    protein: String,
+    carbs: String,
+    fat: String,
+    ingredients: List<Pair<String, String>>,
+    instructions: List<String>,
+    onNavigateBack: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onAddToList: () -> Unit,
+    isFavorite: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    var servingMultiplier by remember { mutableStateOf(1) }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(
+                onClick = onNavigateBack,
+                colors = ButtonDefaults.textButtonColors(),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text("← Back", style = MaterialTheme.typography.labelLarge)
+            }
+
+            IconButton(onClick = onToggleFavorite) {
+                Text(
+                    text = if (isFavorite) "♥" else "♡",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Static preview placeholder for image
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.LightGray),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Recipe Image Preview", color = Color.DarkGray, fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "$matchPercentage% Match",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text(
+                    text = categoryName,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = mealTitle,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.align(Alignment.Start)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            MacroChip(label = "Calories", value = calories)
+            MacroChip(label = "Protein", value = "${protein}g")
+            MacroChip(label = "Carbs", value = "${carbs}g")
+            MacroChip(label = "Fat", value = "${fat}g")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "Servings: $servingMultiplier", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Row {
+                Button(onClick = { if (servingMultiplier > 1) servingMultiplier-- }) { Text("-") }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(onClick = { servingMultiplier++ }) { Text("+") }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Ingredients",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.align(Alignment.Start)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        ingredients.forEach { (name, price) ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = "• $name")
+                Text(text = price, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = onAddToList,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+        ) {
+            Text(
+                text = "Add Ingredients to Shopping List",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Instructions",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.align(Alignment.Start)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        instructions.forEachIndexed { index, step ->
+            Text(
+                text = "${index + 1}. $step",
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
+            )
+        }
+    }
+}
+
+// Update your preview function to use the clean static content
 @Preview(showBackground = true)
 @Composable
 private fun MealDetailsScreenPreview() {
     ShoppingMadeBetterTheme {
-        MealDetailsScreen(
-            mealId = "12345",
-            onNavigateBack = {}
+        MealDetailsContent(
+            mealTitle = "Classic Chicken Alfredo",
+            categoryName = "Can Make",
+            matchPercentage = 100,
+            imageUrl = "",
+            calories = "650",
+            protein = "45",
+            carbs = "55",
+            fat = "28",
+            ingredients = listOf(
+                "Chicken Breast" to "$4.99",
+                "Fettuccine Pasta" to "$1.99",
+                "Heavy Cream" to "$3.49"
+            ),
+            instructions = listOf(
+                "Boil water and cook fettuccine pasta until al dente.",
+                "Sauté diced chicken breast in a skillet until golden brown.",
+                "Stir in heavy cream and parmesan cheese to create the sauce."
+            ),
+            onNavigateBack = {},
+            onToggleFavorite = {},
+            onAddToList = {},
+            isFavorite = true
         )
     }
 }
@@ -408,3 +612,5 @@ private fun MealNotFoundPreview() {
         )
     }
 }
+
+
