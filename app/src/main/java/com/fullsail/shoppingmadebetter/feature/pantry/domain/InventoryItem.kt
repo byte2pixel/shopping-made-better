@@ -17,6 +17,10 @@ data class InventoryItem(
     val estimateSource: EstimateSource? = null,
     /** Id of the lot's latest audit row; `null` when it has none. */
     val lastAdjustmentId: String? = null,
+    /** Display name of the member who added the lot; `null` outside a household. */
+    val addedBy: String? = null,
+    /** False when the lot belongs to a housemate rather than the viewer. */
+    val isOwn: Boolean = true,
 ) {
     /** True while the quantity is an unconfirmed estimate (`auto`, or `dismissed` without confirming). */
     val estimated: Boolean

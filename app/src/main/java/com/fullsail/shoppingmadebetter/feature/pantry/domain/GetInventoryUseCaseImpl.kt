@@ -38,6 +38,8 @@ class GetInventoryUseCaseImpl @Inject constructor(
         lastAdjustmentReason = AdjustmentReason.fromDbValue(lastAdjustmentReason),
         estimateSource = EstimateSource.fromDbValue(estimateSource),
         lastAdjustmentId = lastAdjustmentId,
+        addedBy = addedBy,
+        isOwn = isOwn,
     )
 
     private companion object {

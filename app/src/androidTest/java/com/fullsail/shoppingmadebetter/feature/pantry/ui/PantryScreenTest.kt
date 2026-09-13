@@ -434,6 +434,55 @@ class PantryScreenTest {
     }
 
     @Test
+    fun onlyAHousemateLotShowsTheAddedByChip() {
+        val housemateLot = milk.copy(
+            id = "i9",
+            quantity = 3,
+            expiresInDays = 5,
+            addedBy = "Demo Roommate",
+            isOwn = false,
+        )
+        setScreen(inventory = FakeGetInventoryUseCase(inventoryOf(milk, housemateLot)))
+        toggleCard("2% Milk")
+
+        // Both lots are on the card; only the housemate's is attributed. The chip is
+        // icon-only, so the name is on the content description, not on screen.
+        val addedBy = string(R.string.pantry_lot_added_by, "Demo Roommate")
+        composeTestRule.onAllNodesWithContentDescription(addedBy).assertCountEquals(1)
+        composeTestRule.onNodeWithText(addedBy).assertDoesNotExist()
+    }
+
+    @Test
+    fun tappingTheAddedByChipNamesTheHousemate() {
+        setScreen(
+            inventory = FakeGetInventoryUseCase(
+                inventoryOf(milk.copy(addedBy = "Demo Roommate", isOwn = false))
+            )
+        )
+        toggleCard("2% Milk")
+        val addedBy = string(R.string.pantry_lot_added_by, "Demo Roommate")
+
+        composeTestRule.onNodeWithContentDescription(addedBy).performClick()
+
+        composeTestRule.onNodeWithText(addedBy).assertIsDisplayed()
+    }
+
+    @Test
+    fun anUnnamedHousemateLotFallsBackToHousehold() {
+        setScreen(inventory = FakeGetInventoryUseCase(inventoryOf(milk.copy(isOwn = false))))
+        toggleCard("2% Milk")
+
+        composeTestRule
+            .onNodeWithContentDescription(
+                string(
+                    R.string.pantry_lot_added_by,
+                    string(R.string.pantry_lot_added_by_household),
+                )
+            )
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun confirmingAnEstimateCommitsAZeroDeltaConfirmedAdjustment() {
         val applyAdjustment = FakeApplyInventoryAdjustmentUseCase(
             ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 2, appliedDelta = 0)

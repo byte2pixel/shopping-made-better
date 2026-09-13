@@ -62,7 +62,6 @@ import com.fullsail.shoppingmadebetter.navigation.Dest
 import com.fullsail.shoppingmadebetter.navigation.NavEvent
 import com.fullsail.shoppingmadebetter.navigation.NavigationViewModel
 import com.fullsail.shoppingmadebetter.navigation.TopLevelDestination
-import com.fullsail.shoppingmadebetter.ui.screens.CartScreen
 import com.fullsail.shoppingmadebetter.feature.history.ui.HistoryScreen
 import com.fullsail.shoppingmadebetter.feature.history.ui.PurchaseTripDetailScreen
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
@@ -99,7 +98,7 @@ class MainActivity : ComponentActivity() {
 
 /**
  * Root of the app UI: a [Scaffold] with the top app bar (menu / back) and the bottom
- * navigation bar (the five top-level tabs) wrapped around a type-safe [NavHost].
+ * navigation bar (the four top-level tabs) wrapped around a type-safe [NavHost].
  *
  * All navigation is driven through the [NavigationViewModel]: the UI collects the
  * ViewModel's [NavEvent]s and applies them to the NavController, and reports every
@@ -350,7 +349,6 @@ fun ShoppingMadeBetterApp(
                 HouseholdScreen(onNavigateBack = { navController.popBackStack() })
             }
 
-            composable<Dest.Cart> { CartScreen() }
             composable<Dest.Pantry> {
                 PantryScreen(
                     onProductClick = { id -> navController.navigate(Dest.ProductDetail(id)) },
@@ -504,12 +502,16 @@ private fun AppBottomBar(
 ) {
     NavigationBar {
         TopLevelDestination.entries.forEach { tab ->
-            val label = stringResource(tab.label)
             NavigationBarItem(
                 selected = tab == currentTab,
                 onClick = { onTabSelected(tab) },
-                icon = { Icon(painter = painterResource(tab.icon), contentDescription = label) },
-                label = { Text(label) },
+                icon = {
+                    Icon(
+                        painter = painterResource(tab.icon),
+                        contentDescription = stringResource(tab.label),
+                        modifier = Modifier.size(32.dp),
+                    )
+                },
             )
         }
     }
