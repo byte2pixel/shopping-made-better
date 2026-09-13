@@ -179,7 +179,8 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
 
             //Add viewing shopping list logic
         },
-        Modifier.fillMaxWidth())
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.outlinedCardColors(MaterialTheme.colorScheme.surfaceContainer))
     {
         Column(Modifier.padding(16.dp).fillMaxWidth())
         {
