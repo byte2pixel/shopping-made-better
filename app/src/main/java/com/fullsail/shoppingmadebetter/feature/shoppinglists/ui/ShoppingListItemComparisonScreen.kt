@@ -19,13 +19,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SearchBar
@@ -145,46 +150,44 @@ fun ShoppingListItemComparisonScreen(
 
         if (pickList)
         {
-
-            AlertDialog(
-                onDismissRequest = {},
-                title = { Text(text = "Select list:") },
-                text = {
+            ModalBottomSheet(onDismissRequest = { pickList = false }) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = "Add to list",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(vertical = 8.dp),
+                    )
                     Column()
                     {
-                    val lists by viewModel.shoppingLists.collectAsState()
-                    for (s in lists)
-                    {
-                        if (s.storeId == product.storeId)
-                        {
-                            Button(modifier = Modifier.fillMaxWidth(), onClick = {
-                                list = storeList.firstOrNull {it.shoppingListId  == s.shoppingListId }
-                                onAddClicked()
-                            }
-                            )
-                            {
-                                Text(s.listName + " " + s.storeName)
-                            }
+                        val lists by viewModel.shoppingLists.collectAsState()
+                        for (s in lists) {
+                            if (s.storeId == product.storeId) {
+                                Card (modifier = Modifier.fillMaxWidth(),colors = CardDefaults.cardColors( containerColor = BottomSheetDefaults.ContainerColor), onClick = {
+                                    list =
+                                        storeList.firstOrNull { it.shoppingListId == s.shoppingListId }
+                                    onAddClicked()
+                                }
+                                )
+                                {
+                                    Row(Modifier.fillMaxWidth().padding(12.dp))
+                                    {
+                                        Text(s.listName + " " + s.storeName)
+                                    }
 
+                                }
+
+                            }
                         }
                     }
-                    Button(modifier = Modifier.fillMaxWidth(), onClick = {
-                        onAddNewListClicked()
-                        pickList = false
-                    })
-                    {
-                        Text("Create new list")
-                    }
-                    }
-                },
-                confirmButton = {
-                },
-                dismissButton = {
-                    TextButton(onClick = {  pickList = false }) {
-                        Text(text = "Back")
-                    }
-                },
-                )
+                }
+
+            }
         }
 
         if (showDialog)
