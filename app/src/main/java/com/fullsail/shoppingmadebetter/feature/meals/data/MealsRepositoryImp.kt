@@ -167,4 +167,9 @@ class MealsRepositoryImpl @Inject constructor(
             println("Supabase Error toggling favorite: ${e.message}")
         }
     }
+
+    override suspend fun saveCustomMeal(title: String, category: String, ingredients: String) {
+        val newMealId = UUID.randomUUID().toString()
+        println("Simulating DB Save -> ID: $newMealId, Title: $title, Category: $category, Ingredients: $ingredients")
+    }
 }
