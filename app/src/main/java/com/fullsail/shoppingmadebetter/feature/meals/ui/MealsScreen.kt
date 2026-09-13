@@ -26,7 +26,8 @@ import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 fun MealsScreen(
     viewModel: MealsViewModel,
     onNavigateToDetails: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNavigateToCreate: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
