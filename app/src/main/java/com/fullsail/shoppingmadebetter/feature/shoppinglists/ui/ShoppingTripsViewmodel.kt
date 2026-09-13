@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RemoveListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameList
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameShoppingListUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.SetSortOrderUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.SortListCreatedUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.SortListUpdatedUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.SortOrder
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,7 +31,8 @@ class ShoppingTripsViewModel @Inject constructor(
     private val getRemoveListUseCase: RemoveListUseCase,
     private val getRenameListUseCase: RenameShoppingListUseCase,
     private val getSortListCreatedUseCase: SortListCreatedUseCase,
-    private val getSortListUpdatedUseCase: SortListUpdatedUseCase
+    private val getSortListUpdatedUseCase: SortListUpdatedUseCase,
+    private val setSortOrderUseCase : SetSortOrderUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ShoppingTripsUiState>(ShoppingTripsUiState.Loading)
@@ -46,6 +49,22 @@ class ShoppingTripsViewModel @Inject constructor(
                 }
 
               is SortListCreatedUseCase.Output.Failure ->
+                {
+
+                }
+            }
+        }
+    }
+    fun setSortOrder(s : SortOrder)
+    {
+        viewModelScope.launch {
+            when(val out  = setSortOrderUseCase.execute(s))
+            {
+
+                is SetSortOrderUseCase.Output.Success -> {
+                    load()
+                }
+                is SetSortOrderUseCase.Output.Failure ->
                 {
 
                 }

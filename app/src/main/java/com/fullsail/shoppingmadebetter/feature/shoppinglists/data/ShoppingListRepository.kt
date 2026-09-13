@@ -21,5 +21,6 @@ interface ShoppingListRepository {
     suspend fun checkAllItems(listId : String)
     suspend fun sortListByCreated()
     suspend fun sortListByUpdated()
+    suspend fun setSortOrder(list1: String, sortOrder : Int )
     suspend fun getItemDetails(id : String) : ItemDetailsDto
 }

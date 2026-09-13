@@ -12,6 +12,8 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RemoveListUs
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RemoveListUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameShoppingListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameShoppingListUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.SetSortOrderUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.SetSortOrderUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.SortListCreatedUseCase
@@ -71,6 +73,10 @@ abstract class ShoppingListsModule {
     abstract fun bindQuantityUpdate(
         impl: UpdateQuantityUseCaseImpl,
     ): UpdateQuantityUseCase
+    @Binds
+    abstract fun bindSortOrderSet(
+        impl: SetSortOrderUseCaseImpl,
+    ): SetSortOrderUseCase
     @Binds
     abstract fun bindItemDetail(
         impl: GetItemDetailsUseCaseImpl,

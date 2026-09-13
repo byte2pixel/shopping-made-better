@@ -22,6 +22,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameList
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.SortOrder
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import com.fullsail.shoppingmadebetter.navigation.Dest
 
@@ -152,7 +153,9 @@ fun ShoppingListsScreen(
                                 }, onRename = {
                                     showRenameDialog = true
                                     selectedList = it.shoppingListId
-                                } ,onItemComparison = onItemComparison)
+                                } ,onItemComparison = onItemComparison,
+                                    tripList = state.trips)
+
                                 }
                             }
                         }
@@ -167,7 +170,7 @@ fun ShoppingListsScreen(
         }
 
 @Composable
-private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison :(dest : Dest) -> Unit, onRename: () -> Unit )
+private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison :(dest : Dest) -> Unit, onRename: () -> Unit, tripList : List<ShoppingTrip>, viewModel: ShoppingTripsViewModel = hiltViewModel(),  )
 {
     OutlinedCard(
         onClick = {
@@ -209,6 +212,28 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
                 {
                     Icon(painterResource(id = R.drawable.ic_cart), contentDescription = "Cart", Modifier.size(24.dp))
 
+                }
+                IconButton(onClick = {
+                    tripList.forEach {
+                        if (it.sortOrder == trip.sortOrder - 1)
+                        {
+                            viewModel.setSortOrder(SortOrder(it.shoppingListId,trip.sortOrder))
+                            viewModel.setSortOrder(SortOrder(trip.shoppingListId,it.sortOrder))
+                        }
+                    }
+                })
+                {
+                    Icon(painterResource(id = R.drawable.ic_up), contentDescription = "move list up", Modifier.size(24.dp))
+                }
+                IconButton(onClick = {tripList.forEach {
+                    if (it.sortOrder == trip.sortOrder + 1)
+                    {
+                        viewModel.setSortOrder(SortOrder(it.shoppingListId,trip.sortOrder))
+                        viewModel.setSortOrder(SortOrder(trip.shoppingListId,it.sortOrder))
+                    }
+                }})
+                {
+                    Icon(painterResource(id = R.drawable.ic_expand_more), contentDescription = "move list down", Modifier.size(24.dp))
                 }
             }
         }
