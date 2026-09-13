@@ -42,7 +42,7 @@ fun InformationScreen(
                 Column()
                 {
 
-                    AsyncImage(model = state.item.id.image, modifier = Modifier.height(100.dp).fillMaxWidth(),  contentDescription = state.item.id.title)
+                     ProductImage(imageUrl = state.item.id.image, modifier = Modifier.height(100.dp).fillMaxWidth(),  contentDescription = state.item.id.title)
                     state.item.id.title?.let { Text(it, style = MaterialTheme.typography.headlineLarge) }
                    Row()
                    {
