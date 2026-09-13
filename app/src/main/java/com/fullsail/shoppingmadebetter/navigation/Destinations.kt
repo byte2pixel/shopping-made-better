@@ -87,6 +87,10 @@ sealed interface Dest {
         val mealId: String
     )
 
+
+    @Serializable
+    data object CreateRecipe
+
     /** Dev-only example screen listing stores from Supabase (SCRUM-79). */
     @Serializable
     data object Stores : Dest
