@@ -1,6 +1,5 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.domain
 
-import ItemDetailsDto
 import android.util.Log
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
 import javax.inject.Inject
