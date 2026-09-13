@@ -24,6 +24,7 @@ class GetShoppingTripsUseCaseImpl @Inject constructor(
         storeName = storeName,
         itemCount = itemCount,
         totalCost = totalCost,
+        sortOrder = sortOrder
     )
 
     private companion object { const val TAG = "GetShoppingTripsUseCase" }

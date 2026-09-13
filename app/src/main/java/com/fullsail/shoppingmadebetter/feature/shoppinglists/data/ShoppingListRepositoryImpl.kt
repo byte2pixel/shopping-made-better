@@ -5,6 +5,7 @@ import android.util.Log
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
@@ -30,7 +31,9 @@ class ShoppingListRepositoryImpl @Inject constructor(
         }
 
     override suspend fun getTrips(): List<ShoppingTripDto> = withContext(Dispatchers.IO) {
-        postgrest.from("shopping_trip_summaries").select().decodeList<ShoppingTripDto>()
+        postgrest.from("shopping_trip_summaries").select()
+        { order("sort_order", Order.ASCENDING)}
+            .decodeList<ShoppingTripDto>()
     }
     override suspend fun getProduct(searchName : String): List<ProductSearchDto> = withContext(Dispatchers.IO) {
 
@@ -165,6 +168,14 @@ class ShoppingListRepositoryImpl @Inject constructor(
         }
 
         Log.d("CheckAllItems", "List: $listId items all checked")
+    }
+
+    override suspend fun sortListByCreated() {
+       postgrest.rpc("sortlistbycreatedat")
+    }
+
+    override suspend fun sortListByUpdated() {
+        postgrest.rpc("sortlistbyupdatedat")
     }
 
 }
