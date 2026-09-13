@@ -24,6 +24,8 @@ import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameList
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import com.fullsail.shoppingmadebetter.navigation.Dest
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -183,6 +185,8 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
                 IconButton(onClick = {
                     onRename()
                 }) { Icon(painterResource(id = R.drawable.ic_edit), contentDescription = "rename", Modifier.size(24.dp))}
+            Spacer(Modifier.weight(1f))
+            Text(trip.updatedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date.toString())
             }
             Spacer(Modifier.height(4.dp))
             Text(trip.storeName, style = MaterialTheme.typography.titleMedium)

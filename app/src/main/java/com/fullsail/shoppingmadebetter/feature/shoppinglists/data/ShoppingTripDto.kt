@@ -2,6 +2,8 @@ package com.fullsail.shoppingmadebetter.feature.shoppinglists.data
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.sql.Timestamp
+import kotlin.time.Instant
 
 @Serializable
 data class ShoppingTripDto(
@@ -12,4 +14,6 @@ data class ShoppingTripDto(
     @SerialName("item_count") val itemCount: Int,
     @SerialName("total_cost") val totalCost: Double,
     @SerialName("sort_order") val sortOrder : Int,
+    @SerialName("created_at") val createdDate : Instant,
+    @SerialName("updated_at") val updatedDate : Instant,
 )

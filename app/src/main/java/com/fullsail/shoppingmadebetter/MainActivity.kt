@@ -247,7 +247,7 @@ fun ShoppingMadeBetterApp(
             composable<Dest.ShoppingListItemComparison> {
                 ShoppingListItemComparisonScreen(onItemComparison = {
                     navController.popBackStack<Dest.ShoppingLists>(false)
-                })
+                }, onInfoScreen = {navController.navigate(it)})
             }
 
             composable<Dest.Login> {

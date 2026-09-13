@@ -50,8 +50,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch.ProductSearch
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.storeProductPricing.StoreProductPricing
+import com.fullsail.shoppingmadebetter.navigation.Dest
 
 
 @Composable
@@ -59,6 +61,7 @@ fun ShoppingListItemComparisonScreen(
     onItemComparison :() -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ItemComparisonViewmodel = hiltViewModel(),
+    onInfoScreen :(dest : Dest) -> Unit,
 
 ) {
     var selectedProduct by rememberSaveable {mutableStateOf<String?>(null)}
@@ -69,7 +72,7 @@ fun ShoppingListItemComparisonScreen(
     {
         Column{
             SimpleSearchBar(  onSearch = {product-> selectedProduct = product
-                                         viewModel.showProducts(product)}, viewModel)
+                                         viewModel.showProducts(product)}, viewModel, onInfoScreen)
         }
     }
     else
@@ -265,16 +268,17 @@ fun ShoppingListItemComparisonScreen(
     @Composable
     fun SimpleSearchBar(
         onSearch: (String) -> Unit,
-        viewModel: ItemComparisonViewmodel
+        viewModel: ItemComparisonViewmodel,
+        onInfoScreen :(dest : Dest) -> Unit
 
         ) {
-        var searchResults by remember { mutableStateOf(emptyList<String>()) }
+        var searchResults by remember { mutableStateOf(emptyList<ProductSearch>()) }
         val modifier = Modifier
         val uiState by viewModel.uiState.collectAsState()
         var expanded by rememberSaveable { mutableStateOf(true) }
         val textFieldState =  rememberTextFieldState("")
         var filteredResults = searchResults.filter {
-            it.contains(textFieldState.text, ignoreCase = true)
+            it.productName.contains(textFieldState.text, ignoreCase = true)
         }
 
         when (val state = uiState) {
@@ -282,9 +286,9 @@ fun ShoppingListItemComparisonScreen(
             ItemComparisonUIState.Error ->
                 Text("Search suggestions couldn't be loaded")
             is ItemComparisonUIState.SearchSuccess -> {
-                searchResults = state.products.map { it.productName }
+                searchResults = state.products.map { it }
                 filteredResults = searchResults.filter {
-                    it.contains(textFieldState.text, ignoreCase = true)
+                    it.productName.contains(textFieldState.text, ignoreCase = true)
                 }
 
 
@@ -332,10 +336,23 @@ fun ShoppingListItemComparisonScreen(
                 filteredResults.forEach { result ->
                     Row(Modifier.border(width = 1.dp , color = Color.Black)) {
                     ListItem(
-                        headlineContent = { Text(result) },
-                        modifier = Modifier
+                        headlineContent = { Text(result.productName)
+                             },
+                        trailingContent = {
+                            IconButton(onClick = {
+                                onInfoScreen(Dest.InformationScreen(result.productId))
+                            })
+                            {
+                                Icon(
+                                    painterResource(id = R.drawable.ic_info),
+                                    contentDescription = "information",
+                                    Modifier.size(24.dp)
+                                )
+                            }
+                        },
+                        modifier =Modifier
                             .clickable {
-                                textFieldState.edit { replace(0, length, result) }
+                                textFieldState.edit { replace(0, length, result.productName) }
                                 expanded = false
                                 onSearch(textFieldState.text.toString())
 
