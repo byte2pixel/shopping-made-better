@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import com.fullsail.shoppingmadebetter.core.ui.ProductImage
 
 @Composable
 fun InformationScreen(
@@ -42,7 +43,7 @@ fun InformationScreen(
                 Column()
                 {
 
-                    AsyncImage(model = state.item.id.image, modifier = Modifier.height(100.dp).fillMaxWidth(),  contentDescription = state.item.id.title)
+                    ProductImage(imageUrl = state.item.id.image, modifier = Modifier.height(100.dp).fillMaxWidth(),  contentDescription = state.item.id.title)
                     state.item.id.title?.let { Text(it, style = MaterialTheme.typography.headlineLarge) }
                    Row()
                    {
