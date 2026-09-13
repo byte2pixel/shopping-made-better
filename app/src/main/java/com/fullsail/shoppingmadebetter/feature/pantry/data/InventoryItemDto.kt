@@ -26,4 +26,8 @@ data class InventoryItemDto(
     val lastAdjustedAtEpoch: Long? = null,
     /** Id of the lot's latest audit row; `null` if none exists. */
     val lastAdjustmentId: String? = null,
+    /** Display name of the member who added the lot; `null` outside a household. */
+    val addedBy: String? = null,
+    /** False when the lot belongs to a housemate rather than the caller. */
+    val isOwn: Boolean = true,
 )

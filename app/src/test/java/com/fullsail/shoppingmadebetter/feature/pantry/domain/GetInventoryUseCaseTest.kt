@@ -208,6 +208,25 @@ class GetInventoryUseCaseTest {
     }
 
     @Test
+    fun `execute carries the lot owner across`() = runTest {
+        val dtos = listOf(
+            dto("housemate", null).copy(addedBy = "Demo Roommate", isOwn = false),
+            dto("mine", null),
+        )
+        val useCase = GetInventoryUseCaseImpl(FakePantryRepository(items = dtos), fixedClock)
+
+        val groups = useCase.execute(Unit).groupsByProduct()
+
+        val housemate = groups.getValue("p-housemate").lots.single()
+        assertEquals("Demo Roommate", housemate.addedBy)
+        assertFalse(housemate.isOwn)
+        // A view without the household columns decodes as the viewer's own, unattributed lot.
+        val mine = groups.getValue("p-mine").lots.single()
+        assertNull(mine.addedBy)
+        assertTrue(mine.isOwn)
+    }
+
+    @Test
     fun `execute groups repeat purchases of one product into a single group`() = runTest {
         val dtos = listOf(
             dto("old", today.plus(2, DateTimeUnit.DAY)).copy(productId = "milk", quantity = 1),

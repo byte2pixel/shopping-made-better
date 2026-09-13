@@ -166,6 +166,10 @@
     <!-- Pantry inventory card chip indicators - location -->
     <string name="pantry_card_location_desc">Stored in %1$s</string>
 
+    <!-- Pantry inventory card chip indicators - who added a housemate's lot -->
+    <string name="pantry_lot_added_by_household">Household</string>
+    <string name="pantry_lot_added_by">Added by %1$s</string>
+
     <!-- Pantry inventory card chip indicators - expire -->
     <string name="pantry_expiry_expired">Expired</string>
     <string name="pantry_expiry_today">Today</string>

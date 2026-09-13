@@ -39,13 +39,14 @@ private const val LabelChipBorderAlpha = 0.5f
  *
  *   Material roles such as `colorScheme.error` and `colorScheme.onSurfaceVariant`
  *   already satisfy this in both themes.
+ * @param label the visible text; `null` with an [iconRes] makes an icon-only chip.
  * @param iconRes optional leading icon; tinted with [accentColor].
  * @param contentDescription spoken label replaces the visible [label] for screen readers
  * @param onClick when non-null, makes the chip a tappable button.
  */
 @Composable
 fun LabelChip(
-    label: String,
+    label: String?,
     accentColor: Color,
     modifier: Modifier = Modifier,
     @DrawableRes iconRes: Int? = null,
@@ -84,7 +85,9 @@ fun LabelChip(
                     modifier = Modifier.size(16.dp),
                 )
             }
-            Text(text = label, style = MaterialTheme.typography.labelMedium)
+            if (label != null) {
+                Text(text = label, style = MaterialTheme.typography.labelMedium)
+            }
         }
     }
 }
