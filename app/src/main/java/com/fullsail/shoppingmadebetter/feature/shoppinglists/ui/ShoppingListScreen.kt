@@ -207,11 +207,6 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
                 {
                     Icon(painterResource(id = R.drawable.ic_delete), contentDescription = "delete", Modifier.size(24.dp))
                 }
-                IconButton(onClick = {onItemComparison(Dest.ShoppingListItemsScreen(trip.shoppingListId))})
-                {
-                    Icon(painterResource(id = R.drawable.ic_shopping_lists), contentDescription = "details", Modifier.size(24.dp))
-
-                }
                 IconButton(onClick = {onItemComparison(Dest.ShoppingListCartScreen(trip.shoppingListId))})
                 {
                     Icon(painterResource(id = R.drawable.ic_cart), contentDescription = "Cart", Modifier.size(24.dp))
