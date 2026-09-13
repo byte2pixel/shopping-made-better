@@ -16,8 +16,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
@@ -343,25 +343,35 @@ private fun LotRow(
                     onClick = onClick,
                 )
                 .padding(start = 12.dp, end = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            LotQuantityChip(quantity = lot.quantity, onQuantityChange = onQuantityChange)
-            if (lot.estimated) {
-                EstimateChip(
-                    estimateSource = lot.estimateSource,
-                    onClick = { showEstimateConfirm = !showEstimateConfirm },
-                )
+            FlowRow(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
+                LotQuantityChip(quantity = lot.quantity, onQuantityChange = onQuantityChange)
+                if (lot.estimated) {
+                    EstimateChip(
+                        estimateSource = lot.estimateSource,
+                        onClick = { showEstimateConfirm = !showEstimateConfirm },
+                    )
+                }
+                LocationChip(location = lot.location, onLocationChange = onLocationChange)
+                lot.expiresInDays?.let { days ->
+                    ExpiryChip(
+                        bucket = expiryBucket(days),
+                        expiresInDays = days,
+                        onExpiryChange = onExpiryChange,
+                    )
+                }
+                if (!lot.isOwn) {
+                    AddedByChip(addedBy = lot.addedBy)
+                }
             }
-            LocationChip(location = lot.location, onLocationChange = onLocationChange)
-            lot.expiresInDays?.let { days ->
-                ExpiryChip(
-                    bucket = expiryBucket(days),
-                    expiresInDays = days,
-                    onExpiryChange = onExpiryChange,
-                )
-            }
-            Spacer(modifier = Modifier.weight(1f))
             IconButton(onClick = onRemove) {
                 Icon(
                     painter = painterResource(R.drawable.ic_delete),
@@ -585,6 +595,39 @@ private fun LocationChip(
                     },
                 )
             }
+        }
+    }
+}
+
+/**
+ * Marks a lot a housemate added. Rendered only when the lot isn't the viewer's, so the
+ * icon alone says "someone else's" and keeps the row short; tapping it names them in an
+ * anchored popup. [addedBy] falls back to "Household" when the display name is out of reach.
+ */
+@Composable
+private fun AddedByChip(addedBy: String?, modifier: Modifier = Modifier) {
+    var expanded by remember { mutableStateOf(false) }
+    val name = addedBy ?: stringResource(R.string.pantry_lot_added_by_household)
+    val description = stringResource(R.string.pantry_lot_added_by, name)
+
+    Box(modifier = modifier) {
+        LabelChip(
+            label = null,
+            accentColor = MaterialTheme.colorScheme.secondary,
+            iconRes = R.drawable.ic_account_box,
+            contentDescription = description,
+            onClick = { expanded = true },
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(horizontal = 12.dp),
+            )
         }
     }
 }
@@ -820,6 +863,7 @@ private fun previewLot(
     lastAdjustmentReason: AdjustmentReason? = null,
     estimateSource: EstimateSource? = null,
     lastAdjustmentId: String? = null,
+    addedBy: String? = null,
 ) = InventoryItem(
     id = id,
     productId = "p1",
@@ -835,6 +879,8 @@ private fun previewLot(
     lastAdjustmentReason = lastAdjustmentReason,
     estimateSource = estimateSource,
     lastAdjustmentId = lastAdjustmentId,
+    addedBy = addedBy,
+    isOwn = addedBy == null,
 )
 
 private fun previewGroup(lots: List<InventoryItem>) = ProductGroup(
@@ -949,5 +995,29 @@ private fun ProductCardNoExpiryPreview() {
     ProductCardPreviewScaffold(
         group = previewGroup(listOf(previewLot(id = "1", expiresInDays = null))),
         isExpanded = false,
+    )
+}
+
+@Preview(showBackground = true, name = "Shared household lot, expanded")
+@Composable
+private fun ProductCardSharedPreview() {
+    // The second lot is a housemate's, and is also estimated, which is the widest a lot
+    // row gets. It wraps below roughly 380 dp.
+    ProductCardPreviewScaffold(
+        group = previewGroup(
+            listOf(
+                previewLot(id = "1", quantity = 1, expiresInDays = 2, location = PantryLocation.Fridge),
+                previewLot(
+                    id = "2",
+                    quantity = 3,
+                    expiresInDays = 9,
+                    location = PantryLocation.Fridge,
+                    lastAdjustmentReason = AdjustmentReason.Auto,
+                    estimateSource = EstimateSource.History,
+                    addedBy = "Demo Roommate",
+                ),
+            ),
+        ),
+        isExpanded = true,
     )
 }
