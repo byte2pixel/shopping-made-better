@@ -19,4 +19,5 @@ group by sl.id, sl.name,sl.sort_order, s.id, s.name;
 
 -- Let the app's anon key READ the view (same idea as the stores grant migration
 -- 20260704120000_grant_public_read_stores.sql).
-grant select on public.shopping_trip_summaries to anon, authenticated;
+grant select on public.shopping_trip_summaries to authenticated;
+alter view public.shopping_trip_summaries set (security_invoker = true);
