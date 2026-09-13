@@ -65,7 +65,6 @@ class ShoppingListItemsViewModel @Inject constructor(
     private val _events = Channel<ShoppingListItemsEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-
     //init { }
     fun addItem(item : InsertItem, listId : String, itemName : String)
     {
