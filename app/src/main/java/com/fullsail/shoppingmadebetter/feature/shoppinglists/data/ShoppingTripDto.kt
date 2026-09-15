@@ -16,4 +16,6 @@ data class ShoppingTripDto(
     @SerialName("sort_order") val sortOrder : Int,
     @SerialName("created_at") val createdDate : Instant,
     @SerialName("updated_at") val updatedDate : Instant,
+    @SerialName("created_by") val createdBy: String? = null,
+    @SerialName("is_own") val isOwn: Boolean = true,
 )

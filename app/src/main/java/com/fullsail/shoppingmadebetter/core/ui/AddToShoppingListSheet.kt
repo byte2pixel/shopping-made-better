@@ -94,7 +94,10 @@ private fun ColumnScope.ShoppingListPickerBody(
     }
 }
 
-/** One pickable list: its name and how many items are already on it. */
+/**
+ * One pickable list: its name and how many items are already on it. A list a housemate
+ * created also carries the owner chip, since anyone in the household can add to it.
+ */
 @Composable
 private fun ShoppingListRow(trip: ShoppingTrip, onClick: () -> Unit) {
     Row(
@@ -105,7 +108,20 @@ private fun ShoppingListRow(trip: ShoppingTrip, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = trip.listName, style = MaterialTheme.typography.bodyLarge)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = trip.listName, style = MaterialTheme.typography.bodyLarge)
+            if (!trip.isOwn) {
+                OwnerChip(
+                    text = stringResource(
+                        R.string.list_created_by,
+                        trip.createdBy ?: stringResource(R.string.owner_chip_household),
+                    ),
+                )
+            }
+        }
         Text(
             text = pluralStringResource(
                 R.plurals.add_to_list_item_count,

@@ -166,8 +166,10 @@
     <!-- Pantry inventory card chip indicators - location -->
     <string name="pantry_card_location_desc">Stored in %1$s</string>
 
+    <!-- Owner chip: the fallback when a housemate's display name is out of reach -->
+    <string name="owner_chip_household">Household</string>
+
     <!-- Pantry inventory card chip indicators - who added a housemate's lot -->
-    <string name="pantry_lot_added_by_household">Household</string>
     <string name="pantry_lot_added_by">Added by %1$s</string>
 
     <!-- Pantry inventory card chip indicators - expire -->
@@ -210,6 +212,7 @@
         <item quantity="one">%1$d item</item>
         <item quantity="other">%1$d items</item>
     </plurals>
+    <string name="list_created_by">Created by %1$s</string>
 
     <!-- Shopping list detail: mark the whole list as purchased -->
     <string name="mark_all_purchased">Mark all as purchased</string>
@@ -357,7 +360,7 @@
     <string name="household_head">Head</string>
     <string name="household_leave">Leave household</string>
     <string name="household_leave_confirm_title">Leave household?</string>
-    <string name="household_leave_confirm_body">You will stop seeing shared pantry items.</string>
+    <string name="household_leave_confirm_body">You will stop seeing the household\'s pantry and lists.</string>
     <string name="household_cancel">Cancel</string>
     <string name="household_code_copied">Code copied</string>
     <string name="household_load_error">Couldn\'t load your household</string>
