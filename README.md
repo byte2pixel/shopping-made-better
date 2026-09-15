@@ -306,7 +306,8 @@ immediately from the app's sign-in screen):
 | Demo Roommate (member)  | `demo2@smb.test` | `password123` |
 
 Both accounts are in "Demo Household", invite code `DEMO2026`. The demo
-account also seeds pantry items and two demo shopping trips.
+account also seeds pantry items and two shopping lists; the roommate seeds two
+lots and one shopping list, so either account's Lists tab shows a housemate's list.
 
 > **Note:** This is throwaway local test data — never commit real credentials or
 > use it for anything deployed.

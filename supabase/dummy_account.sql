@@ -12,10 +12,11 @@
 --   * Ensures the profile row exists.
 --   * (Re)creates a second demo user and puts both in "Demo Household"
 --     (invite code DEMO2026) with the demo user as head, then gives it
---     two lots, one of them the same milk as the demo pantry.
+--     two lots, one of them the same milk as the demo pantry, and one
+--     shopping list.
 --   * Replaces the demo user's inventory with a fresh mock pantry.
---   * Replaces the demo user's shopping trips (summarized by the
---     shopping_trip_summaries view from migration 20260708015853).
+--   * Replaces the demo user's shopping lists (summarized by the
+--     shopping_trip_summaries view).
 --   * Replaces the demo user's purchase history with 12 completed trips
 --     spread over the last ~6 months.
 --
@@ -226,6 +227,30 @@ join lateral (
   limit 5
 ) picked on true
 where sl.user_id = '11111111-1111-1111-1111-111111111111';
+
+-- 4b) demo2's list, so demo's Lists tab shows a housemate's list. Cleared by
+--     user_id for idempotent re-runs. Offset past the products demo's lists pick.
+delete from public.shopping_lists
+where user_id = '22222222-2222-2222-2222-222222222222';
+
+insert into public.shopping_lists (user_id, store_id, name)
+select '22222222-2222-2222-2222-222222222222', s.id, s.name || ' Weekly'
+from public.stores s
+where s.name = 'Whole Foods';
+
+insert into public.shopping_list_items (shopping_list_id, product_id, quantity)
+select sl.id, picked.product_id, 1
+from public.shopping_lists sl
+join lateral (
+  select spp.product_id
+  from public.store_product_pricing spp
+  where spp.store_id = sl.store_id
+    and spp.is_current = true
+  order by spp.product_id
+  offset 5
+  limit 3
+) picked on true
+where sl.user_id = '22222222-2222-2222-2222-222222222222';
 
 -- 5) Demo purchase history: completed trips, so the History tab and its spend
 --    insights have something to show on a fresh reset.
