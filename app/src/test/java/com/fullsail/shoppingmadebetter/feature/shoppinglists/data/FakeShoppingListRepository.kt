@@ -51,6 +51,13 @@ internal open class FakeShoppingListRepository : ShoppingListRepository {
 
     override suspend fun checkAllItems(listId: String): Unit = notStubbed("checkAllItems")
 
+    override suspend fun sortListByCreated(): Unit = notStubbed("sortListByCreated")
+
+    override suspend fun sortListByUpdated(): Unit = notStubbed("sortListByUpdated")
+
+    override suspend fun setSortOrder(list1: String, sortOrder: Int): Unit =
+        notStubbed("setSortOrder")
+
     override suspend fun getItemDetails(id: String): ItemDetailsDto = notStubbed("getItemDetails")
 
     private fun notStubbed(method: String): Nothing =
