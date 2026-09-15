@@ -480,7 +480,7 @@ class PantryScreenTest {
             .onNodeWithContentDescription(
                 string(
                     R.string.pantry_lot_added_by,
-                    string(R.string.pantry_lot_added_by_household),
+                    string(R.string.owner_chip_household),
                 )
             )
             .assertIsDisplayed()
@@ -650,6 +650,33 @@ class PantryScreenTest {
             .onNodeWithText(string(R.string.add_to_list_title, "2% Milk"))
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Weekly").assertIsDisplayed()
+    }
+
+    @Test
+    fun onlyAHousemateListShowsTheOwnerChipInTheSheet() {
+        val housemateTrip = weeklyTrip.copy(
+            shoppingListId = "l2",
+            listName = "Whole Foods Weekly",
+            createdBy = "Demo Roommate",
+            isOwn = false,
+        )
+        setScreen(
+            trips = FakeGetShoppingTripsUseCase(
+                GetShoppingTripsUseCase.Output.Success(listOf(weeklyTrip, housemateTrip))
+            )
+        )
+
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_add_to_list))
+            .performClick()
+
+        // Both lists are pickable; only the housemate's is attributed. The chip is
+        // icon-only, so the name is on the content description, not on screen.
+        composeTestRule.onNodeWithText("Weekly").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Whole Foods Weekly").assertIsDisplayed()
+        val createdBy = string(R.string.list_created_by, "Demo Roommate")
+        composeTestRule.onAllNodesWithContentDescription(createdBy).assertCountEquals(1)
+        composeTestRule.onNodeWithText(createdBy).assertDoesNotExist()
     }
 
     @Test

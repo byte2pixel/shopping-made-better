@@ -15,12 +15,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.fullsail.shoppingmadebetter.R
+import com.fullsail.shoppingmadebetter.core.ui.OwnerChip
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameList
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.SortOrder
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
@@ -186,9 +188,19 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
         {
             Row(verticalAlignment = Alignment.CenterVertically){
                 Text(trip.listName, style = MaterialTheme.typography.titleMedium)
-                IconButton(onClick = {
-                    onRename()
-                }) { Icon(painterResource(id = R.drawable.ic_edit), contentDescription = "rename", Modifier.size(24.dp))}
+                if (trip.isOwn) {
+                    IconButton(onClick = {
+                        onRename()
+                    }) { Icon(painterResource(id = R.drawable.ic_edit), contentDescription = "rename", Modifier.size(24.dp))}
+                } else {
+                    Spacer(Modifier.width(8.dp))
+                    OwnerChip(
+                        text = stringResource(
+                            R.string.list_created_by,
+                            trip.createdBy ?: stringResource(R.string.owner_chip_household),
+                        ),
+                    )
+                }
             Spacer(Modifier.weight(1f))
             Text(trip.updatedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date.toString())
             }
@@ -204,36 +216,41 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
                 modifier= Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End)
             {
-                IconButton(onClick = {onDelete()})
-                {
-                    Icon(painterResource(id = R.drawable.ic_delete), contentDescription = "delete", Modifier.size(24.dp))
+                if (trip.isOwn) {
+                    IconButton(onClick = {onDelete()})
+                    {
+                        Icon(painterResource(id = R.drawable.ic_delete), contentDescription = "delete", Modifier.size(24.dp))
+                    }
                 }
                 IconButton(onClick = {onItemComparison(Dest.ShoppingListCartScreen(trip.shoppingListId))})
                 {
                     Icon(painterResource(id = R.drawable.ic_cart), contentDescription = "Cart", Modifier.size(24.dp))
 
                 }
-                IconButton(onClick = {
-                    tripList.forEach {
-                        if (it.sortOrder == trip.sortOrder - 1)
+                // Reordering writes shopping_lists.sort_order, which stays owner-only.
+                if (trip.isOwn) {
+                    IconButton(onClick = {
+                        tripList.forEach {
+                            if (it.sortOrder == trip.sortOrder - 1)
+                            {
+                                viewModel.setSortOrder(SortOrder(it.shoppingListId,trip.sortOrder))
+                                viewModel.setSortOrder(SortOrder(trip.shoppingListId,it.sortOrder))
+                            }
+                        }
+                    })
+                    {
+                        Icon(painterResource(id = R.drawable.ic_up), contentDescription = "move list up", Modifier.size(24.dp))
+                    }
+                    IconButton(onClick = {tripList.forEach {
+                        if (it.sortOrder == trip.sortOrder + 1)
                         {
                             viewModel.setSortOrder(SortOrder(it.shoppingListId,trip.sortOrder))
                             viewModel.setSortOrder(SortOrder(trip.shoppingListId,it.sortOrder))
                         }
-                    }
-                })
-                {
-                    Icon(painterResource(id = R.drawable.ic_up), contentDescription = "move list up", Modifier.size(24.dp))
-                }
-                IconButton(onClick = {tripList.forEach {
-                    if (it.sortOrder == trip.sortOrder + 1)
+                    }})
                     {
-                        viewModel.setSortOrder(SortOrder(it.shoppingListId,trip.sortOrder))
-                        viewModel.setSortOrder(SortOrder(trip.shoppingListId,it.sortOrder))
+                        Icon(painterResource(id = R.drawable.ic_expand_more), contentDescription = "move list down", Modifier.size(24.dp))
                     }
-                }})
-                {
-                    Icon(painterResource(id = R.drawable.ic_expand_more), contentDescription = "move list down", Modifier.size(24.dp))
                 }
             }
         }

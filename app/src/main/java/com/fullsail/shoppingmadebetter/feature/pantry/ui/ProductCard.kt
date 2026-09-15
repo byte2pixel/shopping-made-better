@@ -47,6 +47,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.LabelChip
+import com.fullsail.shoppingmadebetter.core.ui.OwnerChip
 import com.fullsail.shoppingmadebetter.core.ui.ProductImage
 import com.fullsail.shoppingmadebetter.core.ui.Stepper
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentReason
@@ -600,36 +601,13 @@ private fun LocationChip(
 }
 
 /**
- * Marks a lot a housemate added. Rendered only when the lot isn't the viewer's, so the
- * icon alone says "someone else's" and keeps the row short; tapping it names them in an
- * anchored popup. [addedBy] falls back to "Household" when the display name is out of reach.
+ * Marks a lot a housemate added. [addedBy] falls back to "Household" when the display
+ * name is out of reach.
  */
 @Composable
 private fun AddedByChip(addedBy: String?, modifier: Modifier = Modifier) {
-    var expanded by remember { mutableStateOf(false) }
-    val name = addedBy ?: stringResource(R.string.pantry_lot_added_by_household)
-    val description = stringResource(R.string.pantry_lot_added_by, name)
-
-    Box(modifier = modifier) {
-        LabelChip(
-            label = null,
-            accentColor = MaterialTheme.colorScheme.secondary,
-            iconRes = R.drawable.ic_account_box,
-            contentDescription = description,
-            onClick = { expanded = true },
-        )
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            shape = MaterialTheme.shapes.medium,
-        ) {
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(horizontal = 12.dp),
-            )
-        }
-    }
+    val name = addedBy ?: stringResource(R.string.owner_chip_household)
+    OwnerChip(text = stringResource(R.string.pantry_lot_added_by, name), modifier = modifier)
 }
 
 /**
