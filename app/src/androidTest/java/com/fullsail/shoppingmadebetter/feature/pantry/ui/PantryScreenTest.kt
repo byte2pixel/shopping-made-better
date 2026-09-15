@@ -47,6 +47,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import kotlin.time.Instant
 
 /** A successful inventory fetch of [items], grouped the way the real use case returns it. */
 private fun inventoryOf(vararg items: InventoryItem) =
@@ -220,6 +221,9 @@ class PantryScreenTest {
         storeName = "ALDI",
         itemCount = 3,
         totalCost = 9.99,
+        sortOrder = 0,
+        createdAt = Instant.parse("2026-09-01T12:00:00Z"),
+        updatedAt = Instant.parse("2026-09-01T12:00:00Z"),
     )
 
     private fun string(resId: Int, vararg args: Any) =
