@@ -21,6 +21,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import java.io.IOException
+import kotlin.time.Instant
 
 private fun lineItem(productId: String, id: String = "line-$productId") = PurchaseLineItem(
     id = id,
@@ -50,6 +51,9 @@ private fun shoppingTrip(id: String = "list-1", name: String = "Weekly") = Shopp
     storeName = "ALDI",
     itemCount = 3,
     totalCost = 12.0,
+    sortOrder = 0,
+    createdAt = Instant.parse("2026-09-01T12:00:00Z"),
+    updatedAt = Instant.parse("2026-09-01T12:00:00Z"),
 )
 
 /**

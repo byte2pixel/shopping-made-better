@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.IOException
+import kotlin.time.Instant
 
 class GetShoppingTripsUseCaseTest {
 
@@ -21,7 +22,17 @@ class GetShoppingTripsUseCaseTest {
     @Test
     fun `maps DTOs to domain trips on success`() = runTest {
         val dtos = listOf(
-            ShoppingTripDto("l1", "ALDI Weekly", "s1", "ALDI", itemCount = 5, totalCost = 12.34),
+            ShoppingTripDto(
+                "l1",
+                "ALDI Weekly",
+                "s1",
+                "ALDI",
+                itemCount = 5,
+                totalCost = 12.34,
+                sortOrder = 0,
+                createdDate = Instant.parse("2026-09-01T12:00:00Z"),
+                updatedDate = Instant.parse("2026-09-01T12:00:00Z"),
+            ),
         )
         val useCase = GetShoppingTripsUseCaseImpl(FakeRepo(result = dtos))
 
