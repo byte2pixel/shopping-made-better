@@ -12,4 +12,8 @@ data class ShoppingTrip(
     val sortOrder : Int,
     val createdAt : Instant,
     val updatedAt : Instant,
+    /** Display name of whoever created the list; null when it is out of reach. */
+    val createdBy: String? = null,
+    /** False when a housemate created the list, which hides the owner-only controls. */
+    val isOwn: Boolean = true,
 )
