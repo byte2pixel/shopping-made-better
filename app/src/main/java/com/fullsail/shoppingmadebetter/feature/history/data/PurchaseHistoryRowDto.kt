@@ -28,4 +28,9 @@ data class PurchaseHistoryRowDto(
     /** Whether completing the trip also put this item in the pantry. Defaulted so a
      *  database without the column still decodes. */
     val addedToInventory: Boolean = false,
+    /** The buyer's display name, repeated on every row of the trip. */
+    val purchasedBy: String? = null,
+    /** Whether the caller bought this trip. Defaulted so a database without the
+     *  column reads as all-own. */
+    val isOwn: Boolean = true,
 )

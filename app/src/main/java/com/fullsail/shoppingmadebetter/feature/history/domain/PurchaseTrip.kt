@@ -33,6 +33,9 @@ data class PurchaseTrip(
     /** `purchase_history.total_amount` as stored, or `null` when none was recorded. */
     val recordedTotal: Double?,
     val items: List<PurchaseLineItem>,
+    /** Who bought it, when a housemate did; `null` for the viewer's own trips. */
+    val purchasedBy: String? = null,
+    val isOwn: Boolean = true,
 ) {
     val itemCount: Int = items.size
 

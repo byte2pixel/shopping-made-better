@@ -107,9 +107,12 @@ class PurchaseTripDetailScreenTest {
 
     private var clickedProductId: String? = null
 
-    private fun setScreen(storeCosts: List<StoreBasketCost> = emptyList()) {
+    private fun setScreen(
+        storeCosts: List<StoreBasketCost> = emptyList(),
+        purchase: PurchaseTrip = trip,
+    ) {
         val viewModel = PurchaseTripDetailViewModel(
-            FakeGetPurchaseTripUseCase(GetPurchaseTripUseCase.Output.Success(trip)),
+            FakeGetPurchaseTripUseCase(GetPurchaseTripUseCase.Output.Success(purchase)),
             FakeGetShoppingTripsUseCase(),
             FakeAddTripToListUseCase(),
             FakeGetTripCostComparisonUseCase(storeCosts),
@@ -169,6 +172,25 @@ class PurchaseTripDetailScreenTest {
         row().performTouchInput { click(Offset(24.dp.toPx(), height - 1f)) }
         toggleStrip().assertIsOn()
         assertNull(clickedProductId)
+    }
+
+    @Test
+    fun aHousemateTripSaysWhoBoughtIt() {
+        setScreen(purchase = trip.copy(purchasedBy = "Demo Roommate", isOwn = false))
+
+        composeTestRule
+            .onNodeWithText(string(R.string.history_detail_bought_by))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Demo Roommate").assertIsDisplayed()
+    }
+
+    @Test
+    fun anOwnTripHasNoBoughtByField() {
+        setScreen()
+
+        composeTestRule
+            .onNodeWithText(string(R.string.history_detail_bought_by))
+            .assertDoesNotExist()
     }
 
     @Test

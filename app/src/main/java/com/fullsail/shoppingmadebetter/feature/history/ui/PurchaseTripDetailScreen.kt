@@ -209,6 +209,12 @@ private fun TripSummary(
             label = stringResource(R.string.history_detail_store),
             value = trip.storeName ?: stringResource(R.string.history_unknown_store),
         )
+        if (!trip.isOwn) {
+            SummaryField(
+                label = stringResource(R.string.history_detail_bought_by),
+                value = trip.purchasedBy ?: stringResource(R.string.owner_chip_household),
+            )
+        }
         SummaryField(
             label = stringResource(R.string.history_detail_date),
             value = formatTripDate(trip.purchasedOn),

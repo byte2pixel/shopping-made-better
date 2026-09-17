@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.LabelChip
+import com.fullsail.shoppingmadebetter.core.ui.OwnerChip
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseLineItem
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTrip
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTripSummary
@@ -91,6 +92,14 @@ fun PurchaseTripCard(
                     accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     iconRes = R.drawable.ic_shopping_cart,
                 )
+                if (!trip.isOwn) {
+                    OwnerChip(
+                        text = stringResource(
+                            R.string.history_bought_by,
+                            trip.purchasedBy ?: stringResource(R.string.owner_chip_household),
+                        ),
+                    )
+                }
             }
         }
     }
@@ -105,6 +114,8 @@ internal fun previewTripSummary(
     recordedTotal: Double? = 42.32,
     lineTotal: Double = 42.32,
     itemCount: Int = 4,
+    purchasedBy: String? = null,
+    isOwn: Boolean = true,
 ) = PurchaseTripSummary(
     id = id,
     purchasedOn = LocalDate(2026, 8, 19),
@@ -113,6 +124,8 @@ internal fun previewTripSummary(
     recordedTotal = recordedTotal,
     lineTotal = lineTotal,
     itemCount = itemCount,
+    purchasedBy = purchasedBy,
+    isOwn = isOwn,
 )
 
 internal fun previewLineItem(
@@ -169,6 +182,18 @@ private fun PurchaseTripCardPreview() {
     ShoppingMadeBetterTheme {
         PurchaseTripCard(
             trip = previewTripSummary(),
+            onClick = {},
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Housemate's trip")
+@Composable
+private fun PurchaseTripCardHousematePreview() {
+    ShoppingMadeBetterTheme {
+        PurchaseTripCard(
+            trip = previewTripSummary(purchasedBy = "Demo Roommate", isOwn = false),
             onClick = {},
             modifier = Modifier.padding(16.dp),
         )

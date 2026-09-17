@@ -38,6 +38,8 @@ class GetPurchaseHistoryUseCaseImpl @Inject constructor(
         recordedTotal = totalAmount,
         lineTotal = lineTotal,
         itemCount = itemCount,
+        purchasedBy = purchasedBy,
+        isOwn = isOwn,
     )
 
     private companion object {
