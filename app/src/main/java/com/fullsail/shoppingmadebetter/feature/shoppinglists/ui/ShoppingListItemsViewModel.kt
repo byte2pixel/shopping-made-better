@@ -69,7 +69,6 @@ class ShoppingListItemsViewModel @Inject constructor(
     //init { }
     fun addItem(item : InsertItem, listId : String, itemName : String)
     {
-        //_uiState.value = ShoppingListItemsState.Loading
         viewModelScope.launch {
            when( val addedItem = insertItemUseCase.execute(item))
            {
@@ -212,40 +211,5 @@ class ShoppingListItemsViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Buys the whole list: flags every item as checked, then completes the trip.
 
-     * Deliberately separate from [markAllPurchased], which the cart screen uses now for
-     * partial completion: checking everything there would silently buy the items the
-     * user chose to leave behind.
-     *
-     * Nothing is deleted client-side. The RPC removes the purchased rows itself in one
-     * transaction, so a failure anywhere leaves the list exactly as it was.
-     */
-    fun purchaseWholeList(listId: String) {
-        val items = (_uiState.value as? ShoppingListItemsState.Success)?.items.orEmpty()
-        // An empty list would only make the RPC raise; there is nothing to buy.
-        if (items.isEmpty()) return
-
-        _uiState.value = ShoppingListItemsState.Loading
-        viewModelScope.launch {
-            if (checkAllItemsUseCase.execute(listId) is CheckAllItemsUseCase.Output.Failure) {
-                _events.send(ShoppingListItemsEvent.PurchaseFailed)
-                getItems(listId)
-                return@launch
-            }
-
-            when (completeShoppingTripUseCase.execute(listId)) {
-                is CompleteShoppingTripUseCase.Output.Success -> {
-                    _events.send(ShoppingListItemsEvent.ListPurchased)
-                    getItems(listId) // refresh the list since now it should be empty.
-                }
-
-                is CompleteShoppingTripUseCase.Output.Failure -> {
-                    _events.send(ShoppingListItemsEvent.PurchaseFailed)
-                    getItems(listId) // nothing was bought; show the list as it still is.
-                }
-            }
-        }
-    }
 }
