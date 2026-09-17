@@ -12,13 +12,13 @@
 --   * Ensures the profile row exists.
 --   * (Re)creates a second demo user and puts both in "Demo Household"
 --     (invite code DEMO2026) with the demo user as head, then gives it
---     two lots, one of them the same milk as the demo pantry, and one
---     shopping list.
+--     two lots, one of them the same milk as the demo pantry, one
+--     shopping list and three completed trips.
 --   * Replaces the demo user's inventory with a fresh mock pantry.
 --   * Replaces the demo user's shopping lists (summarized by the
 --     shopping_trip_summaries view).
---   * Replaces the demo user's purchase history with 12 completed trips
---     spread over the last ~6 months.
+--   * Replaces both users' purchase history: 12 completed trips for the
+--     demo user spread over the last ~6 months and three for demo2.
 --
 -- Sign-in credentials (email confirmations are disabled in config.toml,
 -- so this works immediately from the app's sign-in screen):
@@ -252,35 +252,42 @@ join lateral (
 ) picked on true
 where sl.user_id = '22222222-2222-2222-2222-222222222222';
 
--- 5) Demo purchase history: completed trips, so the History tab and its spend
---    insights have something to show on a fresh reset.
+-- 5) Purchase history: completed trips, so the History tab and its spend
+--    insights have something to show on a fresh reset. demo has 12 across all
+--    three stores; demo2 has three, so demo's History shows a housemate's
+--    purchases and a Household total that differs from Mine.
 --    Clear first for idempotent re-runs (items cascade with the header row).
 delete from public.purchase_history
-where user_id = '11111111-1111-1111-1111-111111111111';
+where user_id in ('11111111-1111-1111-1111-111111111111',
+                  '22222222-2222-2222-2222-222222222222');
 
--- Trips across all three stores, spread over the last ~6 months and dated relative
--- to now(), so the History insights have month-over-month and per-store spending to
--- aggregate on every reset. Offsets and quantities vary so no two months total the
--- same and no month is empty.
+-- Trips spread over the last ~6 months and dated relative to now(), so the History
+-- insights have month-over-month and per-store spending to aggregate on every
+-- reset. Offsets and quantities vary so no two months total the same and no month
+-- is empty; demo2's offsets sit past demo's picks.
 with trip_spec as (
   select * from (values
-    -- store,        days ago, product offset, qty per line
-    ('ALDI',         3,        0,              2),
-    ('Publix',       10,       4,              1),
-    ('Whole Foods',  16,       8,              1),
-    ('ALDI',         24,       12,             3),
-    ('Publix',       38,       0,              2),
-    ('ALDI',         52,       16,             1),
-    ('Whole Foods',  67,       4,              2),
-    ('Publix',       81,       20,             1),
-    ('ALDI',         96,       8,              2),
-    ('Whole Foods',  112,      12,             1),
-    ('Publix',       134,      16,             3),
-    ('ALDI',         158,      20,             1)
-  ) as t(store_name, days_ago, pick_offset, quantity)
+    -- user,                                        store,        days ago, product offset, qty per line
+    ('11111111-1111-1111-1111-111111111111'::uuid, 'ALDI',         3,        0,              2),
+    ('11111111-1111-1111-1111-111111111111'::uuid, 'Publix',       10,       4,              1),
+    ('11111111-1111-1111-1111-111111111111'::uuid, 'Whole Foods',  16,       8,              1),
+    ('11111111-1111-1111-1111-111111111111'::uuid, 'ALDI',         24,       12,             3),
+    ('11111111-1111-1111-1111-111111111111'::uuid, 'Publix',       38,       0,              2),
+    ('11111111-1111-1111-1111-111111111111'::uuid, 'ALDI',         52,       16,             1),
+    ('11111111-1111-1111-1111-111111111111'::uuid, 'Whole Foods',  67,       4,              2),
+    ('11111111-1111-1111-1111-111111111111'::uuid, 'Publix',       81,       20,             1),
+    ('11111111-1111-1111-1111-111111111111'::uuid, 'ALDI',         96,       8,              2),
+    ('11111111-1111-1111-1111-111111111111'::uuid, 'Whole Foods',  112,      12,             1),
+    ('11111111-1111-1111-1111-111111111111'::uuid, 'Publix',       134,      16,             3),
+    ('11111111-1111-1111-1111-111111111111'::uuid, 'ALDI',         158,      20,             1),
+    ('22222222-2222-2222-2222-222222222222'::uuid, 'Publix',       6,        24,             1),
+    ('22222222-2222-2222-2222-222222222222'::uuid, 'ALDI',         19,       28,             2),
+    ('22222222-2222-2222-2222-222222222222'::uuid, 'Whole Foods',  45,       32,             1)
+  ) as t(user_id, store_name, days_ago, pick_offset, quantity)
 ),
 picked as (
   select
+    ts.user_id,
     ts.days_ago,
     ts.quantity,
     s.id  as store_id,
@@ -301,13 +308,13 @@ picked as (
 trip as (
   insert into public.purchase_history (user_id, store_id, purchased_at, total_amount)
   select
-    '11111111-1111-1111-1111-111111111111',
+    p.user_id,
     p.store_id,
     now() - make_interval(days => p.days_ago),
     sum(p.quantity * p.price)
   from picked p
-  group by p.store_id, p.days_ago
-  returning id, store_id, purchased_at
+  group by p.user_id, p.store_id, p.days_ago
+  returning id, user_id, store_id, purchased_at
 )
 -- added_to_inventory stands in for the per-item choice the real completion flow
 -- copies from shopping_list_items.add_to_inventory: shelf-stable goods get tracked
@@ -316,11 +323,13 @@ insert into public.purchase_history_items
   (purchase_id, product_id, quantity, price_paid, added_to_inventory)
 select t.id, p.product_id, p.quantity, p.price, coalesce(pr.shelf_life_days, 0) >= 30
 from trip t
--- Keyed on the date as well as the store: a store now has several trips, and
--- matching on store alone would give each of them every other trip's items.
--- now() is transaction-stable, so both sides compute the same timestamp.
+-- Keyed on the user and the date as well as the store: a store has several trips
+-- by two users, and matching on store alone would give each of them every other
+-- trip's items. now() is transaction-stable, so both sides compute the same
+-- timestamp.
 join picked p
-  on p.store_id = t.store_id
+  on p.user_id  = t.user_id
+ and p.store_id = t.store_id
  and now() - make_interval(days => p.days_ago) = t.purchased_at
 join public.products pr on pr.id = p.product_id;
 
