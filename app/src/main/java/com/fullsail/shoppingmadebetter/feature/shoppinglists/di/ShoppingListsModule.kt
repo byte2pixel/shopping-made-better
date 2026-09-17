@@ -8,6 +8,8 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetItemDetai
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetItemDetailsUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetShoppingListItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetShoppingListItemsUseCaseImpl
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetStoreInformationUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetStoreInformationUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RemoveListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RemoveListUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.RenameShoppingListUseCase
@@ -68,6 +70,10 @@ abstract class ShoppingListsModule {
     abstract fun bindInsertShoppingList(
         impl: ShoppingListUseCaseImpl,
     ): ShoppingListUseCase
+    @Binds
+    abstract fun bingGetStoreAddress(
+        impl: GetStoreInformationUseCaseImpl,
+    ): GetStoreInformationUseCase
 
     @Binds
     abstract fun bindQuantityUpdate(

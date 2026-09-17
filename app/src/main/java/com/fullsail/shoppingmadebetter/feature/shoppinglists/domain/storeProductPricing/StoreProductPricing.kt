@@ -7,5 +7,6 @@ data class StoreProductPricing(
      val price: String,
      val productTitle: String,
      val productBrand: String? = null,
+     val packageSizing: String?,
 ) {
 }
