@@ -1764,4 +1764,73 @@ class PantryViewModelTest {
         viewModel.dismissAddToPantrySheet()
         assertEquals("i1", viewModel.zeroStockAlert.value?.id)
     }
+
+    @Test
+    fun `a new search keeps the previous results on screen while it runs`() = runTest {
+        val search = FakeProductSearchUseCase(
+            ProductSearchUseCase.Output.Success(listOf(milkProduct))
+        )
+        val viewModel = buildViewModel(search = search)
+        viewModel.onAddToPantryClicked()
+        viewModel.onAddToPantryQuery("mi")
+        advanceUntilIdle()
+        assertEquals(listOf(milkProduct), viewModel.visibleAddToPantrySheet.results)
+
+        viewModel.onAddToPantryQuery("mil")
+
+        // Mid-type the rows are the previous answer, not nothing: blanking them collapses
+        // the sheet to the height of a spinner and bounces it back on the next keystroke.
+        assertTrue(viewModel.visibleAddToPantrySheet.searching)
+        assertEquals(listOf(milkProduct), viewModel.visibleAddToPantrySheet.results)
+    }
+
+    @Test
+    fun `a failed search stays on screen while the next one runs`() = runTest {
+        val search = FakeProductSearchUseCase(
+            ProductSearchUseCase.Output.Failure(IOException("no network"))
+        )
+        val viewModel = buildViewModel(search = search)
+        viewModel.onAddToPantryClicked()
+        viewModel.onAddToPantryQuery("mi")
+        advanceUntilIdle()
+        assertTrue(viewModel.visibleAddToPantrySheet.searchFailed)
+
+        viewModel.onAddToPantryQuery("mil")
+
+        // Same reasoning as the rows: the message goes when its replacement arrives.
+        assertTrue(viewModel.visibleAddToPantrySheet.searchFailed)
+    }
+
+    @Test
+    fun `no matches is only claimed once a search has come back`() = runTest {
+        val search = FakeProductSearchUseCase(
+            ProductSearchUseCase.Output.Success(emptyList())
+        )
+        val viewModel = buildViewModel(search = search)
+        viewModel.onAddToPantryClicked()
+
+        viewModel.onAddToPantryQuery("zzz")
+        assertFalse(viewModel.visibleAddToPantrySheet.hasSearched)
+
+        advanceUntilIdle()
+        assertTrue(viewModel.visibleAddToPantrySheet.hasSearched)
+    }
+
+    @Test
+    fun `backing down to one letter forgets that a search happened`() = runTest {
+        val search = FakeProductSearchUseCase(
+            ProductSearchUseCase.Output.Success(emptyList())
+        )
+        val viewModel = buildViewModel(search = search)
+        viewModel.onAddToPantryClicked()
+        viewModel.onAddToPantryQuery("zz")
+        advanceUntilIdle()
+        assertTrue(viewModel.visibleAddToPantrySheet.hasSearched)
+
+        viewModel.onAddToPantryQuery("z")
+
+        // Too short to search, so the sheet has nothing to report either way.
+        assertFalse(viewModel.visibleAddToPantrySheet.hasSearched)
+        assertEquals(emptyList<ProductSearch>(), viewModel.visibleAddToPantrySheet.results)
+    }
 }

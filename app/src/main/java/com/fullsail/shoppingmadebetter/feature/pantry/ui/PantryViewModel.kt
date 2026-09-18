@@ -75,6 +75,10 @@ sealed interface AddToListSheetState {
  * catalog search until a product is picked, then the quantity and location controls
  * for it. [location] stays null unless the user picks one, which leaves the choice to
  * the product's category.
+ *
+ * [results] and [searchFailed] describe the last search that came back, not the one in
+ * flight: while [searching] they are the previous keystroke's answer, still on screen,
+ * because blanking them mid-type collapses the sheet and bounces it back.
  */
 sealed interface AddToPantrySheetState {
     data object Hidden : AddToPantrySheetState
@@ -84,6 +88,8 @@ sealed interface AddToPantrySheetState {
         val searching: Boolean = false,
         /** True when the last search failed, so the sheet says so instead of "no matches". */
         val searchFailed: Boolean = false,
+        /** True once a search has returned, so "no matches" is only said when it was asked. */
+        val hasSearched: Boolean = false,
         val selected: ProductSearch? = null,
         val quantity: Int = 1,
         val location: PantryLocation? = null,
@@ -373,11 +379,19 @@ class PantryViewModel @Inject constructor(
         searchJob?.cancel()
         val term = query.trim()
         if (term.length < MIN_SEARCH_LENGTH) {
-            _addToPantrySheet.value =
-                current.copy(query = query, results = emptyList(), searching = false, searchFailed = false)
+            _addToPantrySheet.value = current.copy(
+                query = query,
+                results = emptyList(),
+                searching = false,
+                searchFailed = false,
+                hasSearched = false,
+            )
             return
         }
-        _addToPantrySheet.value = current.copy(query = query, searching = true, searchFailed = false)
+        // Only `searching` changes here. The previous results stay put until the new ones
+        // land, so the sheet keeps its height instead of collapsing onto a spinner and
+        // springing back on every keystroke.
+        _addToPantrySheet.value = current.copy(query = query, searching = true)
         searchJob = viewModelScope.launch {
             delay(SEARCH_DEBOUNCE_MS)
             val out = productSearchUseCase.execute(term.escapedForLike())
@@ -386,11 +400,19 @@ class PantryViewModel @Inject constructor(
             val latest = _addToPantrySheet.value
             if (latest is AddToPantrySheetState.Visible && latest.query == query) {
                 _addToPantrySheet.value = when (out) {
-                    is ProductSearchUseCase.Output.Success ->
-                        latest.copy(results = out.product, searching = false, searchFailed = false)
+                    is ProductSearchUseCase.Output.Success -> latest.copy(
+                        results = out.product,
+                        searching = false,
+                        searchFailed = false,
+                        hasSearched = true,
+                    )
 
-                    is ProductSearchUseCase.Output.Failure ->
-                        latest.copy(results = emptyList(), searching = false, searchFailed = true)
+                    is ProductSearchUseCase.Output.Failure -> latest.copy(
+                        results = emptyList(),
+                        searching = false,
+                        searchFailed = true,
+                        hasSearched = true,
+                    )
                 }
             }
         }

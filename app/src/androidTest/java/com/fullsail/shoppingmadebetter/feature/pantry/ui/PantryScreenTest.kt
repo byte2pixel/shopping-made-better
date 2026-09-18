@@ -1162,6 +1162,60 @@ class PantryScreenTest {
         )
     }
 
+
+    /** Renders the sheet against a fixed state, with no debounce or fake in the way. */
+    private fun setAddToPantrySheet(state: AddToPantrySheetState.Visible) {
+        composeTestRule.setContent {
+            ShoppingMadeBetterTheme {
+                AddToPantrySheet(
+                    state = state,
+                    onQueryChange = {},
+                    onProductSelected = {},
+                    onProductCleared = {},
+                    onQuantityChange = {},
+                    onLocationChange = {},
+                    onConfirm = {},
+                    onDismiss = {},
+                )
+            }
+        }
+    }
+
+    @Test
+    fun theResultsStayOnScreenWhileTheNextSearchRuns() {
+        setAddToPantrySheet(
+            AddToPantrySheetState.Visible(
+                query = "oat mi",
+                results = listOf(ProductSearch("p1", SEARCH_RESULT_NAME)),
+                searching = true,
+                hasSearched = true,
+            )
+        )
+
+        // The rows the last search returned are still there mid-type, so the sheet keeps
+        // its height instead of collapsing onto a spinner and springing back.
+        composeTestRule.onNodeWithText(SEARCH_RESULT_NAME).assertIsDisplayed()
+        composeTestRule.onNodeWithText(string(R.string.pantry_add_no_results)).assertDoesNotExist()
+    }
+
+    @Test
+    fun noMatchesIsNotClaimedBeforeASearchComesBack() {
+        setAddToPantrySheet(
+            AddToPantrySheetState.Visible(query = "zzz", searching = true, hasSearched = false)
+        )
+
+        composeTestRule.onNodeWithText(string(R.string.pantry_add_no_results)).assertDoesNotExist()
+    }
+
+    @Test
+    fun noMatchesIsShownOnceAnEmptySearchComesBack() {
+        setAddToPantrySheet(
+            AddToPantrySheetState.Visible(query = "zzz", searching = false, hasSearched = true)
+        )
+
+        composeTestRule.onNodeWithText(string(R.string.pantry_add_no_results)).assertIsDisplayed()
+    }
+
     private companion object {
         /** Long enough for the 300 ms search debounce plus the fake, short enough to fail fast. */
         const val SHEET_TIMEOUT_MS = 5_000L

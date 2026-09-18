@@ -2,12 +2,13 @@ package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,6 +31,9 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearc
 
 /** Highest quantity the add-to-pantry stepper will climb to. */
 internal const val MAX_PANTRY_QUANTITY = 99
+
+/** Fixed footprint for the search spinner, so the field does not resize when it appears. */
+private val SEARCH_INDICATOR_SLOT = 24.dp
 
 /**
  * Slide-up sheet for putting a product in the pantry by hand — the only way stock gets
@@ -90,9 +94,15 @@ internal fun AddToPantrySheet(
 /**
  * The search field and its results. The catalog search returns names only, so each row is
  * the product's title and nothing else.
+ *
+ * A search in flight never takes anything off screen. The spinner lives in the field's
+ * trailing slot, which holds the same space whether or not it is spinning, and the rows
+ * below stay as the last search left them until the next one lands. Swapping the rows for
+ * a spinner instead — which is what this did first — collapsed the sheet and bounced it
+ * back on every keystroke.
  */
 @Composable
-private fun ColumnScope.SearchPhase(
+private fun SearchPhase(
     state: AddToPantrySheetState.Visible,
     onQueryChange: (String) -> Unit,
     onProductSelected: (ProductSearch) -> Unit,
@@ -102,15 +112,22 @@ private fun ColumnScope.SearchPhase(
         onValueChange = onQueryChange,
         label = { Text(stringResource(R.string.pantry_add_search_hint)) },
         singleLine = true,
+        trailingIcon = {
+            Box(
+                modifier = Modifier.size(SEARCH_INDICATOR_SLOT),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (state.searching) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                    )
+                }
+            }
+        },
         modifier = Modifier.fillMaxWidth(),
     )
     when {
-        state.searching -> CircularProgressIndicator(
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(16.dp),
-        )
-
         state.searchFailed -> Text(
             text = stringResource(R.string.pantry_add_search_failed),
             style = MaterialTheme.typography.bodyMedium,
@@ -118,15 +135,7 @@ private fun ColumnScope.SearchPhase(
             modifier = Modifier.padding(vertical = 12.dp),
         )
 
-        // Nothing is said before the query is worth searching; an empty sheet is not a
-        // claim that the catalog has no matches.
-        state.results.isEmpty() && state.query.isNotBlank() -> Text(
-            text = stringResource(R.string.pantry_add_no_results),
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(vertical = 12.dp),
-        )
-
-        else -> state.results.forEach { product ->
+        state.results.isNotEmpty() -> state.results.forEach { product ->
             Text(
                 text = product.productName,
                 style = MaterialTheme.typography.bodyLarge,
@@ -136,6 +145,14 @@ private fun ColumnScope.SearchPhase(
                     .padding(vertical = 12.dp),
             )
         }
+
+        // Only once a search has actually come back. Before that an empty sheet is not a
+        // claim that the catalog has no matches.
+        state.hasSearched -> Text(
+            text = stringResource(R.string.pantry_add_no_results),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(vertical = 12.dp),
+        )
     }
 }
 
