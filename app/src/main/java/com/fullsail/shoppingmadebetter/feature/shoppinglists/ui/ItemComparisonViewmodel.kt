@@ -34,7 +34,6 @@ sealed interface ItemComparisonUIState {
     data object Loading : ItemComparisonUIState
     data class SearchSuccess(val products: List<ProductSearch>) : ItemComparisonUIState
     data class PriceSuccess(val price: List<StoreProductPricing>) : ItemComparisonUIState
-    data class StoreSuccess(val store: StoreAddressInformation) : ItemComparisonUIState
     data object Error : ItemComparisonUIState
 }
 

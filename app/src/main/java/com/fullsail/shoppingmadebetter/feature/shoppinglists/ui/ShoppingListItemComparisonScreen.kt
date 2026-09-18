@@ -2,7 +2,6 @@ package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
 
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -144,7 +143,7 @@ fun ShoppingListItemComparisonScreen(
 
 }
     @OptIn(ExperimentalMaterial3Api::class)
-    @androidx.annotation.RequiresPermission(allOf = [android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION])
+    @androidx.annotation.RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
         @Composable
     fun ItemCard(product: StoreProductPricing, viewModel : ItemComparisonViewmodel, onItemComparison: () -> Unit)
     {
@@ -160,7 +159,6 @@ fun ShoppingListItemComparisonScreen(
 
         fun onAddClicked()
         {
-           // val list = storeList.firstOrNull { it.storeId == product.storeId }
             if (list != null)
             {
                 showDialog = false
