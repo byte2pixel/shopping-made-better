@@ -85,6 +85,8 @@ internal fun row(
     quantity: Double = 1.0,
     pricePaid: Double = 2.50,
     addedToInventory: Boolean = false,
+    purchasedBy: String? = null,
+    isOwn: Boolean = true,
 ) = PurchaseHistoryRowDto(
     id = id,
     purchaseId = purchaseId,
@@ -100,6 +102,8 @@ internal fun row(
     quantity = quantity,
     pricePaid = pricePaid,
     addedToInventory = addedToInventory,
+    purchasedBy = purchasedBy,
+    isOwn = isOwn,
 )
 
 /** A summary-view row with sensible defaults; override only what a test is about. */
@@ -113,6 +117,8 @@ internal fun summaryRow(
     lineTotal: Double = 10.0,
     itemCount: Int = 2,
     productSearch: String = "",
+    purchasedBy: String? = null,
+    isOwn: Boolean = true,
 ) = PurchaseTripSummaryDto(
     id = id,
     purchasedOn = purchasedOn,
@@ -123,6 +129,8 @@ internal fun summaryRow(
     lineTotal = lineTotal,
     itemCount = itemCount,
     productSearch = productSearch,
+    purchasedBy = purchasedBy,
+    isOwn = isOwn,
 )
 
 /** [count] summary rows, ids `trip-0`..`trip-<count-1>`, newest first. */

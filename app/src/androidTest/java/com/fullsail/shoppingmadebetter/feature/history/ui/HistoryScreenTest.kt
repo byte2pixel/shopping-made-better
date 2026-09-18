@@ -8,10 +8,13 @@ import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.SavedStateHandle
@@ -197,6 +200,35 @@ class HistoryScreenTest {
         composeTestRule
             .onNodeWithText(plural(R.plurals.history_trip_item_count, 4, 4))
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun onlyAHousemateTripShowsTheBoughtByChipAndTappingItNamesThem() {
+        val housemateTrip = aldiTrip.copy(
+            id = "trip-2",
+            storeName = "Publix",
+            purchasedBy = "Demo Roommate",
+            isOwn = false,
+        )
+        setScreen(
+            history = FakeGetPurchaseHistoryUseCase(
+                GetPurchaseHistoryUseCase.Output.Success(
+                    listOf(aldiTrip, housemateTrip),
+                    endReached = true,
+                ),
+            ),
+        )
+        awaitText("Publix")
+
+        // Both trips are listed; only the housemate's is attributed. The chip is
+        // icon-only, so the name is on the content description until it is tapped.
+        val boughtBy = string(R.string.history_bought_by, "Demo Roommate")
+        composeTestRule.onAllNodesWithContentDescription(boughtBy).assertCountEquals(1)
+        composeTestRule.onNodeWithText(boughtBy).assertDoesNotExist()
+
+        composeTestRule.onNodeWithContentDescription(boughtBy).performClick()
+
+        composeTestRule.onNodeWithText(boughtBy).assertIsDisplayed()
     }
 
     @Test

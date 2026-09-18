@@ -30,4 +30,9 @@ data class PurchaseTripSummaryDto(
      * search to match on. Not shown — decoded because the view selects every column.
      */
     val productSearch: String = "",
+    /** The buyer's display name; `null` when the row is the caller's own or has no JWT. */
+    val purchasedBy: String? = null,
+    /** Whether the caller bought this trip. Defaulted so a database without the
+     *  column reads as all-own. */
+    val isOwn: Boolean = true,
 )

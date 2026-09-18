@@ -182,6 +182,32 @@ class GetPurchaseHistoryUseCaseTest {
     }
 
     @Test
+    fun `execute carries who bought a housemate's trip`() = runTest {
+        val repository = FakeHistoryRepository(
+            summaries = listOf(
+                summaryRow(id = "trip-1", purchasedBy = "Demo Roommate", isOwn = false),
+            ),
+        )
+
+        val trip = useCase(repository).page(offset = 0, limit = 20).success().trips.single()
+
+        assertEquals("Demo Roommate", trip.purchasedBy)
+        assertFalse(trip.isOwn)
+    }
+
+    @Test
+    fun `execute reads a row without attribution as the caller's own`() = runTest {
+        // A database without the columns decodes to the defaults, which must mean
+        // "mine": showing a chip on every trip would be worse than none.
+        val repository = FakeHistoryRepository(summaries = listOf(summaryRow(id = "trip-1")))
+
+        val trip = useCase(repository).page(offset = 0, limit = 20).success().trips.single()
+
+        assertNull(trip.purchasedBy)
+        assertTrue(trip.isOwn)
+    }
+
+    @Test
     fun `execute returns failure carrying the repository error`() = runTest {
         val boom = IOException("network down")
         val useCase = useCase(FakeHistoryRepository(error = boom))

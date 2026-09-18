@@ -2,6 +2,8 @@ package com.fullsail.shoppingmadebetter.feature.history.domain
 
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -52,6 +54,35 @@ class GetPurchaseTripUseCaseTest {
             mapOf("tracked" to true, "eaten" to false),
             trip.items.associate { it.id to it.addedToInventory },
         )
+    }
+
+    @Test
+    fun `execute carries who bought a housemate's trip from its header row`() = runTest {
+        val useCase = GetPurchaseTripUseCaseImpl(
+            FakeHistoryRepository(
+                rows = listOf(
+                    row(purchaseId = "wanted", id = "a", purchasedBy = "Demo Roommate", isOwn = false),
+                    row(purchaseId = "wanted", id = "b", purchasedBy = "Demo Roommate", isOwn = false),
+                ),
+            ),
+        )
+
+        val trip = (useCase.execute("wanted") as GetPurchaseTripUseCase.Output.Success).trip
+
+        assertEquals("Demo Roommate", trip.purchasedBy)
+        assertFalse(trip.isOwn)
+    }
+
+    @Test
+    fun `execute reads rows without attribution as the caller's own`() = runTest {
+        val useCase = GetPurchaseTripUseCaseImpl(
+            FakeHistoryRepository(rows = listOf(row(purchaseId = "wanted"))),
+        )
+
+        val trip = (useCase.execute("wanted") as GetPurchaseTripUseCase.Output.Success).trip
+
+        assertNull(trip.purchasedBy)
+        assertTrue(trip.isOwn)
     }
 
     @Test

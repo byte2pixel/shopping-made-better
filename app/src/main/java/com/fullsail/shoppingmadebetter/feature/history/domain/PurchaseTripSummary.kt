@@ -20,6 +20,9 @@ data class PurchaseTripSummary(
     /** Sum of the trip's lines, computed by the view. */
     val lineTotal: Double,
     val itemCount: Int,
+    /** Who bought it, when a housemate did; `null` for the viewer's own trips. */
+    val purchasedBy: String? = null,
+    val isOwn: Boolean = true,
 ) {
     /**
      * What the trip cost: the recorded total, falling back to the sum of the lines
