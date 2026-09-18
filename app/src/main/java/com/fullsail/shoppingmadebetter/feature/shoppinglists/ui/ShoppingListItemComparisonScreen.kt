@@ -2,6 +2,8 @@ package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
 
 
 import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
@@ -49,11 +51,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
@@ -76,12 +80,6 @@ fun ShoppingListItemComparisonScreen(
     val uiState by viewModel.uiState.collectAsState()
     val getPermissions = rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestMultiplePermissions())
     {}
-    LaunchedEffect(Unit) {
-         getPermissions.launch(
-        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION)
-    )
-        }
 
     if (selectedProduct == null)
     {
@@ -117,7 +115,24 @@ fun ShoppingListItemComparisonScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(state.price.filter { it.productTitle == selectedProduct }, key = {it.productId + it.storeId }) {ItemCard(it, viewModel, onItemComparison) }
+                items(state.price.filter { it.productTitle == selectedProduct }, key = {it.productId + it.storeId }) {
+                    if ((ActivityCompat.checkSelfPermission(
+                            LocalContext.current,
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                        ) != PackageManager.PERMISSION_GRANTED) || (ActivityCompat.checkSelfPermission(
+                            LocalContext.current,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        ) != PackageManager.PERMISSION_GRANTED)
+                    ) {
+                        LaunchedEffect(Unit) {
+                            getPermissions.launch(
+                                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION)
+                            )
+                        }
+
+                    }
+                    ItemCard(it, viewModel, onItemComparison) }
             }
 
               }
