@@ -249,9 +249,10 @@ fun ShoppingListItemComparisonScreen(
                onAddClicked()
 
             },
+            colors = CardDefaults.outlinedCardColors(MaterialTheme.colorScheme.surfaceContainer),
 
 
-            Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth()
         ) {
 
 

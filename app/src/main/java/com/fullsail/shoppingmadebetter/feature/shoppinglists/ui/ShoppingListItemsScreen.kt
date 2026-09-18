@@ -67,17 +67,6 @@ fun ShoppingListItemsScreen(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-           /* val state = uiState
-            if (state is ShoppingListItemsState.Success && state.items.isNotEmpty()) {
-                Button(
-                    onClick = { viewModel.purchaseWholeList(listId) },
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                ) {
-                    Text(stringResource(R.string.mark_all_purchased))
-                }
-            }
-
-            */
         },
     ) { innerPadding ->
         Box(Modifier.fillMaxSize().padding(innerPadding)) {
@@ -100,6 +89,7 @@ fun ShoppingListItemsScreen(
                             items(state.items, key = { it.id }) { ListRow(it,viewModel) }
                         }
                     }
+
 
 
                 else -> {}
