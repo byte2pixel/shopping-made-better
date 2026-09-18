@@ -161,8 +161,12 @@ fun PantryScreen(
         AddToShoppingListSheet(
             title = stringResource(R.string.add_to_list_title, visible.item.name),
             lists = visible.lists,
+            stores = visible.stores,
+            // A pantry item belongs to no store, so the sheet preselects the first.
+            defaultStoreId = null,
             onDismiss = viewModel::dismissAddToListSheet,
             onListChosen = viewModel::onListChosen,
+            onCreateList = viewModel::onCreateList,
         )
     }
 

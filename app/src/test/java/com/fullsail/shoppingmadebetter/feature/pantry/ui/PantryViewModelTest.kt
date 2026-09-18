@@ -26,10 +26,14 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowS
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.groupInventoryByProduct
 import com.fullsail.shoppingmadebetter.feature.profile.domain.GetAutoAdjustEnabledUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
+import com.fullsail.shoppingmadebetter.feature.stores.domain.GetStoresUseCase
+import com.fullsail.shoppingmadebetter.feature.stores.domain.Store
 import com.fullsail.shoppingmadebetter.testing.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
@@ -51,6 +55,17 @@ private fun inventoryOf(vararg items: InventoryItem) =
 /** Every lot across the state's product groups, flattened in display order. */
 private val PantryUiState.Success.lots: List<InventoryItem>
     get() = productGroups.flatMap { it.lots }
+
+/** The one store the fakes offer, so a new list always has somewhere to live. */
+private val sampleStore = Store(
+    id = "s1",
+    name = "ALDI",
+    address = "1 Main St",
+    city = "Orlando",
+    state = "FL",
+    postalCode = "32801",
+    phone = null,
+)
 
 /**
  * Unit tests for [PantryViewModel]. Each collaborator is a hand-written fake, and
@@ -216,6 +231,25 @@ class PantryViewModelTest {
         }
     }
 
+    /** Fake list-create use case: records the list it was asked for and returns [output]. */
+    private class FakeShoppingListUseCase(
+        var output: ShoppingListUseCase.Output =
+            ShoppingListUseCase.Output.Success(ShoppingList("new-id", "s1", "Weekend", false)),
+    ) : ShoppingListUseCase {
+        var lastInput: ShoppingList? = null
+        override suspend fun execute(input: ShoppingList): ShoppingListUseCase.Output {
+            lastInput = input
+            return output
+        }
+    }
+
+    /** Fake stores use case: returns a settable [output]. */
+    private class FakeGetStoresUseCase(
+        var output: GetStoresUseCase.Output = GetStoresUseCase.Output.Success(listOf(sampleStore)),
+    ) : GetStoresUseCase {
+        override suspend fun execute(input: Unit): GetStoresUseCase.Output = output
+    }
+
     private val sampleItem = InventoryItem(
         id = "i1",
         productId = "p1",
@@ -257,10 +291,12 @@ class PantryViewModelTest {
         undoAdjustment: FakeUndoInventoryAdjustmentUseCase = FakeUndoInventoryAdjustmentUseCase(),
         autoAdjust: FakeGetAutoAdjustEnabledUseCase = FakeGetAutoAdjustEnabledUseCase(),
         digest: FakeGetAdjustmentDigestUseCase = FakeGetAdjustmentDigestUseCase(),
+        createList: FakeShoppingListUseCase = FakeShoppingListUseCase(),
+        stores: FakeGetStoresUseCase = FakeGetStoresUseCase(),
     ) = PantryViewModel(
         inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, applyAdjustment,
         updateLocation, updateExpiry, updateThreshold, alerts, undoAdjustment, autoAdjust,
-        digest,
+        digest, createList, stores,
     )
 
     @Test
@@ -648,6 +684,88 @@ class PantryViewModelTest {
 
         assertNull(insert.lastItem)
         assertEquals(AddToListSheetState.Hidden, viewModel.addToListSheet.value)
+    }
+
+    @Test
+    fun `onAddToListClicked carries the stores a new list could be created at`() = runTest {
+        val viewModel = buildViewModel()
+
+        viewModel.onAddToListClicked(sampleItem)
+
+        val sheet = viewModel.addToListSheet.value as AddToListSheetState.Visible
+        assertEquals(listOf(sampleStore), sheet.stores)
+    }
+
+    @Test
+    fun `onAddToListClicked leaves the stores empty when they fail to load`() = runTest {
+        val viewModel = buildViewModel(
+            stores = FakeGetStoresUseCase(GetStoresUseCase.Output.Failure(IOException("boom")))
+        )
+
+        viewModel.onAddToListClicked(sampleItem)
+
+        val sheet = viewModel.addToListSheet.value as AddToListSheetState.Visible
+        assertTrue(sheet.stores.isEmpty())
+        // The picker itself still loaded, so existing lists stay pickable.
+        assertTrue(sheet.lists is ShoppingListPickerState.Empty)
+    }
+
+    @Test
+    fun `onCreateList creates the list then adds the item to it`() = runTest {
+        val createList = FakeShoppingListUseCase(
+            ShoppingListUseCase.Output.Success(ShoppingList("new-id", "s1", "Weekend", false))
+        )
+        val insert = FakeInsertItemUseCase(InsertItemUseCase.Output.Success("sli-3"))
+        val viewModel = buildViewModel(insert = insert, createList = createList)
+        viewModel.onAddToListClicked(sampleItem)
+
+        viewModel.onCreateList("  Weekend  ", "s1")
+
+        assertEquals(AddToListSheetState.Hidden, viewModel.addToListSheet.value)
+        // The list is created at the chosen store, under the trimmed name, unshared.
+        val created = createList.lastInput!!
+        assertNull(created.shoppingListId)
+        assertEquals("s1", created.storeId)
+        assertEquals("Weekend", created.name)
+        assertFalse(created.shared)
+        // The item lands on the list that was just created.
+        assertEquals("new-id", insert.lastItem!!.shoppingListId)
+        val event = viewModel.events.first()
+        assertTrue(event is PantryEvent.ItemAdded)
+        event as PantryEvent.ItemAdded
+        assertEquals("Milk", event.itemName)
+        assertEquals("Weekend", event.listName)
+        assertEquals("sli-3", event.insertedItemId)
+    }
+
+    @Test
+    fun `onCreateList emits AddFailed when the list cannot be created`() = runTest {
+        val insert = FakeInsertItemUseCase()
+        val viewModel = buildViewModel(
+            insert = insert,
+            createList = FakeShoppingListUseCase(
+                ShoppingListUseCase.Output.Failure(IOException("boom"))
+            ),
+        )
+        viewModel.onAddToListClicked(sampleItem)
+
+        viewModel.onCreateList("Weekend", "s1")
+
+        // Nothing was added, since there is no list to add to.
+        assertNull(insert.lastItem)
+        val event = viewModel.events.first()
+        assertTrue(event is PantryEvent.AddFailed)
+        assertEquals("Milk", (event as PantryEvent.AddFailed).itemName)
+    }
+
+    @Test
+    fun `onCreateList does nothing when the sheet is hidden`() = runTest {
+        val createList = FakeShoppingListUseCase()
+        val viewModel = buildViewModel(createList = createList)
+
+        viewModel.onCreateList("Weekend", "s1")
+
+        assertNull(createList.lastInput)
     }
 
     @Test

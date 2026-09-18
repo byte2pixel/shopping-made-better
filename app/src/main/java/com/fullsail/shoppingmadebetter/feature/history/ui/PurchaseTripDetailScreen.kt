@@ -131,8 +131,11 @@ fun PurchaseTripDetailScreen(
                 visible.selectedCount,
             ),
             lists = visible.lists,
+            stores = visible.stores,
+            defaultStoreId = visible.defaultStoreId,
             onDismiss = viewModel::dismissBuyAgainSheet,
             onListChosen = viewModel::onListChosen,
+            onCreateList = viewModel::onCreateList,
         )
     }
 }

@@ -213,6 +213,11 @@
         <item quantity="other">%1$d items</item>
     </plurals>
     <string name="list_created_by">Created by %1$s</string>
+    <string name="add_to_list_create">New list…</string>
+    <string name="add_to_list_name_hint">List name</string>
+    <string name="add_to_list_store">Store</string>
+    <string name="add_to_list_store_error">Couldn\'t load stores</string>
+    <string name="add_to_list_create_action">Create</string>
 
     <!-- Shopping list detail: mark the whole list as purchased -->
     <string name="mark_all_purchased">Mark all as purchased</string>

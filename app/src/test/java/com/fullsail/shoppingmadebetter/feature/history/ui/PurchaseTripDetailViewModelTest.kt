@@ -8,8 +8,12 @@ import com.fullsail.shoppingmadebetter.feature.history.domain.GetTripCostCompari
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseLineItem
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTrip
 import com.fullsail.shoppingmadebetter.feature.history.domain.StoreBasketCost
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
+import com.fullsail.shoppingmadebetter.feature.stores.domain.GetStoresUseCase
+import com.fullsail.shoppingmadebetter.feature.stores.domain.Store
 import com.fullsail.shoppingmadebetter.testing.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
@@ -35,13 +39,20 @@ private fun lineItem(productId: String, id: String = "line-$productId") = Purcha
     addedToInventory = false,
 )
 
-private fun trip(vararg productIds: String) = PurchaseTrip(
+private fun trip(vararg productIds: String, storeId: String? = "store-aldi") = PurchaseTrip(
     id = "trip-1",
     purchasedOn = LocalDate(2026, 8, 12),
     purchasedAtEpoch = 1_786_504_429L,
     storeName = "ALDI",
     recordedTotal = 10.0,
     items = productIds.map { lineItem(it) },
+    storeId = storeId,
+)
+
+/** The stores the fakes offer; the first is where the sample trip was bought. */
+private val sampleStores = listOf(
+    Store("store-aldi", "ALDI", "1 Main St", "Orlando", "FL", "32801", null),
+    Store("store-publix", "Publix", "2 Oak Ave", "Orlando", "FL", "32801", null),
 )
 
 private fun shoppingTrip(id: String = "list-1", name: String = "Weekly") = ShoppingTrip(
@@ -100,12 +111,32 @@ class PurchaseTripDetailViewModelTest {
         override suspend fun execute(input: String) = output
     }
 
+    /** Fake list-create use case: records the list it was asked for and returns [output]. */
+    private class FakeShoppingListUseCase(
+        var output: ShoppingListUseCase.Output =
+            ShoppingListUseCase.Output.Success(ShoppingList("new-id", "store-aldi", "Weekend", false)),
+    ) : ShoppingListUseCase {
+        var lastInput: ShoppingList? = null
+        override suspend fun execute(input: ShoppingList): ShoppingListUseCase.Output {
+            lastInput = input
+            return output
+        }
+    }
+
+    private class FakeGetStoresUseCase(
+        var output: GetStoresUseCase.Output = GetStoresUseCase.Output.Success(sampleStores),
+    ) : GetStoresUseCase {
+        override suspend fun execute(input: Unit): GetStoresUseCase.Output = output
+    }
+
     private fun viewModel(
         getTrip: FakeGetPurchaseTripUseCase = FakeGetPurchaseTripUseCase(),
         getLists: FakeGetShoppingTripsUseCase = FakeGetShoppingTripsUseCase(),
         addToList: FakeAddTripToListUseCase = FakeAddTripToListUseCase(),
         compare: FakeGetTripCostComparisonUseCase = FakeGetTripCostComparisonUseCase(),
-    ) = PurchaseTripDetailViewModel(getTrip, getLists, addToList, compare)
+        createList: FakeShoppingListUseCase = FakeShoppingListUseCase(),
+        stores: FakeGetStoresUseCase = FakeGetStoresUseCase(),
+    ) = PurchaseTripDetailViewModel(getTrip, getLists, addToList, compare, createList, stores)
 
     @Test
     fun `load selects every line item by default`() {
@@ -346,6 +377,101 @@ class PurchaseTripDetailViewModelTest {
         viewModel.onListChosen(shoppingTrip())
 
         assertNull(addToList.lastInput)
+    }
+
+    // ---- creating a list from the sheet -------------------------------------
+
+    @Test
+    fun `onBuyAgainClicked defaults the new list to the trip's own store`() {
+        val viewModel = viewModel(
+            getTrip = FakeGetPurchaseTripUseCase(GetPurchaseTripUseCase.Output.Success(trip("milk"))),
+        )
+        viewModel.load("trip-1")
+
+        viewModel.onBuyAgainClicked()
+
+        val sheet = viewModel.buyAgainSheet.value as BuyAgainSheetState.Visible
+        assertEquals("store-aldi", sheet.defaultStoreId)
+        assertEquals(sampleStores, sheet.stores)
+    }
+
+    @Test
+    fun `onBuyAgainClicked leaves the stores empty when they fail to load`() {
+        val viewModel = viewModel(
+            getTrip = FakeGetPurchaseTripUseCase(GetPurchaseTripUseCase.Output.Success(trip("milk"))),
+            stores = FakeGetStoresUseCase(GetStoresUseCase.Output.Failure(IOException("boom"))),
+        )
+        viewModel.load("trip-1")
+
+        viewModel.onBuyAgainClicked()
+
+        val sheet = viewModel.buyAgainSheet.value as BuyAgainSheetState.Visible
+        assertTrue(sheet.stores.isEmpty())
+    }
+
+    @Test
+    fun `onCreateList creates the list then adds the selected items to it`() = runTest {
+        val createList = FakeShoppingListUseCase()
+        val addToList = FakeAddTripToListUseCase(AddTripToListUseCase.Output.Success(1, 0))
+        val viewModel = viewModel(
+            getTrip = FakeGetPurchaseTripUseCase(
+                GetPurchaseTripUseCase.Output.Success(trip("milk", "eggs")),
+            ),
+            addToList = addToList,
+            createList = createList,
+        )
+        viewModel.load("trip-1")
+        viewModel.onItemToggled("eggs")
+        viewModel.onBuyAgainClicked()
+
+        viewModel.onCreateList("  Weekend  ", "store-publix")
+
+        assertEquals(BuyAgainSheetState.Hidden, viewModel.buyAgainSheet.value)
+        val created = createList.lastInput!!
+        assertNull(created.shoppingListId)
+        assertEquals("store-publix", created.storeId)
+        assertEquals("Weekend", created.name)
+        assertEquals(
+            AddTripToList(purchaseId = "trip-1", shoppingListId = "new-id", productIds = setOf("milk")),
+            addToList.lastInput,
+        )
+        assertEquals(
+            TripDetailEvent.ItemsAdded(added = 1, listName = "Weekend", skipped = 0),
+            viewModel.events.first(),
+        )
+    }
+
+    @Test
+    fun `onCreateList reports a failure and adds nothing when the list cannot be created`() = runTest {
+        val addToList = FakeAddTripToListUseCase()
+        val viewModel = viewModel(
+            getTrip = FakeGetPurchaseTripUseCase(GetPurchaseTripUseCase.Output.Success(trip("milk"))),
+            addToList = addToList,
+            createList = FakeShoppingListUseCase(
+                ShoppingListUseCase.Output.Failure(IOException("boom")),
+            ),
+        )
+        viewModel.load("trip-1")
+        viewModel.onBuyAgainClicked()
+
+        viewModel.onCreateList("Weekend", "store-aldi")
+
+        assertNull(addToList.lastInput)
+        assertEquals(TripDetailEvent.AddFailed, viewModel.events.first())
+    }
+
+    @Test
+    fun `onCreateList does nothing when the sheet is not open`() {
+        val createList = FakeShoppingListUseCase()
+        val viewModel = viewModel(
+            getTrip = FakeGetPurchaseTripUseCase(GetPurchaseTripUseCase.Output.Success(trip("milk"))),
+            createList = createList,
+        )
+        viewModel.load("trip-1")
+
+        viewModel.onCreateList("Weekend", "store-aldi")
+
+        assertNull(createList.lastInput)
     }
 
     // ---- cost comparison ----------------------------------------------------

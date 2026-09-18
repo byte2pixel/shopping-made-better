@@ -26,7 +26,10 @@ import com.fullsail.shoppingmadebetter.feature.history.domain.GetTripCostCompari
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseLineItem
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTrip
 import com.fullsail.shoppingmadebetter.feature.history.domain.StoreBasketCost
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
+import com.fullsail.shoppingmadebetter.feature.stores.domain.GetStoresUseCase
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import kotlinx.datetime.LocalDate
 import org.junit.Assert.assertEquals
@@ -66,6 +69,17 @@ class PurchaseTripDetailScreenTest {
     ) : GetTripCostComparisonUseCase {
         override suspend fun execute(input: String): GetTripCostComparisonUseCase.Output =
             GetTripCostComparisonUseCase.Output.Success(stores)
+    }
+
+    /** These tests never create a list; the fakes only have to satisfy the constructor. */
+    private class FakeShoppingListUseCase : ShoppingListUseCase {
+        override suspend fun execute(input: ShoppingList): ShoppingListUseCase.Output =
+            ShoppingListUseCase.Output.Success(input.copy(shoppingListId = "new-id"))
+    }
+
+    private class FakeGetStoresUseCase : GetStoresUseCase {
+        override suspend fun execute(input: Unit): GetStoresUseCase.Output =
+            GetStoresUseCase.Output.Success(emptyList())
     }
 
     private val milk = PurchaseLineItem(
@@ -116,6 +130,8 @@ class PurchaseTripDetailScreenTest {
             FakeGetShoppingTripsUseCase(),
             FakeAddTripToListUseCase(),
             FakeGetTripCostComparisonUseCase(storeCosts),
+            FakeShoppingListUseCase(),
+            FakeGetStoresUseCase(),
         )
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {

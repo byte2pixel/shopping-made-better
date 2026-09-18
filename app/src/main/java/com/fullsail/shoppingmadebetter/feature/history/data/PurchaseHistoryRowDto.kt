@@ -16,6 +16,8 @@ data class PurchaseHistoryRowDto(
     val purchasedAtEpoch: Long,
     /** `null` when the store the trip was made at has since been deleted. */
     val storeName: String? = null,
+    /** The same store's id, so "buy again" can default a new list to it. */
+    val storeId: String? = null,
     /** `null` when the trip was recorded without a total. */
     val totalAmount: Double? = null,
     val productId: String,

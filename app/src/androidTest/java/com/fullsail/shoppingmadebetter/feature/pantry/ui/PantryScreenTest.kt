@@ -38,10 +38,14 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowS
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.groupInventoryByProduct
 import com.fullsail.shoppingmadebetter.feature.profile.domain.GetAutoAdjustEnabledUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
+import com.fullsail.shoppingmadebetter.feature.stores.domain.GetStoresUseCase
+import com.fullsail.shoppingmadebetter.feature.stores.domain.Store
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -151,6 +155,19 @@ class PantryScreenTest {
             GetAutoAdjustEnabledUseCase.Output.Success(enabled = true),
     ) : GetAutoAdjustEnabledUseCase {
         override suspend fun execute(input: Unit) = output
+    }
+
+    /** These tests never create a list; the fake only has to satisfy the constructor. */
+    private class FakeShoppingListUseCase : ShoppingListUseCase {
+        override suspend fun execute(input: ShoppingList): ShoppingListUseCase.Output =
+            ShoppingListUseCase.Output.Success(input.copy(shoppingListId = "new-id"))
+    }
+
+    private class FakeGetStoresUseCase : GetStoresUseCase {
+        override suspend fun execute(input: Unit): GetStoresUseCase.Output =
+            GetStoresUseCase.Output.Success(
+                listOf(Store("s1", "ALDI", "1 Main St", "Orlando", "FL", "32801", null)),
+            )
     }
 
     private class FakeUpdateInventoryLocationUseCase(
@@ -271,13 +288,15 @@ class PantryScreenTest {
         undoAdjustment: UndoInventoryAdjustmentUseCase = FakeUndoInventoryAdjustmentUseCase(),
         autoAdjust: GetAutoAdjustEnabledUseCase = FakeGetAutoAdjustEnabledUseCase(),
         digest: GetAdjustmentDigestUseCase = FakeGetAdjustmentDigestUseCase(),
+        createList: ShoppingListUseCase = FakeShoppingListUseCase(),
+        stores: GetStoresUseCase = FakeGetStoresUseCase(),
         onProductClick: (String) -> Unit = {},
         onReviewDigest: () -> Unit = {},
     ) {
         val viewModel = PantryViewModel(
             inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, applyAdjustment,
             updateLocation, updateExpiry, updateThreshold, alerts, undoAdjustment, autoAdjust,
-            digest,
+            digest, createList, stores,
         )
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
