@@ -78,4 +78,21 @@ class PantryRepositoryImpl @Inject constructor(
             postgrest.from("inventory_adjustments_detail").select()
                 .decodeList<AdjustmentDigestEntryDto>()
         }
+
+    override suspend fun addInventoryItem(
+        productId: String,
+        quantity: Int,
+        location: String?,
+    ): String = withContext(Dispatchers.IO) {
+        postgrest.rpc(
+            "add_inventory_item",
+            buildJsonObject {
+                put("p_product_id", productId)
+                put("p_quantity", quantity)
+                // Omitted rather than sent as null, so the RPC's own default applies
+                // and the location trigger is the one that decides.
+                location?.let { put("p_location", it) }
+            },
+        ).decodeAs<String>()
+    }
 }
