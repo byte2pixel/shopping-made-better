@@ -29,6 +29,7 @@ class StoreProductPricingUseCaseImpl @Inject constructor(
          price = price,
          productTitle = productTitle,
          productBrand = productBrand,
+         packageSizing = packageSizing,
 
     )
 
