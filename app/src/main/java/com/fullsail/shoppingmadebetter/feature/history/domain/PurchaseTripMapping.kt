@@ -21,6 +21,7 @@ internal fun List<PurchaseHistoryRowDto>.toTrips(): List<PurchaseTrip> =
                 items = rows.map { it.toLineItem() },
                 purchasedBy = header.purchasedBy,
                 isOwn = header.isOwn,
+                storeId = header.storeId,
             )
         }
         .sortedByDescending { it.purchasedAtEpoch }

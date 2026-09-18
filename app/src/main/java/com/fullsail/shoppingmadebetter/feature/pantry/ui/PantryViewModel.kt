@@ -26,10 +26,14 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowS
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
 import com.fullsail.shoppingmadebetter.feature.profile.domain.GetAutoAdjustEnabledUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
+import com.fullsail.shoppingmadebetter.feature.stores.domain.GetStoresUseCase
+import com.fullsail.shoppingmadebetter.feature.stores.domain.Store
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
@@ -55,6 +59,8 @@ sealed interface AddToListSheetState {
     data class Visible(
         val item: InventoryItem,
         val lists: ShoppingListPickerState,
+        /** Stores a new list can be created at; empty when that load failed. */
+        val stores: List<Store> = emptyList(),
     ) : AddToListSheetState
 }
 
@@ -104,6 +110,8 @@ class PantryViewModel @Inject constructor(
     private val undoInventoryAdjustmentUseCase: UndoInventoryAdjustmentUseCase,
     private val getAutoAdjustEnabledUseCase: GetAutoAdjustEnabledUseCase,
     private val getAdjustmentDigestUseCase: GetAdjustmentDigestUseCase,
+    private val shoppingListUseCase: ShoppingListUseCase,
+    private val getStoresUseCase: GetStoresUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PantryUiState>(PantryUiState.Loading)
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
@@ -192,10 +200,15 @@ class PantryViewModel @Inject constructor(
     private fun List<ProductGroup>.withoutEstimates(): List<ProductGroup> =
         map { group -> group.copy(lots = group.lots.map { it.copy(lastAdjustmentReason = null) }) }
 
-    /** Opens the sheet for [item] and loads the user's shopping lists to pick from. */
+    /**
+     * Opens the sheet for [item] and loads the user's shopping lists to pick from,
+     * plus the stores a brand-new list could be created at. The two run together, and
+     * a failed store load only disables creating — picking an existing list still works.
+     */
     fun onAddToListClicked(item: InventoryItem) {
         _addToListSheet.value = AddToListSheetState.Visible(item, ShoppingListPickerState.Loading)
         viewModelScope.launch {
+            val stores = async { stores() }
             val lists = when (val out = getShoppingTripsUseCase.execute(Unit)) {
                 is GetShoppingTripsUseCase.Output.Success -> if (out.trips.isEmpty()) ShoppingListPickerState.Empty
                 else ShoppingListPickerState.Loaded(out.trips)
@@ -205,10 +218,17 @@ class PantryViewModel @Inject constructor(
             // Only apply if the sheet is still open for the same item.
             val current = _addToListSheet.value
             if (current is AddToListSheetState.Visible && current.item.id == item.id) {
-                _addToListSheet.value = current.copy(lists = lists)
+                _addToListSheet.value = current.copy(lists = lists, stores = stores.await())
             }
         }
     }
+
+    /** Every store, or none when the fetch fails — the sheet treats empty as "can't create". */
+    private suspend fun stores(): List<Store> =
+        when (val out = getStoresUseCase.execute(Unit)) {
+            is GetStoresUseCase.Output.Success -> out.stores
+            is GetStoresUseCase.Output.Failure -> emptyList()
+        }
 
     /** Adds the sheet's item to [trip]'s shopping list, then reports the outcome. */
     fun onListChosen(trip: ShoppingTrip) {
@@ -217,27 +237,62 @@ class PantryViewModel @Inject constructor(
         val item = current.item
         _addToListSheet.value = AddToListSheetState.Hidden
         viewModelScope.launch {
-            val out = insertItemUseCase.execute(
-                InsertItem(
-                    shoppingListId = trip.shoppingListId,
-                    productId = item.productId,
-                    quantity = 1,
-                    note = "",
-                    isChecked = false,
-                    addInventory = true,
+            addToList(trip.shoppingListId, trip.listName, item)
+        }
+    }
+
+    /**
+     * Creates a list called [name] at [storeId], then adds the sheet's item to it —
+     * the point of creating it from here. A failed create reports the same add-failed
+     * snackbar as a failed add; either way nothing reached the list.
+     */
+    fun onCreateList(name: String, storeId: String) {
+        val current = _addToListSheet.value
+        if (current !is AddToListSheetState.Visible) return
+        val item = current.item
+        _addToListSheet.value = AddToListSheetState.Hidden
+        val listName = name.trim()
+        viewModelScope.launch {
+            val out = shoppingListUseCase.execute(
+                ShoppingList(
+                    shoppingListId = null,
+                    storeId = storeId,
+                    name = listName,
+                    // Sharing is household-wide through RLS; the column is unused.
+                    shared = false,
                 )
             )
-            val event = when (out) {
-                is InsertItemUseCase.Output.Success -> PantryEvent.ItemAdded(
-                    itemName = item.name,
-                    listName = trip.listName,
-                    insertedItemId = out.insertedItemId,
-                )
-
-                is InsertItemUseCase.Output.Failure -> PantryEvent.AddFailed(item.name)
+            val listId = (out as? ShoppingListUseCase.Output.Success)?.list?.shoppingListId
+            if (listId == null) {
+                _events.send(PantryEvent.AddFailed(item.name))
+            } else {
+                addToList(listId, listName, item)
             }
-            _events.send(event)
         }
+    }
+
+    /** Puts [item] on the list [listId], reporting the outcome as a snackbar event. */
+    private suspend fun addToList(listId: String, listName: String, item: InventoryItem) {
+        val out = insertItemUseCase.execute(
+            InsertItem(
+                shoppingListId = listId,
+                productId = item.productId,
+                quantity = 1,
+                note = "",
+                isChecked = false,
+                addInventory = true,
+            )
+        )
+        val event = when (out) {
+            is InsertItemUseCase.Output.Success -> PantryEvent.ItemAdded(
+                itemName = item.name,
+                listName = listName,
+                insertedItemId = out.insertedItemId,
+            )
+
+            is InsertItemUseCase.Output.Failure -> PantryEvent.AddFailed(item.name)
+        }
+        _events.send(event)
     }
 
     /**

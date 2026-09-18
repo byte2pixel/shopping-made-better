@@ -36,6 +36,8 @@ data class PurchaseTrip(
     /** Who bought it, when a housemate did; `null` for the viewer's own trips. */
     val purchasedBy: String? = null,
     val isOwn: Boolean = true,
+    /** The store's id, so "buy again" can default a new list to where this was bought. */
+    val storeId: String? = null,
 ) {
     val itemCount: Int = items.size
 
