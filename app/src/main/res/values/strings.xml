@@ -223,6 +223,7 @@
     <string name="pantry_add_fab">Add to pantry</string>
     <string name="pantry_add_title">Add to pantry</string>
     <string name="pantry_add_search_hint">Search products</string>
+    <string name="pantry_add_search_prompt">Type to search the catalog</string>
     <string name="pantry_add_no_results">No products match</string>
     <string name="pantry_add_search_failed">Couldn\'t search products</string>
     <string name="pantry_add_change_product">Pick a different product</string>

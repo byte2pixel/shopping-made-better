@@ -6,9 +6,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,6 +26,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
@@ -34,6 +39,17 @@ internal const val MAX_PANTRY_QUANTITY = 99
 
 /** Fixed footprint for the search spinner, so the field does not resize when it appears. */
 private val SEARCH_INDICATOR_SLOT = 24.dp
+
+/**
+ * Height reserved for whatever is under the search field. The catalog returns up to ten
+ * rows and the sheet must not resize as that count moves, so the area is a fixed size that
+ * scrolls rather than one that grows: about four rows fit and the fifth peeks, which is the
+ * cue that there is more.
+ */
+private val SEARCH_RESULTS_HEIGHT = 200.dp
+
+/** Handle for the reserved area, so a test can prove its height does not move. */
+internal const val SEARCH_RESULTS_TAG = "addToPantryResults"
 
 /**
  * Slide-up sheet for putting a product in the pantry by hand — the only way stock gets
@@ -127,32 +143,48 @@ private fun SearchPhase(
         },
         modifier = Modifier.fillMaxWidth(),
     )
-    when {
-        state.searchFailed -> Text(
-            text = stringResource(R.string.pantry_add_search_failed),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.padding(vertical = 12.dp),
-        )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(SEARCH_RESULTS_HEIGHT)
+            .testTag(SEARCH_RESULTS_TAG),
+    ) {
+        when {
+            state.searchFailed -> Text(
+                text = stringResource(R.string.pantry_add_search_failed),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(vertical = 12.dp),
+            )
 
-        state.results.isNotEmpty() -> state.results.forEach { product ->
-            Text(
-                text = product.productName,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onProductSelected(product) }
-                    .padding(vertical = 12.dp),
+            state.results.isNotEmpty() -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(state.results, key = { it.productId }) { product ->
+                    Text(
+                        text = product.productName,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onProductSelected(product) }
+                            .padding(vertical = 12.dp),
+                    )
+                }
+            }
+
+            // Only once a search has actually come back. Before that an empty area is not a
+            // claim that the catalog has no matches.
+            state.hasSearched -> Text(
+                text = stringResource(R.string.pantry_add_no_results),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(vertical = 12.dp),
+            )
+
+            else -> Text(
+                text = stringResource(R.string.pantry_add_search_prompt),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 12.dp),
             )
         }
-
-        // Only once a search has actually come back. Before that an empty sheet is not a
-        // claim that the catalog has no matches.
-        state.hasSearched -> Text(
-            text = stringResource(R.string.pantry_add_no_results),
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(vertical = 12.dp),
-        )
     }
 }
 

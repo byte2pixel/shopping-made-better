@@ -6,10 +6,12 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performClick
@@ -1215,6 +1217,55 @@ class PantryScreenTest {
 
         composeTestRule.onNodeWithText(string(R.string.pantry_add_no_results)).assertIsDisplayed()
     }
+
+
+    @Test
+    fun theResultsAreaIsTheSameHeightWhateverTheResultCount() {
+        // One state object driven from the test, so every count is measured in a single
+        // composition — the sheet can only be set once per rule.
+        val state = mutableStateOf(
+            AddToPantrySheetState.Visible(
+                query = "oat",
+                results = listOf(ProductSearch("p1", SEARCH_RESULT_NAME)),
+                hasSearched = true,
+            )
+        )
+        composeTestRule.setContent {
+            ShoppingMadeBetterTheme {
+                AddToPantrySheet(
+                    state = state.value,
+                    onQueryChange = {},
+                    onProductSelected = {},
+                    onProductCleared = {},
+                    onQuantityChange = {},
+                    onLocationChange = {},
+                    onConfirm = {},
+                    onDismiss = {},
+                )
+            }
+        }
+
+        val oneResult = resultsAreaHeight()
+
+        state.value = state.value.copy(
+            results = (1..8).map { ProductSearch("p$it", "Oat Product $it") },
+        )
+        composeTestRule.waitForIdle()
+
+        // Eight rows do not fit in the reserved area; they scroll inside it instead of
+        // stretching the sheet, so a search returning more does not resize anything.
+        assertEquals(oneResult, resultsAreaHeight())
+
+        state.value = state.value.copy(results = emptyList())
+        composeTestRule.waitForIdle()
+
+        // And "No products match" occupies the same reserved area as the rows it replaces.
+        assertEquals(oneResult, resultsAreaHeight())
+    }
+
+    /** Measured height of the reserved results area, in pixels. */
+    private fun resultsAreaHeight(): Int =
+        composeTestRule.onNodeWithTag(SEARCH_RESULTS_TAG).fetchSemanticsNode().size.height
 
     private companion object {
         /** Long enough for the 300 ms search debounce plus the fake, short enough to fail fast. */
