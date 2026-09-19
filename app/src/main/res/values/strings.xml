@@ -219,6 +219,23 @@
     <string name="add_to_list_store_error">Couldn\'t load stores</string>
     <string name="add_to_list_create_action">Create</string>
 
+    <!-- Pantry: add a product to the pantry by search -->
+    <string name="pantry_add_fab">Add to pantry</string>
+    <string name="pantry_add_title">Add to pantry</string>
+    <string name="pantry_add_search_hint">Search products</string>
+    <string name="pantry_add_search_prompt">Type to search the catalog</string>
+    <string name="pantry_add_no_results">No products match</string>
+    <string name="pantry_add_search_failed">Couldn\'t search products</string>
+    <string name="pantry_add_change_product">Pick a different product</string>
+    <string name="pantry_add_quantity">Quantity</string>
+    <string name="pantry_add_quantity_decrease">Decrease quantity</string>
+    <string name="pantry_add_quantity_increase">Increase quantity</string>
+    <string name="pantry_add_location">Location</string>
+    <string name="pantry_add_location_auto">Chosen from the product type</string>
+    <string name="pantry_add_confirm">Add</string>
+    <string name="pantry_added">Added %1$s to your pantry</string>
+    <string name="pantry_add_failed">Couldn\'t add %1$s</string>
+
     <!-- Shopping list detail: mark the whole list as purchased -->
     <string name="mark_all_purchased">Mark all as purchased</string>
     <string name="mark_all_purchased_success">Added to your pantry and purchase history</string>
