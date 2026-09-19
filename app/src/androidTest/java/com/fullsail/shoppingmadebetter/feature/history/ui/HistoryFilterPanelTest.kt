@@ -16,6 +16,7 @@ import com.fullsail.shoppingmadebetter.feature.history.domain.HistoryDatePreset
 import com.fullsail.shoppingmadebetter.feature.history.domain.HistoryFilter
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import kotlinx.datetime.LocalDate
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
@@ -40,6 +41,12 @@ class HistoryFilterPanelTest {
     private fun searchField() =
         composeTestRule.onNodeWithText(string(R.string.history_search_label))
 
+    private fun mineButton() =
+        composeTestRule.onNodeWithText(string(R.string.history_scope_mine))
+
+    /** Every scope the panel reported, in order. */
+    private val scopeChanges = mutableListOf<Boolean>()
+
     private val activeFilter = HistoryFilter(
         storeIds = setOf("s-2"),
         from = LocalDate(2026, 7, 30),
@@ -59,9 +66,11 @@ class HistoryFilterPanelTest {
                     filter = filter,
                     selectedPreset = selectedPreset,
                     searchInput = filter.search,
+                    ownOnly = filter.ownOnly,
                     expanded = expanded,
                     onExpandedChange = { expanded = it },
                     onSearchChange = {},
+                    onScopeChange = { scopeChanges += it },
                     onToggleStore = {},
                     onSelectPreset = {},
                     onCustomRange = { _, _ -> },
@@ -104,6 +113,35 @@ class HistoryFilterPanelTest {
         composeTestRule.waitForIdle()
 
         searchField().assertDoesNotExist()
+    }
+
+    @Test
+    fun theScopeControlShowsWhetherOrNotThePanelIsOpen() {
+        setPanel()
+
+        mineButton().assertIsDisplayed()
+        header().performClick()
+        composeTestRule.waitForIdle()
+        mineButton().assertIsDisplayed()
+    }
+
+    @Test
+    fun tappingMineReportsTheOwnOnlyScope() {
+        setPanel()
+
+        mineButton().performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals(listOf(true), scopeChanges)
+    }
+
+    @Test
+    fun theScopeDoesNotCountAsAFilter() {
+        setPanel(filter = HistoryFilter(ownOnly = true))
+
+        composeTestRule
+            .onNodeWithContentDescription(plural(R.plurals.history_filters_active, 1, 1))
+            .assertDoesNotExist()
     }
 
     @Test

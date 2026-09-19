@@ -196,6 +196,27 @@ class GetPurchaseHistoryUseCaseTest {
     }
 
     @Test
+    fun `execute keeps only the caller's trips under the Mine scope`() = runTest {
+        val repository = FakeHistoryRepository(
+            summaries = listOf(
+                summaryRow(id = "mine"),
+                summaryRow(id = "theirs", purchasedBy = "Demo Roommate", isOwn = false),
+            ),
+        )
+
+        val output = useCase(repository).execute(
+            GetPurchaseHistoryUseCase.Input(
+                offset = 0,
+                limit = 20,
+                filter = HistoryFilter(ownOnly = true),
+            ),
+        ).success()
+
+        assertEquals(listOf("mine"), output.trips.map { it.id })
+        assertTrue(repository.requestedQueries.single().ownOnly)
+    }
+
+    @Test
     fun `execute reads a row without attribution as the caller's own`() = runTest {
         // A database without the columns decodes to the defaults, which must mean
         // "mine": showing a chip on every trip would be worse than none.

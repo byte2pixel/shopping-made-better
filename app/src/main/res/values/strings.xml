@@ -302,6 +302,11 @@
          the hint says what the field matches rather than promising instant results. -->
     <string name="history_search_label">Search what you bought</string>
     <string name="history_search_clear">Clear search</string>
+    <!-- Mine / Household scope above the filters. Not a filter: it picks whose trips
+         the tab and the spend cards cover, and never counts toward the badge. -->
+    <string name="history_scope_household">Household</string>
+    <string name="history_scope_mine">Mine</string>
+    <string name="history_scope_desc">Whose trips to show</string>
     <string name="history_unknown_store">Unknown store</string>
     <string name="history_trip_open">Show trip details</string>
     <!-- Owner chip on a housemate's trip card, e.g. "Bought by Demo Roommate". -->

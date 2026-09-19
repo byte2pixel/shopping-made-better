@@ -76,7 +76,7 @@ class HistoryScreenTest {
         var output: GetSpendSummaryUseCase.Output =
             GetSpendSummaryUseCase.Output.Failure(IOException("not under test")),
     ) : GetSpendSummaryUseCase {
-        override suspend fun execute(input: Unit) = output
+        override suspend fun execute(input: GetSpendSummaryUseCase.Input) = output
     }
 
     private val fixedClock = object : Clock {

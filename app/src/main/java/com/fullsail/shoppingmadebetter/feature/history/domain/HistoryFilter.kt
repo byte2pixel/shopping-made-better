@@ -24,4 +24,9 @@ data class HistoryFilter(
      * [searchTerm], which is the only thing that should read this.
      */
     val search: String = "",
+    /**
+     * Only the user's own trips when true; the whole household's when false. A scope
+     * rather than a filter: [isActive] and [activeCount] ignore it.
+     */
+    val ownOnly: Boolean = false,
 )

@@ -2,7 +2,11 @@ package com.fullsail.shoppingmadebetter.feature.history.domain
 
 import com.fullsail.shoppingmadebetter.core.domain.UseCase
 
-interface GetSpendSummaryUseCase : UseCase<Unit, GetSpendSummaryUseCase.Output> {
+interface GetSpendSummaryUseCase :
+    UseCase<GetSpendSummaryUseCase.Input, GetSpendSummaryUseCase.Output> {
+    /** [ownOnly] counts only the caller's own trips; otherwise the household's are summed in. */
+    data class Input(val ownOnly: Boolean = false)
+
     sealed interface Output {
         /** [summary] may be empty; the tab hides the section rather than showing zeros. */
         data class Success(val summary: SpendSummary) : Output

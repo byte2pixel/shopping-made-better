@@ -4,6 +4,7 @@ import io.github.jan.supabase.postgrest.PropertyConversionMethod
 import io.github.jan.supabase.postgrest.query.filter.PostgrestFilterBuilder
 import kotlinx.datetime.LocalDate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -88,6 +89,13 @@ class HistoryQueryFilterTest {
         val sent = sentParams(HistoryQuery(productSearch = "100\\% oats"))
 
         assertEquals("ilike.%100\\% oats%", sent.getValue("productSearch"))
+    }
+
+    @Test
+    fun `only the Mine scope sends an own-trips filter`() {
+        assertEquals("eq.true", sentParams(HistoryQuery(ownOnly = true)).getValue("isOwn"))
+        // Household is the view's own scope, so nothing is sent for it.
+        assertFalse(sentParams(HistoryQuery(ownOnly = false)).containsKey("isOwn"))
     }
 
     @Test

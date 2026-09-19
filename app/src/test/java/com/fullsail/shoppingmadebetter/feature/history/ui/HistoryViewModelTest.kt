@@ -91,8 +91,15 @@ class HistoryViewModelTest {
     ) : GetSpendSummaryUseCase {
         var callCount = 0
         var gate: CompletableDeferred<Unit>? = null
-        override suspend fun execute(input: Unit): GetSpendSummaryUseCase.Output {
+
+        /** The scope of the latest call, for asserting what the insights were asked for. */
+        var lastInput: GetSpendSummaryUseCase.Input? = null
+
+        override suspend fun execute(
+            input: GetSpendSummaryUseCase.Input,
+        ): GetSpendSummaryUseCase.Output {
             callCount++
+            lastInput = input
             gate?.await()
             return output
         }
@@ -321,6 +328,94 @@ class HistoryViewModelTest {
         // And the pending commit must not put the term back afterwards.
         advanceUntilIdle()
         assertEquals(HistoryFilter(), viewModel.filter.value)
+    }
+
+    // ---- scope --------------------------------------------------------------
+
+    @Test
+    fun `the tab opens on the household scope`() = vmTest {
+        val spend = FakeGetSpendSummaryUseCase()
+        val viewModel = viewModel(spend = spend)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.filter.value.ownOnly)
+        assertEquals(GetSpendSummaryUseCase.Input(ownOnly = false), spend.lastInput)
+    }
+
+    @Test
+    fun `switching to Mine scopes the list and re-reads the insights as Mine`() = vmTest {
+        val spend = FakeGetSpendSummaryUseCase()
+        val viewModel = viewModel(spend = spend)
+        advanceUntilIdle()
+        val afterInit = spend.callCount
+
+        viewModel.setScope(ownOnly = true)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.filter.value.ownOnly)
+        assertEquals(afterInit + 1, spend.callCount)
+        assertEquals(GetSpendSummaryUseCase.Input(ownOnly = true), spend.lastInput)
+    }
+
+    @Test
+    fun `re-selecting the current scope changes nothing`() = vmTest {
+        val spend = FakeGetSpendSummaryUseCase()
+        val viewModel = viewModel(spend = spend)
+        advanceUntilIdle()
+        val afterInit = spend.callCount
+
+        viewModel.setScope(ownOnly = false)
+        advanceUntilIdle()
+
+        assertEquals(afterInit, spend.callCount)
+    }
+
+    @Test
+    fun `the scope is not a filter`() = vmTest {
+        // Neither the badge nor "no trips match" may read Mine as filtering.
+        val viewModel = viewModel()
+
+        viewModel.setScope(ownOnly = true)
+
+        assertFalse(viewModel.filter.value.isActive)
+    }
+
+    @Test
+    fun `clearing the filters keeps the scope`() = vmTest {
+        val viewModel = viewModel()
+        viewModel.setScope(ownOnly = true)
+        viewModel.toggleStore("s-1")
+
+        viewModel.clearFilters()
+
+        assertEquals(HistoryFilter(ownOnly = true), viewModel.filter.value)
+    }
+
+    @Test
+    fun `a scope change builds a new pager`() = vmTest {
+        val viewModel = viewModel()
+        val pagers = mutableListOf<PagingData<PurchaseTripSummary>>()
+        val job: Job = launch { viewModel.trips.toList(pagers) }
+        advanceUntilIdle()
+        val before = pagers.size
+
+        viewModel.setScope(ownOnly = true)
+        advanceUntilIdle()
+        job.cancel()
+
+        assertTrue("expected a new pager, saw $before then ${pagers.size}", pagers.size > before)
+    }
+
+    @Test
+    fun `the scope is restored from saved state and the insights follow it`() = vmTest {
+        val spend = FakeGetSpendSummaryUseCase()
+        val saved = SavedStateHandle(mapOf("history-filter-own-only" to true))
+
+        val viewModel = viewModel(savedState = saved, spend = spend)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.filter.value.ownOnly)
+        assertEquals(GetSpendSummaryUseCase.Input(ownOnly = true), spend.lastInput)
     }
 
     // ---- surviving death ----------------------------------------------------

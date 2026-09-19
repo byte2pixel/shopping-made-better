@@ -22,7 +22,8 @@ import kotlinx.datetime.minus
  *
  * The empty list means two different things and this is what tells them apart:
  * with no filter active the user has no purchases yet, and with one active their
- * purchases simply do not match.
+ * purchases simply do not match. The Mine / Household scope is not counted: it picks
+ * whose trips are shown, not whether some are hidden.
  */
 internal val HistoryFilter.isActive: Boolean
     get() = storeIds.isNotEmpty() || from != null || to != null || searchTerm() != null
@@ -49,6 +50,7 @@ internal fun HistoryFilter.toQuery(): HistoryQuery = HistoryQuery(
     from = from,
     to = to,
     productSearch = searchTerm(),
+    ownOnly = ownOnly,
 )
 
 /**
