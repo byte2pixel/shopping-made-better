@@ -84,6 +84,35 @@ class SpendInsightsTest {
     }
 
     @Test
+    fun `collapsing owners merges a store's month into one row`() {
+        val rows = listOf(
+            monthRow(AUGUST, storeId = "s-1", total = 60.0, tripCount = 2),
+            monthRow(AUGUST, storeId = "s-1", total = 40.0, tripCount = 1, isOwn = false),
+            monthRow(AUGUST, storeId = "s-2", storeName = "Publix", total = 5.0),
+            monthRow(JULY, storeId = "s-1", total = 7.0, isOwn = false),
+        )
+
+        val collapsed = rows.collapseOwners()
+
+        // Other stores and other months stay apart.
+        assertEquals(3, collapsed.size)
+        val aldiAugust = collapsed.single { it.monthStart == AUGUST && it.storeId == "s-1" }
+        assertEquals(100.0, aldiAugust.total, EPSILON)
+        assertEquals(3, aldiAugust.tripCount)
+    }
+
+    @Test
+    fun `the Mine scope keeps only the caller's rows`() {
+        val rows = listOf(
+            monthRow(AUGUST, storeId = "s-1", total = 60.0),
+            monthRow(AUGUST, storeId = "s-1", total = 40.0, isOwn = false),
+        )
+
+        assertEquals(listOf(rows[0]), rows.scopedTo(ownOnly = true))
+        assertEquals(100.0, rows.scopedTo(ownOnly = false).single().total, EPSILON)
+    }
+
+    @Test
     fun `the cheapest store is the one with the lowest total`() {
         val costs = listOf(
             costRow(storeId = "s-1", storeName = "ALDI", costHere = 40.0, paidForSameItems = 50.0),

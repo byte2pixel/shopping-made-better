@@ -21,4 +21,6 @@ data class TripCostByStoreDto(
      *  comparison is over part of the basket and must be dropped. */
     val itemsPriced: Int = 0,
     val itemsTotal: Int = 0,
+    /** Whether the caller made the trip. */
+    val isOwn: Boolean = true,
 )

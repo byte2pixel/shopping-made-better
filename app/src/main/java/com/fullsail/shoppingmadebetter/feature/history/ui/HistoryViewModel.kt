@@ -50,7 +50,8 @@ class HistoryViewModel @Inject constructor(
 ) : ViewModel() {
 
     /**
-     * The spend insights, or null until they load. Ignores [filter] always current month vs. prior.
+     * The spend insights, or null until they load. They follow [filter]'s scope and
+     * nothing else in it: the cards speak in fixed windows.
      */
     private val _spendSummary = MutableStateFlow<SpendSummary?>(null)
     val spendSummary: StateFlow<SpendSummary?> = _spendSummary.asStateFlow()
@@ -87,12 +88,14 @@ class HistoryViewModel @Inject constructor(
         savedStateHandle.getStateFlow<String?>(KEY_FROM, null),
         savedStateHandle.getStateFlow<String?>(KEY_TO, null),
         savedStateHandle.getStateFlow(KEY_SEARCH, ""),
-    ) { ids, from, to, search ->
+        savedStateHandle.getStateFlow(KEY_OWN_ONLY, false),
+    ) { ids, from, to, search, ownOnly ->
         HistoryFilter(
             storeIds = ids.toSet(),
             from = from?.let(LocalDate::parse),
             to = to?.let(LocalDate::parse),
             search = search,
+            ownOnly = ownOnly,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -174,7 +177,8 @@ class HistoryViewModel @Inject constructor(
     fun refreshSummary() {
         viewModelScope.launch {
             _summaryRefreshFailed.value = false
-            when (val output = getSpendSummaryUseCase.execute(Unit)) {
+            val input = GetSpendSummaryUseCase.Input(ownOnly = ownOnly())
+            when (val output = getSpendSummaryUseCase.execute(input)) {
                 is GetSpendSummaryUseCase.Output.Success -> _spendSummary.value = output.summary
                 is GetSpendSummaryUseCase.Output.Failure ->
                     _summaryRefreshFailed.value = _spendSummary.value != null
@@ -185,6 +189,17 @@ class HistoryViewModel @Inject constructor(
     /** Records the search field's text; the filter follows once typing pauses. */
     fun setSearch(text: String) {
         _searchInput.value = text
+    }
+
+    /**
+     * Scopes the tab to the user's own trips, or back to the household's. The list
+     * follows through [filter]; the insights are re-read, since the scope is the one
+     * part of the filter they follow.
+     */
+    fun setScope(ownOnly: Boolean) {
+        if (ownOnly == ownOnly()) return
+        savedStateHandle[KEY_OWN_ONLY] = ownOnly
+        refreshSummary()
     }
 
     /** Adds [storeId] to the filter, or drops it if it is already on. */
@@ -216,7 +231,10 @@ class HistoryViewModel @Inject constructor(
     /** Applies a hand-picked range; both ends inclusive. */
     fun setCustomRange(from: LocalDate, to: LocalDate) = setDates(from, to)
 
-    /** Drops every filter at once, returning the tab to the full history. */
+    /**
+     * Drops every filter at once, returning the tab to the full history. The scope
+     * is not a filter and stays.
+     */
     fun clearFilters() {
         savedStateHandle[KEY_STORE_IDS] = emptyList<String>()
         setDates(from = null, to = null)
@@ -256,10 +274,13 @@ class HistoryViewModel @Inject constructor(
         from = savedStateHandle.get<String?>(KEY_FROM)?.let(LocalDate::parse),
         to = savedStateHandle.get<String?>(KEY_TO)?.let(LocalDate::parse),
         search = savedStateHandle[KEY_SEARCH] ?: "",
+        ownOnly = ownOnly(),
     )
 
     private fun storeIds(): List<String> =
         savedStateHandle.get<List<String>>(KEY_STORE_IDS).orEmpty()
+
+    private fun ownOnly(): Boolean = savedStateHandle[KEY_OWN_ONLY] ?: false
 
     private fun loadStores() {
         viewModelScope.launch {
@@ -284,6 +305,9 @@ class HistoryViewModel @Inject constructor(
 
         /** Saved-state key for the settled search text, never the in-flight one. */
         const val KEY_SEARCH = "history-filter-search"
+
+        /** Saved-state key for the Mine / Household scope; absent means the household. */
+        const val KEY_OWN_ONLY = "history-filter-own-only"
 
         /** Long enough to cover typing, short enough to feel immediate. */
         val SEARCH_DEBOUNCE = 300.milliseconds

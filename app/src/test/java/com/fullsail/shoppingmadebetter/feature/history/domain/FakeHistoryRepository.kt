@@ -51,6 +51,7 @@ internal class FakeHistoryRepository(
         val to = query.to
         val search = query.productSearch
         if (query.storeIds.isNotEmpty() && storeId !in query.storeIds) return false
+        if (query.ownOnly && !isOwn) return false
         if (from != null && purchasedOn < from) return false
         if (to != null && purchasedOn > to) return false
         // `ilike("%term%")` over an escaped term is a case-insensitive substring
