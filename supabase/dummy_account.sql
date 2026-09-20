@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 -- ============================================================
 -- Dummy account + mock inventory  (REMOVABLE)
 -- ============================================================
@@ -408,3 +409,5 @@ select * from public.undo_inventory_adjustment((
      and p.source_product_id = '21125083_EA'
      and a.reason = 'auto'
    limit 1));
+=======
+>>>>>>> Stashed changes
