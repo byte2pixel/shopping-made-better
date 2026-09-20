@@ -188,4 +188,12 @@ class ShoppingListRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getStoreAddress(id: String): StoreAddressInformationDto {
+        return postgrest.from("stores").select() {
+            filter{
+                eq("id", id)
+            }
+        }.decodeSingle<StoreAddressInformationDto>()
+    }
+
 }

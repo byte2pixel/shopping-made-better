@@ -1,6 +1,10 @@
 package com.fullsail.shoppingmadebetter.feature.shoppinglists.ui
 
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,9 +24,7 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,6 +40,7 @@ import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,11 +50,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
@@ -69,9 +74,11 @@ fun ShoppingListItemComparisonScreen(
     onInfoScreen :(dest : Dest) -> Unit,
 
 ) {
+
     var selectedProduct by rememberSaveable {mutableStateOf<String?>(null)}
     val uiState by viewModel.uiState.collectAsState()
-
+    val getPermissions = rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestMultiplePermissions())
+    {}
 
     if (selectedProduct == null)
     {
@@ -107,7 +114,24 @@ fun ShoppingListItemComparisonScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(state.price.filter { it.productTitle == selectedProduct }, key = {it.productId + it.storeId }) {ItemCard(it, viewModel, onItemComparison) }
+                items(state.price.filter { it.productTitle == selectedProduct }, key = {it.productId + it.storeId }) {
+                    if ((ActivityCompat.checkSelfPermission(
+                            LocalContext.current,
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                        ) != PackageManager.PERMISSION_GRANTED) || (ActivityCompat.checkSelfPermission(
+                            LocalContext.current,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        ) != PackageManager.PERMISSION_GRANTED)
+                    ) {
+                        LaunchedEffect(Unit) {
+                            getPermissions.launch(
+                                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION)
+                            )
+                        }
+
+                    }
+                    ItemCard(it, viewModel, onItemComparison) }
             }
 
               }
@@ -119,7 +143,8 @@ fun ShoppingListItemComparisonScreen(
 
 }
     @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
+    @androidx.annotation.RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
+        @Composable
     fun ItemCard(product: StoreProductPricing, viewModel : ItemComparisonViewmodel, onItemComparison: () -> Unit)
     {
         val storeList  by viewModel.shoppingLists.collectAsState()
@@ -127,9 +152,13 @@ fun ShoppingListItemComparisonScreen(
         var pickList by remember {mutableStateOf(false)}
         var listName by remember {mutableStateOf("")}
         var list : ShoppingTrip? = null
+        val storeInfo by viewModel.storeMap.collectAsState()
+
+
+
+
         fun onAddClicked()
         {
-           // val list = storeList.firstOrNull { it.storeId == product.storeId }
             if (list != null)
             {
                 showDialog = false
@@ -234,12 +263,24 @@ fun ShoppingListItemComparisonScreen(
 
                 Text(product.storeName, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(4.dp))
-                Text(product.productTitle, style = MaterialTheme.typography.bodyMedium)
+                Text(product.productTitle + "   "+ product.packageSizing, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(12.dp))
-                Text(
-                    product.price + " - x miles away",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                LaunchedEffect(product.storeId){
+                    viewModel.getStoreInfo(product.storeId)
+                }
+                val store = storeInfo[product.storeId]
+                if (store!= null)
+                {
+                        Text(
+                            product.price +"    " +  viewModel.addressToCoordinates(store.address) + " miles away",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                }
+                else
+                {
+                  Text(product.price + "    loading distance...", style = MaterialTheme.typography.bodyMedium,)
+
+                }
                 Row(
                 Modifier.align(Alignment.End)
                 ){

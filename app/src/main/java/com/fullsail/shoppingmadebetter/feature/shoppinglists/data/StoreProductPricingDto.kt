@@ -11,6 +11,7 @@ data class StoreProductPricingDto(
     @SerialName("display_price") val price: String,
     @SerialName("product_title") val productTitle: String,
     @SerialName("product_brand") val productBrand: String?,
+    @SerialName("package_sizing") val packageSizing: String?,
 ) {
 
 }
