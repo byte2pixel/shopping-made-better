@@ -9,6 +9,8 @@ import android.util.Log
 import androidx.annotation.RequiresPermission
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetInventoryUseCase
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ProductGroup
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.GetStoreInformationUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCase
@@ -46,6 +48,7 @@ class ItemComparisonViewmodel @Inject constructor(
     private val getShoppingTripsUseCase: GetShoppingTripsUseCase,
     private val getShoppingListUseCase: ShoppingListUseCase,
     private val getStoreInformationUseCase: GetStoreInformationUseCase,
+    private val getInventoryUseCase: GetInventoryUseCase,
     @ApplicationContext private val context: Context
 
     ) : ViewModel()
@@ -53,11 +56,32 @@ class ItemComparisonViewmodel @Inject constructor(
 
     private val _shoppingLists = MutableStateFlow<List<ShoppingTrip>>(listOf())
     val shoppingLists = _shoppingLists.asStateFlow()
+    private val _itemInformation = MutableStateFlow<List<ProductGroup>>(listOf())
+    val itemInformation = _itemInformation.asStateFlow()
     val storeMap =  MutableStateFlow<Map<String, StoreAddressInformation>>(emptyMap())
     private val _uiState = MutableStateFlow<ItemComparisonUIState>(ItemComparisonUIState.Loading)
     val uiState: StateFlow<ItemComparisonUIState> = _uiState.asStateFlow()
 
-    init { getShoppingLists() }
+    init { getShoppingLists()
+        getPantryItemInformation() }
+
+    fun getPantryItemInformation()
+    {
+        viewModelScope.launch {
+            when (val out = getInventoryUseCase.execute(Unit))
+            {
+                is GetInventoryUseCase.Output.Success ->{
+                    _itemInformation.value = out.productGroups.filter { it.totalQuantity== 0 }
+                }
+                is GetInventoryUseCase.Output.Failure ->
+                    ItemComparisonUIState.Error
+
+
+            }
+
+        }
+    }
+
     fun getStoreInfo(id : String)
     {
         viewModelScope.launch {
