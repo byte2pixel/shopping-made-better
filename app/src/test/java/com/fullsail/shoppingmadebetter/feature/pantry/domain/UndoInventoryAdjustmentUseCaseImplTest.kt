@@ -35,6 +35,7 @@ class UndoInventoryAdjustmentUseCaseImplTest {
             return result
         }
         override suspend fun getAdjustmentDigest(): List<AdjustmentDigestEntryDto> = emptyList()
+        override suspend fun addInventoryItem(productId: String, quantity: Int, location: String?) = ""
     }
 
     @Test

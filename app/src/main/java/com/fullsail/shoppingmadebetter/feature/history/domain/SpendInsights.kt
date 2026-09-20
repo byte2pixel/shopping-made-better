@@ -17,6 +17,30 @@ internal fun LocalDate.startOfMonth(): LocalDate = LocalDate(year, month, 1)
 internal fun LocalDate.previousMonthStart(): LocalDate =
     startOfMonth().minus(DatePeriod(months = 1))
 
+/**
+ * The month rows under one scope: the caller's own under Mine; under Household,
+ * everyone's, merged so a store has one row per month whoever shopped there.
+ */
+internal fun List<SpendByMonthStoreDto>.scopedTo(ownOnly: Boolean): List<SpendByMonthStoreDto> =
+    if (ownOnly) filter { it.isOwn } else collapseOwners()
+
+/**
+ * One row per month and store, whoever made the trips. The view keeps owners apart,
+ * which [storeBreakdown] would otherwise list as two stores. The merged row's
+ * `isOwn` is left at its default; it means nothing once the owners are summed.
+ */
+internal fun List<SpendByMonthStoreDto>.collapseOwners(): List<SpendByMonthStoreDto> =
+    groupBy { Triple(it.monthStart, it.storeId, it.storeName) }
+        .map { (key, rows) ->
+            SpendByMonthStoreDto(
+                monthStart = key.first,
+                storeId = key.second,
+                storeName = key.third,
+                total = rows.sumOf { it.total },
+                tripCount = rows.sumOf { it.tripCount },
+            )
+        }
+
 /** Every store's spend in [month] added into one total. */
 internal fun List<SpendByMonthStoreDto>.monthTotal(month: LocalDate): MonthlySpend {
     val rows = filter { it.monthStart == month }

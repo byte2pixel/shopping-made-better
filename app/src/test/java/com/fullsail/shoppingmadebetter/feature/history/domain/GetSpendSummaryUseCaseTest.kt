@@ -29,8 +29,11 @@ class GetSpendSummaryUseCaseTest {
         GetSpendSummaryUseCaseImpl(repository, fixedClock)
 
     /** Runs the use case and unwraps a success, failing the test if it wasn't one. */
-    private suspend fun summaryOf(repository: FakeSpendRepository): SpendSummary =
-        when (val output = useCase(repository).execute(Unit)) {
+    private suspend fun summaryOf(
+        repository: FakeSpendRepository,
+        ownOnly: Boolean = false,
+    ): SpendSummary =
+        when (val output = useCase(repository).execute(GetSpendSummaryUseCase.Input(ownOnly))) {
             is GetSpendSummaryUseCase.Output.Success -> output.summary
             is GetSpendSummaryUseCase.Output.Failure -> error("expected success, got ${output.error}")
         }
@@ -131,9 +134,63 @@ class GetSpendSummaryUseCaseTest {
     @Test
     fun `a failure is reported rather than thrown`() = runTest {
         val output = useCase(FakeSpendRepository(error = IOException("no network")))
-            .execute(Unit)
+            .execute(GetSpendSummaryUseCase.Input())
 
         assertTrue(output is GetSpendSummaryUseCase.Output.Failure)
+    }
+
+    @Test
+    fun `under Household a store two owners shopped at is one line`() = runTest {
+        // The view keeps owners apart; the breakdown must not list ALDI twice.
+        val summary = summaryOf(
+            FakeSpendRepository(
+                months = listOf(
+                    monthRow(thisMonth, storeId = "s-1", storeName = "ALDI", total = 60.0, tripCount = 2),
+                    monthRow(thisMonth, storeId = "s-1", storeName = "ALDI", total = 40.0, tripCount = 1, isOwn = false),
+                ),
+            ),
+        )
+
+        assertEquals(100.0, summary.thisMonth.total, EPSILON)
+        assertEquals(3, summary.thisMonth.tripCount)
+        assertEquals(1, summary.byStore.size)
+        assertEquals(100.0, summary.byStore[0].total, EPSILON)
+    }
+
+    @Test
+    fun `under Mine only the caller's rows count`() = runTest {
+        val summary = summaryOf(
+            FakeSpendRepository(
+                months = listOf(
+                    monthRow(thisMonth, storeId = "s-1", storeName = "ALDI", total = 60.0, tripCount = 2),
+                    monthRow(thisMonth, storeId = "s-1", storeName = "ALDI", total = 40.0, tripCount = 1, isOwn = false),
+                    monthRow(lastMonth, storeId = "s-2", storeName = "Publix", total = 80.0, isOwn = false),
+                ),
+            ),
+            ownOnly = true,
+        )
+
+        assertEquals(60.0, summary.thisMonth.total, EPSILON)
+        assertEquals(2, summary.thisMonth.tripCount)
+        assertEquals(60.0, summary.byStore.single().total, EPSILON)
+        // Last month was a housemate's alone, so for the caller it never happened.
+        assertNull(summary.lastMonth)
+    }
+
+    @Test
+    fun `under Mine a housemate's trips are left out of the cheapest store`() = runTest {
+        val repository = FakeSpendRepository(
+            tripCosts = listOf(
+                costRow(purchaseId = "mine", storeId = "s-1", storeName = "ALDI", costHere = 40.0, paidForSameItems = 50.0),
+                costRow(purchaseId = "mine", storeId = "s-2", storeName = "Publix", costHere = 48.0, paidForSameItems = 50.0),
+                costRow(purchaseId = "theirs", storeId = "s-1", storeName = "ALDI", costHere = 10.0, paidForSameItems = 12.0, isOwn = false),
+                costRow(purchaseId = "theirs", storeId = "s-2", storeName = "Publix", costHere = 11.0, paidForSameItems = 12.0, isOwn = false),
+            ),
+        )
+
+        // Household: ALDI 50 against 62 paid. Mine: ALDI 40 against 50 paid.
+        assertEquals(12.0, summaryOf(repository).cheapest?.saving ?: 0.0, EPSILON)
+        assertEquals(10.0, summaryOf(repository, ownOnly = true).cheapest?.saving ?: 0.0, EPSILON)
     }
 
     private companion object {

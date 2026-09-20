@@ -46,7 +46,8 @@ internal fun monthRow(
     storeName: String? = "ALDI",
     total: Double = 10.0,
     tripCount: Int = 1,
-) = SpendByMonthStoreDto(monthStart, storeId, storeName, total, tripCount)
+    isOwn: Boolean = true,
+) = SpendByMonthStoreDto(monthStart, storeId, storeName, total, tripCount, isOwn)
 
 /** A trip-cost row, fully priced unless a test says otherwise. */
 internal fun costRow(
@@ -58,6 +59,7 @@ internal fun costRow(
     paidForSameItems: Double = 12.0,
     itemsPriced: Int = 4,
     itemsTotal: Int = 4,
+    isOwn: Boolean = true,
 ) = TripCostByStoreDto(
     purchaseId = purchaseId,
     purchasedOn = purchasedOn,
@@ -67,4 +69,5 @@ internal fun costRow(
     paidForSameItems = paidForSameItems,
     itemsPriced = itemsPriced,
     itemsTotal = itemsTotal,
+    isOwn = isOwn,
 )

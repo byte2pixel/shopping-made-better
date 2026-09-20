@@ -339,6 +339,24 @@ class HistoryFiltersTest {
         }
     }
 
+    // ---- scope --------------------------------------------------------------
+
+    @Test
+    fun `the scope is not a filter`() {
+        // Mine narrows whose trips show, not whether some are hidden, so the badge and
+        // the empty-list message must not read it as one.
+        val filter = HistoryFilter(ownOnly = true)
+
+        assertFalse(filter.isActive)
+        assertEquals(0, filter.activeCount)
+        assertTrue(filter.toQuery().ownOnly)
+    }
+
+    @Test
+    fun `the household scope sends no own-trips constraint`() {
+        assertFalse(HistoryFilter().toQuery().ownOnly)
+    }
+
     private companion object {
         /** Fixed, never a real clock — presets have to be deterministic. */
         val TODAY = LocalDate(2026, 8, 28)

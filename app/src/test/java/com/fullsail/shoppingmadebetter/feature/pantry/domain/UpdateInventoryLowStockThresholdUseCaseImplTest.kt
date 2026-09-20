@@ -39,6 +39,7 @@ class UpdateInventoryLowStockThresholdUseCaseImplTest {
         override suspend fun undoInventoryAdjustment(adjustmentId: String) =
             InventoryAdjustmentResultDto(inventoryItemId = "", delta = 0.0, newQuantity = 0.0)
         override suspend fun getAdjustmentDigest(): List<AdjustmentDigestEntryDto> = emptyList()
+        override suspend fun addInventoryItem(productId: String, quantity: Int, location: String?) = ""
     }
 
     @Test

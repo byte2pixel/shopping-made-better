@@ -43,4 +43,13 @@ interface PantryRepository {
      * first. The view drops reversed and superseded rows; RLS scopes it to the current user.
      */
     suspend fun getAdjustmentDigest(): List<AdjustmentDigestEntryDto>
+
+    /**
+     * Adds a lot of [productId] to the caller's pantry through the `add_inventory_item` RPC
+     * and returns its row id. The RPC fills the unit from the product and today's date, and
+     * the insert triggers derive the expiry and — when [location] is null — where it is
+     * stored. Raw db [location] value ('pantry'|'fridge'|'freezer'); the lot is always
+     * inserted as the caller, never a housemate.
+     */
+    suspend fun addInventoryItem(productId: String, quantity: Int, location: String?): String
 }
