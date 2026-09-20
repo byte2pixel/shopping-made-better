@@ -4,14 +4,14 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class `CustomRecipeSupabaseDataSource`(
+class CustomRecipeSupabaseDataSource @Inject constructor(
     private val supabaseClient: SupabaseClient
 ) {
     suspend fun saveRecipe(mealDto: MealDto): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-
                 supabaseClient.postgrest["meals"].insert(mealDto)
                 Result.success(Unit)
             } catch (e: Exception) {
