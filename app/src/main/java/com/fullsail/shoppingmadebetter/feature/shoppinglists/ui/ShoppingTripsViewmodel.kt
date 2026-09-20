@@ -21,7 +21,6 @@ import javax.inject.Inject
 sealed interface ShoppingTripsUiState {
     data object Loading : ShoppingTripsUiState
     data class Success(val trips: List<ShoppingTrip>) : ShoppingTripsUiState
-    data object RemovalSuccess : ShoppingTripsUiState
     data object Error : ShoppingTripsUiState
 }
 

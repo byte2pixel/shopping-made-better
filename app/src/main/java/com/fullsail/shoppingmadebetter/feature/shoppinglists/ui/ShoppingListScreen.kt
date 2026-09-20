@@ -178,8 +178,6 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
 {
     OutlinedCard(
         onClick = {
-
-            //Add viewing shopping list logic
         },
         Modifier.fillMaxWidth(),
         colors = CardDefaults.outlinedCardColors(MaterialTheme.colorScheme.surfaceContainer))

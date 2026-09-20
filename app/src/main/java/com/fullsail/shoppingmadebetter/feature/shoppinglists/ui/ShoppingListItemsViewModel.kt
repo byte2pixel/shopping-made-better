@@ -26,7 +26,7 @@ sealed interface ShoppingListItemsState {
     data object Loading : ShoppingListItemsState
     data class Success(val items: List<ShoppingListItems>) : ShoppingListItemsState
     data object Error : ShoppingListItemsState
-    data object DeleteSuccess : ShoppingListItemsState
+
 }
 
 /**
