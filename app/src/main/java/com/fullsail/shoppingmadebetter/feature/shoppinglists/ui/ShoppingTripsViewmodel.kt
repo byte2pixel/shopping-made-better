@@ -41,7 +41,7 @@ class ShoppingTripsViewModel @Inject constructor(
     fun sortListsByCreated()
     {
         viewModelScope.launch {
-            when(val out  = getSortListCreatedUseCase.execute(Unit))
+            when(getSortListCreatedUseCase.execute(Unit))
             {
                is SortListCreatedUseCase.Output.Success -> {
                    load()
@@ -57,7 +57,7 @@ class ShoppingTripsViewModel @Inject constructor(
     fun setSortOrder(s : SortOrder)
     {
         viewModelScope.launch {
-            when(val out  = setSortOrderUseCase.execute(s))
+            when( setSortOrderUseCase.execute(s))
             {
 
                 is SetSortOrderUseCase.Output.Success -> {
@@ -73,7 +73,7 @@ class ShoppingTripsViewModel @Inject constructor(
     fun sortListsByUpdated()
     {
         viewModelScope.launch {
-            when(val out  = getSortListUpdatedUseCase.execute(Unit))
+            when(getSortListUpdatedUseCase.execute(Unit))
             {
                 is SortListUpdatedUseCase.Output.Success -> {
                     load()
@@ -90,7 +90,7 @@ class ShoppingTripsViewModel @Inject constructor(
     {
         _uiState.value = ShoppingTripsUiState.Loading
         viewModelScope.launch {
-             when ( val out = getRemoveListUseCase.execute(listName)) {
+             when (getRemoveListUseCase.execute(listName)) {
                 is RemoveListUseCase.Output.Success ->{
                     load()
                 }
@@ -121,7 +121,7 @@ class ShoppingTripsViewModel @Inject constructor(
     {
         _uiState.value = ShoppingTripsUiState.Loading
         viewModelScope.launch {
-            when (val out = getRenameListUseCase.execute(rename) ){
+            when (getRenameListUseCase.execute(rename) ){
                 is RenameShoppingListUseCase.Output.Success ->
                 {
                     load()
