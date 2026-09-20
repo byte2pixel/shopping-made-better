@@ -25,6 +25,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDateRangePickerState
@@ -82,9 +85,12 @@ import kotlinx.datetime.LocalDate
  * @param filter the active filter, read for the store selection, dates and badge.
  * @param searchInput the search field's text. Not read off [filter], which lags a
  *   keystroke by the debounce.
+ * @param ownOnly whether the tab is scoped to the user's own trips; false is the
+ *   whole household.
  * @param expanded whether the body shows.
  * @param onExpandedChange invoked with the state the header was tapped towards.
  * @param onSearchChange invoked on every keystroke, and with "" by the clear icon.
+ * @param onScopeChange invoked with the scope tapped, true for Mine.
  * @param selectedPreset which date chip reads as selected; null for a hand-picked
  *   range or none.
  * @param onToggleStore invoked with a store's id when its chip is tapped.
@@ -99,9 +105,11 @@ internal fun HistoryFilterPanel(
     filter: HistoryFilter,
     selectedPreset: HistoryDatePreset?,
     searchInput: String,
+    ownOnly: Boolean,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     onSearchChange: (String) -> Unit,
+    onScopeChange: (Boolean) -> Unit,
     onToggleStore: (String) -> Unit,
     onSelectPreset: (HistoryDatePreset) -> Unit,
     onCustomRange: (LocalDate, LocalDate) -> Unit,
@@ -111,6 +119,13 @@ internal fun HistoryFilterPanel(
     var showRangePicker by rememberSaveable { mutableStateOf(false) }
 
     Column(modifier = modifier) {
+        ScopeControl(
+            ownOnly = ownOnly,
+            onScopeChange = onScopeChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        )
         FilterPanelHeader(
             activeCount = filter.activeCount,
             // Only worth the line when collapsed; expanded, the chips say it better.
@@ -207,6 +222,41 @@ internal fun HistoryFilterPanel(
             },
         )
     }
+}
+
+/**
+ * Whose trips the tab covers, above the header so it shows whether or not the panel
+ * is open. A scope, not a filter: it never counts toward the badge, and it also
+ * drives the spend cards, which the filters leave alone.
+ */
+@Composable
+private fun ScopeControl(
+    ownOnly: Boolean,
+    onScopeChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val description = stringResource(R.string.history_scope_desc)
+    SingleChoiceSegmentedButtonRow(
+        modifier = modifier.semantics { contentDescription = description },
+    ) {
+        HistoryScope.entries.forEachIndexed { index, scope ->
+            SegmentedButton(
+                selected = scope.ownOnly == ownOnly,
+                onClick = { onScopeChange(scope.ownOnly) },
+                shape = SegmentedButtonDefaults.itemShape(
+                    index = index,
+                    count = HistoryScope.entries.size,
+                ),
+                label = { Text(text = stringResource(scope.labelRes)) },
+            )
+        }
+    }
+}
+
+/** The two scopes, in the order the buttons show them. */
+private enum class HistoryScope(val ownOnly: Boolean, @StringRes val labelRes: Int) {
+    Household(ownOnly = false, labelRes = R.string.history_scope_household),
+    Mine(ownOnly = true, labelRes = R.string.history_scope_mine),
 }
 
 /**
@@ -512,9 +562,11 @@ private fun HistoryFilterPanelPreviewHost(
             filter = filter,
             selectedPreset = selectedPreset,
             searchInput = searchInput,
+            ownOnly = filter.ownOnly,
             expanded = isExpanded,
             onExpandedChange = { isExpanded = it },
             onSearchChange = {},
+            onScopeChange = {},
             onToggleStore = {},
             onSelectPreset = {},
             onCustomRange = { _, _ -> },

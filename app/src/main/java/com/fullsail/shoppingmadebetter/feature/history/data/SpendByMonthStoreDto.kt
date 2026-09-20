@@ -14,4 +14,6 @@ data class SpendByMonthStoreDto(
     /** Recorded totals where present, summed lines otherwise. */
     val total: Double = 0.0,
     val tripCount: Int = 0,
+    /** Whether the caller made these trips; a store's month is one row per owner. */
+    val isOwn: Boolean = true,
 )

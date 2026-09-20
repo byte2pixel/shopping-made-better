@@ -33,4 +33,6 @@ data class HistoryQuery(
      * already escaped for `LIKE` — the repository only wraps it in wildcards.
      */
     val productSearch: String? = null,
+    /** Match only the caller's own trips; false sends no filter. */
+    val ownOnly: Boolean = false,
 )

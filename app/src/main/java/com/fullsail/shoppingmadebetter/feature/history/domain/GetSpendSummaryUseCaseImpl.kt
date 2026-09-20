@@ -13,7 +13,9 @@ class GetSpendSummaryUseCaseImpl @Inject constructor(
     private val spendRepository: SpendRepository,
     private val clock: Clock,
 ) : GetSpendSummaryUseCase {
-    override suspend fun execute(input: Unit): GetSpendSummaryUseCase.Output = try {
+    override suspend fun execute(
+        input: GetSpendSummaryUseCase.Input,
+    ): GetSpendSummaryUseCase.Output = try {
         val today = clock.todayIn(TimeZone.currentSystemDefault())
         val thisMonth = today.startOfMonth()
         val lastMonth = today.previousMonthStart()
@@ -21,19 +23,21 @@ class GetSpendSummaryUseCaseImpl @Inject constructor(
         val months = spendRepository.getSpendByMonth(
             // This month is one of the six, so the window opens five back.
             sinceMonth = thisMonth.minus(DatePeriod(months = MONTHS_BACK - 1)),
-        )
+        ).scopedTo(input.ownOnly)
         // The savings card names its own window, so it need not match the calendar
         // months the other two cards speak in.
         val costs = spendRepository.getTripCostsSince(
             from = today.minus(DatePeriod(days = SAVINGS_WINDOW_DAYS - 1)),
         )
+        // A trip has one owner, so Mine drops housemates' trips and Household keeps all.
+        val scopedCosts = if (input.ownOnly) costs.filter { it.isOwn } else costs
 
         GetSpendSummaryUseCase.Output.Success(
             SpendSummary(
                 thisMonth = months.monthTotal(thisMonth),
                 lastMonth = months.monthTotal(lastMonth).takeIf { it.tripCount > 0 },
                 byStore = months.storeBreakdown(thisMonth),
-                cheapest = cheapestStore(costs),
+                cheapest = cheapestStore(scopedCosts),
             ),
         )
     } catch (e: Exception) {

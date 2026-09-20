@@ -45,6 +45,9 @@ internal fun PostgrestFilterBuilder.applyHistoryQuery(query: HistoryQuery) {
     // moment a second constraint lands on "productSearch". The term arrives already
     // escaped; only the surrounding wildcards belong to this layer.
     query.productSearch?.let { ilike("productSearch", "%$it%") }
+
+    // Its own column; a scope, so absent means the whole household.
+    if (query.ownOnly) eq("isOwn", true)
 }
 
 class HistoryRepositoryImpl @Inject constructor(
