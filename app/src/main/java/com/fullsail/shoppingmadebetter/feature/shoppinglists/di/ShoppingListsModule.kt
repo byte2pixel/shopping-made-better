@@ -71,7 +71,7 @@ abstract class ShoppingListsModule {
         impl: ShoppingListUseCaseImpl,
     ): ShoppingListUseCase
     @Binds
-    abstract fun bingGetStoreAddress(
+    abstract fun bindGetStoreAddress(
         impl: GetStoreInformationUseCaseImpl,
     ): GetStoreInformationUseCase
 
