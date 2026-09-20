@@ -38,6 +38,7 @@ class GetAdjustmentDigestUseCaseImplTest {
             InventoryAdjustmentResultDto(inventoryItemId = "", delta = 0.0, newQuantity = 0.0)
         override suspend fun getAdjustmentDigest(): List<AdjustmentDigestEntryDto> =
             error?.let { throw it } ?: entries
+        override suspend fun addInventoryItem(productId: String, quantity: Int, location: String?) = ""
     }
 
     private val fixedClock = object : Clock {

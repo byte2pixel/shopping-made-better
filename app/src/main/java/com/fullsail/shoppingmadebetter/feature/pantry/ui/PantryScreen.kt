@@ -16,7 +16,9 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarDuration
@@ -39,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
@@ -73,6 +76,7 @@ fun PantryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val sheetState by viewModel.addToListSheet.collectAsState()
+    val pantrySheetState by viewModel.addToPantrySheet.collectAsState()
     val removeConfirm by viewModel.removeConfirm.collectAsState()
     val zeroStockAlert by viewModel.zeroStockAlert.collectAsState()
     val digestLotCount by viewModel.digestLotCount.collectAsState()
@@ -123,6 +127,21 @@ fun PantryScreen(
                     resources.getString(R.string.pantry_update_failed, event.itemName)
                 )
 
+                is PantryEvent.AddedToPantry -> {
+                    val result = snackbarHostState.showSnackbar(
+                        message = resources.getString(R.string.pantry_added, event.itemName),
+                        actionLabel = resources.getString(R.string.add_to_list_undo),
+                        duration = SnackbarDuration.Short,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        viewModel.undoAddToPantry(event.lotId, event.itemName)
+                    }
+                }
+
+                is PantryEvent.AddToPantryFailed -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.pantry_add_failed, event.itemName)
+                )
+
                 PantryEvent.RefreshFailed -> {
                     val result = snackbarHostState.showSnackbar(
                         message = resources.getString(R.string.pantry_refresh_failed),
@@ -151,9 +170,23 @@ fun PantryScreen(
             onCorrectEstimate = viewModel::onCorrectEstimate,
             onUndoEstimate = viewModel::onUndoEstimate,
         )
+        FloatingActionButton(
+            onClick = viewModel::onAddToPantryClicked,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_add),
+                contentDescription = stringResource(R.string.pantry_add_fab),
+            )
+        }
         SnackbarHost(
             hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                // Clears the FAB, which sits in the same corner of the same Box.
+                .padding(bottom = 88.dp),
         )
     }
 
@@ -167,6 +200,19 @@ fun PantryScreen(
             onDismiss = viewModel::dismissAddToListSheet,
             onListChosen = viewModel::onListChosen,
             onCreateList = viewModel::onCreateList,
+        )
+    }
+
+    (pantrySheetState as? AddToPantrySheetState.Visible)?.let { visible ->
+        AddToPantrySheet(
+            state = visible,
+            onQueryChange = viewModel::onAddToPantryQuery,
+            onProductSelected = viewModel::onAddToPantryProductSelected,
+            onProductCleared = viewModel::onAddToPantryProductCleared,
+            onQuantityChange = viewModel::onAddToPantryQuantity,
+            onLocationChange = viewModel::onAddToPantryLocation,
+            onConfirm = viewModel::onAddToPantryConfirm,
+            onDismiss = viewModel::dismissAddToPantrySheet,
         )
     }
 

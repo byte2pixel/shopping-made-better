@@ -6,14 +6,19 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performClick
 import androidx.test.espresso.Espresso
 import com.fullsail.shoppingmadebetter.R
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.AddInventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.AddInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentReason
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustment
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCase
@@ -26,6 +31,7 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetPantryEstimateAlertsUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.SetSkipRemoveConfirmationUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustment
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustmentUseCase
@@ -42,6 +48,8 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch.ProductSearch
+import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch.ProductSearchUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import com.fullsail.shoppingmadebetter.feature.stores.domain.GetStoresUseCase
@@ -163,6 +171,24 @@ class PantryScreenTest {
             ShoppingListUseCase.Output.Success(input.copy(shoppingListId = "new-id"))
     }
 
+    private class FakeProductSearchUseCase(
+        private val output: ProductSearchUseCase.Output =
+            ProductSearchUseCase.Output.Success(listOf(ProductSearch("p1", SEARCH_RESULT_NAME))),
+    ) : ProductSearchUseCase {
+        override suspend fun execute(input: String): ProductSearchUseCase.Output = output
+    }
+
+    private class FakeAddInventoryItemUseCase(
+        private val output: AddInventoryItemUseCase.Output =
+            AddInventoryItemUseCase.Output.Success("lot-9"),
+    ) : AddInventoryItemUseCase {
+        @Volatile var lastInput: AddInventoryItem? = null
+        override suspend fun execute(input: AddInventoryItem): AddInventoryItemUseCase.Output {
+            lastInput = input
+            return output
+        }
+    }
+
     private class FakeGetStoresUseCase : GetStoresUseCase {
         override suspend fun execute(input: Unit): GetStoresUseCase.Output =
             GetStoresUseCase.Output.Success(
@@ -269,6 +295,29 @@ class PantryScreenTest {
         )
 
     /** Builds the screen; callers can pre-configure the fakes and observe [onProductClick]. */
+    /** Opens the add-to-pantry sheet from the FAB. */
+    private fun openAddToPantrySheet() {
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_add_fab))
+            .performClick()
+    }
+
+    /**
+     * Searches, waits out the view model's debounce, then taps the one result the fake
+     * returns. The wait is real time, not the compose clock: the debounce runs on the main
+     * dispatcher. [SEARCH_RESULT_NAME] deliberately matches no pantry item, so the tap
+     * cannot land on a product card behind the sheet.
+     */
+    private fun searchAndPick() {
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_add_search_hint))
+            .performTextInput("oat")
+        composeTestRule.waitUntil(SHEET_TIMEOUT_MS) {
+            composeTestRule.onAllNodesWithText(SEARCH_RESULT_NAME).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(SEARCH_RESULT_NAME).performClick()
+    }
+
     private fun setScreen(
         inventory: GetInventoryUseCase = FakeGetInventoryUseCase(inventoryOf(milk)),
         trips: GetShoppingTripsUseCase = FakeGetShoppingTripsUseCase(
@@ -290,13 +339,15 @@ class PantryScreenTest {
         digest: GetAdjustmentDigestUseCase = FakeGetAdjustmentDigestUseCase(),
         createList: ShoppingListUseCase = FakeShoppingListUseCase(),
         stores: GetStoresUseCase = FakeGetStoresUseCase(),
+        search: ProductSearchUseCase = FakeProductSearchUseCase(),
+        addToPantry: AddInventoryItemUseCase = FakeAddInventoryItemUseCase(),
         onProductClick: (String) -> Unit = {},
         onReviewDigest: () -> Unit = {},
     ) {
         val viewModel = PantryViewModel(
             inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, applyAdjustment,
             updateLocation, updateExpiry, updateThreshold, alerts, undoAdjustment, autoAdjust,
-            digest, createList, stores,
+            digest, createList, stores, search, addToPantry,
         )
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
@@ -1057,5 +1108,170 @@ class PantryScreenTest {
             .performClick()
 
         assertTrue(reviewed)
+    }
+
+    @Test
+    fun theAddToPantryFabIsDisplayed() {
+        setScreen()
+
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_add_fab))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun tappingTheFabOpensTheAddToPantrySheet() {
+        setScreen()
+
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_add_fab))
+            .performClick()
+
+        composeTestRule.onNodeWithText(string(R.string.pantry_add_title)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(string(R.string.pantry_add_search_hint)).assertIsDisplayed()
+    }
+
+    @Test
+    fun pickingASearchResultShowsTheQuantityAndLocationControls() {
+        setScreen()
+        openAddToPantrySheet()
+
+        searchAndPick()
+
+        composeTestRule.onNodeWithText(string(R.string.pantry_add_quantity)).assertIsDisplayed()
+        // No location chip is selected, so the sheet says the product decides.
+        composeTestRule.onNodeWithText(string(R.string.pantry_add_location_auto)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(string(R.string.pantry_add_confirm)).assertIsDisplayed()
+    }
+
+    @Test
+    fun addingSendsTheProductQuantityAndLocationToTheUseCase() {
+        val addToPantry = FakeAddInventoryItemUseCase()
+        setScreen(addToPantry = addToPantry)
+        openAddToPantrySheet()
+        searchAndPick()
+
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_add_quantity_increase))
+            .performClick()
+        composeTestRule.onNodeWithText(string(R.string.pantry_dashboard_freezer)).performClick()
+        composeTestRule.onNodeWithText(string(R.string.pantry_add_confirm)).performClick()
+
+        composeTestRule.waitUntil(SHEET_TIMEOUT_MS) { addToPantry.lastInput != null }
+        assertEquals(
+            AddInventoryItem("p1", quantity = 2, location = PantryLocation.Freezer),
+            addToPantry.lastInput,
+        )
+    }
+
+
+    /** Renders the sheet against a fixed state, with no debounce or fake in the way. */
+    private fun setAddToPantrySheet(state: AddToPantrySheetState.Visible) {
+        composeTestRule.setContent {
+            ShoppingMadeBetterTheme {
+                AddToPantrySheet(
+                    state = state,
+                    onQueryChange = {},
+                    onProductSelected = {},
+                    onProductCleared = {},
+                    onQuantityChange = {},
+                    onLocationChange = {},
+                    onConfirm = {},
+                    onDismiss = {},
+                )
+            }
+        }
+    }
+
+    @Test
+    fun theResultsStayOnScreenWhileTheNextSearchRuns() {
+        setAddToPantrySheet(
+            AddToPantrySheetState.Visible(
+                query = "oat mi",
+                results = listOf(ProductSearch("p1", SEARCH_RESULT_NAME)),
+                searching = true,
+                hasSearched = true,
+            )
+        )
+
+        // The rows the last search returned are still there mid-type, so the sheet keeps
+        // its height instead of collapsing onto a spinner and springing back.
+        composeTestRule.onNodeWithText(SEARCH_RESULT_NAME).assertIsDisplayed()
+        composeTestRule.onNodeWithText(string(R.string.pantry_add_no_results)).assertDoesNotExist()
+    }
+
+    @Test
+    fun noMatchesIsNotClaimedBeforeASearchComesBack() {
+        setAddToPantrySheet(
+            AddToPantrySheetState.Visible(query = "zzz", searching = true, hasSearched = false)
+        )
+
+        composeTestRule.onNodeWithText(string(R.string.pantry_add_no_results)).assertDoesNotExist()
+    }
+
+    @Test
+    fun noMatchesIsShownOnceAnEmptySearchComesBack() {
+        setAddToPantrySheet(
+            AddToPantrySheetState.Visible(query = "zzz", searching = false, hasSearched = true)
+        )
+
+        composeTestRule.onNodeWithText(string(R.string.pantry_add_no_results)).assertIsDisplayed()
+    }
+
+
+    @Test
+    fun theResultsAreaIsTheSameHeightWhateverTheResultCount() {
+        // One state object driven from the test, so every count is measured in a single
+        // composition — the sheet can only be set once per rule.
+        val state = mutableStateOf(
+            AddToPantrySheetState.Visible(
+                query = "oat",
+                results = listOf(ProductSearch("p1", SEARCH_RESULT_NAME)),
+                hasSearched = true,
+            )
+        )
+        composeTestRule.setContent {
+            ShoppingMadeBetterTheme {
+                AddToPantrySheet(
+                    state = state.value,
+                    onQueryChange = {},
+                    onProductSelected = {},
+                    onProductCleared = {},
+                    onQuantityChange = {},
+                    onLocationChange = {},
+                    onConfirm = {},
+                    onDismiss = {},
+                )
+            }
+        }
+
+        val oneResult = resultsAreaHeight()
+
+        state.value = state.value.copy(
+            results = (1..8).map { ProductSearch("p$it", "Oat Product $it") },
+        )
+        composeTestRule.waitForIdle()
+
+        // Eight rows do not fit in the reserved area; they scroll inside it instead of
+        // stretching the sheet, so a search returning more does not resize anything.
+        assertEquals(oneResult, resultsAreaHeight())
+
+        state.value = state.value.copy(results = emptyList())
+        composeTestRule.waitForIdle()
+
+        // And "No products match" occupies the same reserved area as the rows it replaces.
+        assertEquals(oneResult, resultsAreaHeight())
+    }
+
+    /** Measured height of the reserved results area, in pixels. */
+    private fun resultsAreaHeight(): Int =
+        composeTestRule.onNodeWithTag(SEARCH_RESULTS_TAG).fetchSemanticsNode().size.height
+
+    private companion object {
+        /** Long enough for the 300 ms search debounce plus the fake, short enough to fail fast. */
+        const val SHEET_TIMEOUT_MS = 5_000L
+
+        /** The catalog fake's one result. No pantry fixture is named this. */
+        const val SEARCH_RESULT_NAME = "Oat Milk, Original"
     }
 }
