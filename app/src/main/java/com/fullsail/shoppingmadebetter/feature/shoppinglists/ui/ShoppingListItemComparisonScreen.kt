@@ -375,6 +375,36 @@ fun ShoppingListItemComparisonScreen(
                 {
                     Text("No results could be found")
                 }
+                else if(textFieldState.text == "")
+                {
+                    viewModel.itemInformation.collectAsState().value.forEach { result ->
+                        ListItem(
+                            headlineContent = { Text(result.name)
+                            },
+                            trailingContent = {
+                                IconButton(onClick = {
+                                    onInfoScreen(Dest.InformationScreen(result.productId))
+                                })
+                                {
+                                    Icon(
+                                        painterResource(id = R.drawable.ic_info),
+                                        contentDescription = "information",
+                                        Modifier.size(24.dp)
+                                    )
+                                }
+                            },
+                            modifier =Modifier
+                                .clickable {
+                                    textFieldState.edit { replace(0, length, result.name) }
+                                    expanded = false
+                                    onSearch(textFieldState.text.toString())
+
+                                }
+                                .fillMaxWidth()
+                        )
+
+                    }
+                }
                 else {
 
 
