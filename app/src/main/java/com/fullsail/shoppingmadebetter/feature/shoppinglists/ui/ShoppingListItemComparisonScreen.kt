@@ -107,7 +107,7 @@ fun ShoppingListItemComparisonScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(state.price.filter { it.productTitle == selectedProduct }, key = {it.productId + it.storeId }) {ItemCard(it, viewModel, onItemComparison) }
+                items(state.price.filter { it.productTitle == selectedProduct }.sortedBy { it.price }, key = {it.productId + it.storeId }) {ItemCard(it, viewModel, onItemComparison) }
             }
 
               }
