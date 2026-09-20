@@ -11,7 +11,6 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.I
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isChecked
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isCheckedUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.QuantityUpdate
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CheckAllItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CompleteShoppingTripUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
