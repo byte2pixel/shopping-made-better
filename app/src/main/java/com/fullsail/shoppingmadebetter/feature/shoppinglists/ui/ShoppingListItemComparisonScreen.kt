@@ -114,7 +114,7 @@ fun ShoppingListItemComparisonScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(state.price.filter { it.productTitle == selectedProduct }, key = {it.productId + it.storeId }) {
+                items(state.price.filter { it.productTitle == selectedProduct }.sortedBy { it.price }, key = {it.productId + it.storeId }) {
                     if ((ActivityCompat.checkSelfPermission(
                             LocalContext.current,
                             Manifest.permission.ACCESS_FINE_LOCATION
