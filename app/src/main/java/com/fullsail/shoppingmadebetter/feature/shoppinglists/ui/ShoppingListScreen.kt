@@ -164,8 +164,6 @@ fun ShoppingListsScreen(
                             }
                         }
 
-
-                    else -> {}
                 }
                 FloatingActionButton(onClick = {onItemComparison(Dest.ShoppingListItemComparison)}, modifier = Modifier.align(
                     Alignment.BottomEnd).padding(bottom = 70.dp, end = 16.dp).size(60.dp), shape = CircleShape ) {
@@ -178,8 +176,6 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
 {
     OutlinedCard(
         onClick = {
-
-            //Add viewing shopping list logic
         },
         Modifier.fillMaxWidth(),
         colors = CardDefaults.outlinedCardColors(MaterialTheme.colorScheme.surfaceContainer))

@@ -11,7 +11,6 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.I
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isChecked
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.isCheckedUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.QuantityUpdate
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CheckAllItemsUseCase
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.CompleteShoppingTripUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -26,7 +25,7 @@ sealed interface ShoppingListItemsState {
     data object Loading : ShoppingListItemsState
     data class Success(val items: List<ShoppingListItems>) : ShoppingListItemsState
     data object Error : ShoppingListItemsState
-    data object DeleteSuccess : ShoppingListItemsState
+
 }
 
 /**
@@ -52,7 +51,6 @@ class ShoppingListItemsViewModel @Inject constructor(
     private val completeShoppingTripUseCase: CompleteShoppingTripUseCase,
     private val getIsCheckedUseCase : isCheckedUseCase,
     private val insertItemUseCase: InsertItemUseCase,
-    private val checkAllItemsUseCase: CheckAllItemsUseCase,
     private val updateQuantityUseCase: UpdateQuantityUseCase
 ) : ViewModel() {
 
@@ -153,7 +151,7 @@ class ShoppingListItemsViewModel @Inject constructor(
 
     fun checkItem(id : String, state : Boolean){
         viewModelScope.launch{
-            when (val out = getIsCheckedUseCase.execute(isChecked(id, state))) {
+            when (getIsCheckedUseCase.execute(isChecked(id, state))) {
                 is isCheckedUseCase.Output.Success ->
                 {
                     val currentState = _uiState.value
@@ -183,7 +181,7 @@ class ShoppingListItemsViewModel @Inject constructor(
     fun deleteItems(input : String)
     {
         viewModelScope.launch {
-             when (val out = getDeleteItemsUseCase.execute(input)) {
+             when (getDeleteItemsUseCase.execute(input)) {
                 is DeleteItemsUseCase.Output.Success -> {
                     val currentState = _uiState.value
                     if (currentState is ShoppingListItemsState.Success) {

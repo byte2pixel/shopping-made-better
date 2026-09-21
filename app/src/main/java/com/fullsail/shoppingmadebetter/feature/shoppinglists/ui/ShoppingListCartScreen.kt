@@ -292,9 +292,7 @@ fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onI
                 }
                 Text(item.quantity.toString(), style = MaterialTheme.typography.bodyLarge)
                 IconButton(onClick = {
-                    // val clonedItem = InsertItem(listId, item.productId, 1, "", item.checked, true)
-                    //viewModel.addItem(clonedItem, listId, item.title)
-                    viewModel.increaseQuantity(item)
+                        viewModel.increaseQuantity(item)
                 })
                 {
                     Icon(
