@@ -5,38 +5,59 @@ import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.feature.meals.domain.SaveCustomRecipeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+data class CreateRecipeUiState(
+    val title: String = "",
+    val category: String = "Breakfast",
+    val ingredients: String = "",
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val isSuccess: Boolean = false
+)
+
 @HiltViewModel
 class CreateRecipeViewModel @Inject constructor(
-    private val saveCustomRecipe: SaveCustomRecipeUseCase
+    private val saveCustomRecipeUseCase: SaveCustomRecipeUseCase
 ) : ViewModel() {
 
-    private val _title = MutableStateFlow("")
-    val title = _title.asStateFlow()
+    private val _uiState = MutableStateFlow(CreateRecipeUiState())
+    val uiState: StateFlow<CreateRecipeUiState> = _uiState.asStateFlow()
 
-    private val _category = MutableStateFlow("Recommended")
-    val category = _category.asStateFlow()
+    fun onTitleChange(newTitle: String) {
+        _uiState.update { it.copy(title = newTitle, error = null) }
+    }
 
-    private val _ingredients = MutableStateFlow("")
-    val ingredients = _ingredients.asStateFlow()
+    fun onCategoryChange(newCategory: String) {
+        _uiState.update { it.copy(category = newCategory) }
+    }
 
-    fun updateTitle(newTitle: String) { _title.value = newTitle }
-    fun updateCategory(newCategory: String) { _category.value = newCategory }
-    fun updateIngredients(newIngredients: String) { _ingredients.value = newIngredients }
+    fun onIngredientsChange(newIngredients: String) {
+        _uiState.update { it.copy(ingredients = newIngredients, error = null) }
+    }
 
     fun saveRecipe() {
         viewModelScope.launch {
-            saveCustomRecipe(
-                title = _title.value,
-                category = _category.value,
-                ingredients = _ingredients.value
+            _uiState.update { it.copy(isLoading = true, error = null) }
+
+            val result = saveCustomRecipeUseCase(
+                title = _uiState.value.title,
+                category = _uiState.value.category,
+                ingredients = _uiState.value.ingredients
             )
 
-            _title.value = ""
-            _ingredients.value = ""
+            result.fold(
+                onSuccess = {
+                    _uiState.update { it.copy(isLoading = false, isSuccess = true) }
+                },
+                onFailure = { exception ->
+                    _uiState.update { it.copy(isLoading = false, error = exception.message) }
+                }
+            )
         }
     }
 }
