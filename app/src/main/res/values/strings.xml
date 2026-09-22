@@ -399,6 +399,22 @@
     <string name="household_error_invalid_code">That code doesn\'t match a household</string>
     <string name="household_error_already_member">You\'re already in a household</string>
     <string name="household_error_join">Couldn\'t join the household</string>
-    <string name="household_error_leave_head">Couldn\'t leave the household because you are the owner</string>
+    <string name="household_error_leave_head">You\'re the head of this household. Make someone else head, or remove the other members, before leaving.</string>
     <string name="household_error_leave">Couldn\'t leave the household</string>
+    <string name="household_rename">Rename household</string>
+    <string name="household_rename_hint">Household name</string>
+    <string name="household_save">Save</string>
+    <string name="household_member_menu">Manage member</string>
+    <string name="household_make_head">Make head</string>
+    <string name="household_remove_member">Remove from household</string>
+    <string name="household_remove_confirm_title">Remove %1$s?</string>
+    <string name="household_remove_confirm_body">They will stop seeing the household\'s pantry, lists and history.</string>
+    <string name="household_new_code">New code</string>
+    <string name="household_new_code_confirm_title">Replace the invite code?</string>
+    <string name="household_new_code_confirm_body">The current code stops working right away.</string>
+    <string name="household_error_rename">Couldn\'t rename the household</string>
+    <string name="household_error_transfer">Couldn\'t hand over the household</string>
+    <string name="household_error_remove">Couldn\'t remove that member</string>
+    <string name="household_error_regenerate">Couldn\'t make a new code</string>
+    <string name="household_error_not_head">Only the head can do that</string>
 </resources>

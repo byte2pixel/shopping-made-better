@@ -16,6 +16,10 @@ internal class FakeHouseholdRepository(
     val createdNames = mutableListOf<String>()
     val joinedCodes = mutableListOf<String>()
     var leaveCalls = 0
+    var renamedTo: Pair<String, String>? = null
+    var transferredTo: String? = null
+    var removed: String? = null
+    var regenerated = 0
 
     override suspend fun getHousehold(): HouseholdDto? {
         failWith?.let { throw it }
@@ -46,7 +50,33 @@ internal class FakeHouseholdRepository(
         members = emptyList()
     }
 
+    override suspend fun renameHousehold(householdId: String, name: String) {
+        renamedTo = householdId to name
+        failWith?.let { throw it }
+        household = household?.copy(name = name)
+    }
+
+    override suspend fun transferHead(memberId: String) {
+        transferredTo = memberId
+        failWith?.let { throw it }
+        members = members.map { it.copy(isHead = it.id == memberId) }
+    }
+
+    override suspend fun removeMember(memberId: String) {
+        removed = memberId
+        failWith?.let { throw it }
+        members = members.filterNot { it.id == memberId }
+    }
+
+    override suspend fun regenerateInviteCode(): String {
+        regenerated++
+        failWith?.let { throw it }
+        household = household?.copy(inviteCode = NEW_CODE)
+        return NEW_CODE
+    }
+
     companion object {
+        const val NEW_CODE = "A1B2C3D4"
         val DEMO = HouseholdDto(id = "h1", name = "Demo Household", inviteCode = "DEMO2026")
         val HEAD = HouseholdMemberDto(id = "u1", displayName = "Demo Shopper", isHead = true, isSelf = false)
         val SELF = HouseholdMemberDto(id = "u2", displayName = "Demo Roommate", isHead = false, isSelf = true)
