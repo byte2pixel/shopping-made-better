@@ -119,7 +119,7 @@ values
 select columns_are('public', 'inventory_adjustments_detail',
   array['adjustmentId', 'inventoryItemId', 'productId', 'productName', 'imageUrl',
         'delta', 'quantityNow', 'productQuantity', 'lowStockThreshold',
-        'estimateSource', 'createdAtEpoch'],
+        'estimateSource', 'createdAtEpoch', 'lotOwner', 'isOwn'],
   'view exposes exactly the columns the digest reads');
 
 select ok(

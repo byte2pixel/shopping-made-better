@@ -4,11 +4,17 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.test.espresso.Espresso
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentDigestEntry
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentReason
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustment
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.EstimateSource
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetAdjustmentDigestUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustment
@@ -19,7 +25,7 @@ import org.junit.Rule
 import org.junit.Test
 import java.io.IOException
 
-/** Compose UI tests for [AdjustmentDigestScreen] — the rows, their markers, and both undos. */
+/** Compose UI tests for [AdjustmentDigestScreen] — the rows, their markers, and the row actions. */
 class AdjustmentDigestScreenTest {
 
     @get:Rule
@@ -39,6 +45,16 @@ class AdjustmentDigestScreenTest {
         ): UndoInventoryAdjustmentUseCase.Output {
             undone += input.adjustmentId
             return UndoInventoryAdjustmentUseCase.Output.Success(newQuantity = 3, appliedDelta = 1)
+        }
+    }
+
+    private class FakeApplyInventoryAdjustmentUseCase : ApplyInventoryAdjustmentUseCase {
+        val applied = mutableListOf<ApplyInventoryAdjustment>()
+        override suspend fun execute(
+            input: ApplyInventoryAdjustment,
+        ): ApplyInventoryAdjustmentUseCase.Output {
+            applied += input
+            return ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 1, appliedDelta = 0)
         }
     }
 
@@ -91,8 +107,9 @@ class AdjustmentDigestScreenTest {
     private fun setScreen(
         digest: GetAdjustmentDigestUseCase = FakeGetAdjustmentDigestUseCase(),
         undo: UndoInventoryAdjustmentUseCase = FakeUndoInventoryAdjustmentUseCase(),
+        apply: ApplyInventoryAdjustmentUseCase = FakeApplyInventoryAdjustmentUseCase(),
     ) {
-        val viewModel = AdjustmentDigestViewModel(digest, undo)
+        val viewModel = AdjustmentDigestViewModel(digest, undo, apply)
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
                 AdjustmentDigestScreen(viewModel = viewModel)
@@ -156,6 +173,74 @@ class AdjustmentDigestScreenTest {
         assertEquals(listOf("a1"), undo.undone)
         composeTestRule.onNodeWithText("Jasmine Rice").assertDoesNotExist()
         composeTestRule.onNodeWithText("Jerk Chicken Wings").assertIsDisplayed()
+    }
+
+    @Test
+    fun confirmOnARowConfirmsTheLotAsIs() {
+        val apply = FakeApplyInventoryAdjustmentUseCase()
+        setScreen(digest = digestOf(rice, wings), apply = apply)
+
+        composeTestRule
+            .onAllNodesWithText(string(R.string.pantry_digest_confirm))[0]
+            .performClick()
+
+        composeTestRule.waitForIdle()
+        assertEquals(
+            listOf(ApplyInventoryAdjustment("lot1", 0, AdjustmentReason.Confirmed)),
+            apply.applied,
+        )
+        composeTestRule.onNodeWithText("Jasmine Rice").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Jerk Chicken Wings").assertIsDisplayed()
+    }
+
+    @Test
+    fun fixOnARowCommitsTheSteppedCountWhenThePopupCloses() {
+        val apply = FakeApplyInventoryAdjustmentUseCase()
+        setScreen(digest = digestOf(rice), apply = apply)
+
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_estimate_confirm_fix))
+            .performClick()
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_quantity_increase))
+            .performClick()
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_quantity_increase))
+            .performClick()
+        Espresso.pressBack()
+
+        composeTestRule.waitForIdle()
+        // Rice's lot holds 1, so two increments is +2.
+        assertEquals(
+            listOf(ApplyInventoryAdjustment("lot1", 2, AdjustmentReason.Confirmed)),
+            apply.applied,
+        )
+        composeTestRule.onNodeWithText("Jasmine Rice").assertDoesNotExist()
+    }
+
+    @Test
+    fun closingFixUnchangedCommitsNothing() {
+        val apply = FakeApplyInventoryAdjustmentUseCase()
+        setScreen(digest = digestOf(rice), apply = apply)
+
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_estimate_confirm_fix))
+            .performClick()
+        Espresso.pressBack()
+
+        composeTestRule.waitForIdle()
+        assertEquals(emptyList<ApplyInventoryAdjustment>(), apply.applied)
+        composeTestRule.onNodeWithText("Jasmine Rice").assertIsDisplayed()
+    }
+
+    @Test
+    fun aHousemateRowShowsThePersonChipOnce() {
+        val demoRice = rice.copy(lotOwner = "Demo Shopper", isOwn = false)
+        setScreen(digest = digestOf(demoRice, wings))
+
+        composeTestRule
+            .onAllNodesWithContentDescription(string(R.string.pantry_lot_added_by, "Demo Shopper"))
+            .assertCountEquals(1)
     }
 
     @Test

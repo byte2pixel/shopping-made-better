@@ -4,8 +4,8 @@ package com.fullsail.shoppingmadebetter.feature.pantry.domain
  * One automatic adjustment in this week's digest.
  *
  * [quantityNow] is the lot's own quantity; [productQuantity] is the product's total across
- * the user's lots, which with [lowStockThreshold] gives the row's stock marker — the same
- * basis as the pantry card's.
+ * the household's lots, which with the viewer's [lowStockThreshold] gives the row's stock
+ * marker — the same basis as the pantry card's.
  */
 data class AdjustmentDigestEntry(
     val adjustmentId: String,
@@ -20,4 +20,8 @@ data class AdjustmentDigestEntry(
     val source: EstimateSource? = null,
     /** Whole days between the adjustment and today; 0 means today. */
     val daysAgo: Int,
+    /** Display name of the member who owns the lot; `null` outside a household. */
+    val lotOwner: String? = null,
+    /** False when the lot belongs to a housemate rather than the viewer. */
+    val isOwn: Boolean = true,
 )

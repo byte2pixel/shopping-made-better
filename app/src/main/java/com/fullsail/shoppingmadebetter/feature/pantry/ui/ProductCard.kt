@@ -715,12 +715,12 @@ private fun LotQuantityChip(
 }
 
 /**
- * The anchored quantity-stepper popup shared by [LotQuantityChip] and
- * [EstimateConfirmRow]'s Fix action. The caller owns the draft and decides what
- * to commit on [onDismissRequest].
+ * The anchored quantity-stepper popup shared by [LotQuantityChip], [EstimateConfirmRow]'s
+ * Fix action and the digest row's. The caller owns the draft and decides what to commit on
+ * [onDismissRequest].
  */
 @Composable
-private fun QuantityStepperPopup(
+internal fun QuantityStepperPopup(
     expanded: Boolean,
     @StringRes labelRes: Int,
     draft: Int,

@@ -24,7 +24,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
@@ -35,12 +38,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.LabelChip
+import com.fullsail.shoppingmadebetter.core.ui.OwnerChip
 import com.fullsail.shoppingmadebetter.core.ui.ProductImage
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentDigestEntry
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.EstimateSource
 
 /**
- * This week's automatic adjustments, with per-row and bulk undo.
+ * This week's automatic adjustments. Each row offers the same three answers as the lot's
+ * estimate row on the pantry card (undo, confirm, fix), plus a bulk undo.
  *
  * @param onTitleChange supplies the top-bar title; the screen has no Scaffold of its own.
  */
@@ -62,6 +67,9 @@ fun AdjustmentDigestScreen(
             val message = when (event) {
                 is AdjustmentDigestEvent.UndoFailed ->
                     resources.getString(R.string.pantry_digest_undo_failed, event.productName)
+
+                is AdjustmentDigestEvent.UpdateFailed ->
+                    resources.getString(R.string.pantry_update_failed, event.productName)
 
                 is AdjustmentDigestEvent.UndoneAll ->
                     if (event.succeeded == event.attempted) {
@@ -100,6 +108,8 @@ fun AdjustmentDigestScreen(
                     DigestList(
                         state = state,
                         onUndo = viewModel::onUndo,
+                        onConfirm = viewModel::onConfirm,
+                        onCorrect = viewModel::onCorrect,
                         onUndoAll = viewModel::onUndoAll,
                     )
                 }
@@ -115,6 +125,8 @@ fun AdjustmentDigestScreen(
 private fun DigestList(
     state: AdjustmentDigestUiState.Success,
     onUndo: (AdjustmentDigestEntry) -> Unit,
+    onConfirm: (AdjustmentDigestEntry) -> Unit,
+    onCorrect: (AdjustmentDigestEntry, Int) -> Unit,
     onUndoAll: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -149,6 +161,8 @@ private fun DigestList(
                     entry = entry,
                     enabled = !state.undoingAll,
                     onUndo = { onUndo(entry) },
+                    onConfirm = { onConfirm(entry) },
+                    onCorrect = { onCorrect(entry, it) },
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -161,55 +175,126 @@ private fun AdjustmentDigestRow(
     entry: AdjustmentDigestEntry,
     enabled: Boolean,
     onUndo: () -> Unit,
+    onConfirm: () -> Unit,
+    onCorrect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        ProductImage(
-            imageUrl = entry.imageUrl,
-            contentDescription = entry.productName,
-            size = 40.dp,
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = entry.productName,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                StockChip(entry = entry)
-            }
-            Text(
-                text = stringResource(
-                    R.string.pantry_digest_change,
-                    entry.delta,
-                    entry.quantityNow,
-                ),
-                style = MaterialTheme.typography.bodyMedium,
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ProductImage(
+                imageUrl = entry.imageUrl,
+                contentDescription = entry.productName,
+                size = 40.dp,
             )
-            entry.whyRes()?.let { why ->
-                Text(
-                    text = stringResource(why),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            RowDetails(entry = entry, modifier = Modifier.weight(1f))
+        }
+        RowActions(
+            quantity = entry.quantityNow,
+            enabled = enabled,
+            onUndo = onUndo,
+            onConfirm = onConfirm,
+            onCorrect = onCorrect,
+        )
+    }
+}
+
+@Composable
+private fun RowDetails(entry: AdjustmentDigestEntry, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = entry.productName,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            StockChip(entry = entry)
+            if (!entry.isOwn) {
+                OwnerChip(
+                    text = stringResource(
+                        R.string.pantry_lot_added_by,
+                        entry.lotOwner ?: stringResource(R.string.owner_chip_household),
+                    ),
                 )
             }
+        }
+        Text(
+            text = stringResource(
+                R.string.pantry_digest_change,
+                entry.delta,
+                entry.quantityNow,
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        entry.whyRes()?.let { why ->
             Text(
-                text = entry.dayLabel(),
+                text = stringResource(why),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        Text(
+            text = entry.dayLabel(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * Undo, Confirm and Fix, the same answers as the pantry card's estimate row. Fix opens the
+ * quantity stepper and commits via [onCorrect] only when the count changed on close.
+ */
+@Composable
+private fun RowActions(
+    quantity: Int,
+    enabled: Boolean,
+    onUndo: () -> Unit,
+    onConfirm: () -> Unit,
+    onCorrect: (Int) -> Unit,
+) {
+    var fixExpanded by remember { mutableStateOf(false) }
+    var draft by remember { mutableIntStateOf(quantity) }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         TextButton(enabled = enabled, onClick = onUndo) {
             Text(text = stringResource(R.string.pantry_estimate_undo))
+        }
+        TextButton(enabled = enabled, onClick = onConfirm) {
+            Text(text = stringResource(R.string.pantry_digest_confirm))
+        }
+        Box {
+            TextButton(
+                enabled = enabled,
+                onClick = {
+                    draft = quantity
+                    fixExpanded = true
+                },
+            ) {
+                Text(text = stringResource(R.string.pantry_estimate_confirm_fix))
+            }
+            QuantityStepperPopup(
+                expanded = fixExpanded,
+                labelRes = R.string.pantry_quantity_edit_label,
+                draft = draft,
+                onDraftChange = { draft = it },
+                onDismissRequest = {
+                    fixExpanded = false
+                    if (draft != quantity) onCorrect(draft)
+                },
+            )
         }
     }
 }

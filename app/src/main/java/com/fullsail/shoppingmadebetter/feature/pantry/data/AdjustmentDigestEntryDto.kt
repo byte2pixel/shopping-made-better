@@ -14,11 +14,15 @@ data class AdjustmentDigestEntryDto(
     val delta: Int,
     /** The lot's quantity after the adjustment. */
     val quantityNow: Int,
-    /** The product's total across the user's lots, which the stock marker reads. */
+    /** The product's total across the household's lots, which the stock marker reads. */
     val productQuantity: Int,
     val lowStockThreshold: Int? = null,
     /** What the estimate was based on: `history`, `shelf_life` or `manual`. */
     val estimateSource: String? = null,
     /** When the adjustment was written, epoch seconds. */
     val createdAtEpoch: Long,
+    /** Display name of the member who owns the lot; `null` outside a household. */
+    val lotOwner: String? = null,
+    /** False when the lot belongs to a housemate rather than the viewer. */
+    val isOwn: Boolean = true,
 )
