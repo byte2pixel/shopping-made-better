@@ -3,6 +3,9 @@ package com.fullsail.shoppingmadebetter.feature.pantry.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentDigestEntry
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentReason
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustment
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetAdjustmentDigestUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustment
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustmentUseCase
@@ -31,6 +34,9 @@ sealed interface AdjustmentDigestUiState {
 sealed interface AdjustmentDigestEvent {
     data class UndoFailed(val productName: String) : AdjustmentDigestEvent
 
+    /** A confirm or fix on [productName] did not save. */
+    data class UpdateFailed(val productName: String) : AdjustmentDigestEvent
+
     /** How many of [attempted] rows "Undo all" reversed. */
     data class UndoneAll(val succeeded: Int, val attempted: Int) : AdjustmentDigestEvent
 }
@@ -39,6 +45,7 @@ sealed interface AdjustmentDigestEvent {
 class AdjustmentDigestViewModel @Inject constructor(
     private val getAdjustmentDigestUseCase: GetAdjustmentDigestUseCase,
     private val undoInventoryAdjustmentUseCase: UndoInventoryAdjustmentUseCase,
+    private val applyInventoryAdjustmentUseCase: ApplyInventoryAdjustmentUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<AdjustmentDigestUiState>(AdjustmentDigestUiState.Loading)
     val uiState: StateFlow<AdjustmentDigestUiState> = _uiState.asStateFlow()
@@ -103,6 +110,41 @@ class AdjustmentDigestViewModel @Inject constructor(
                 _uiState.value = current.copy(undoingAll = false)
             }
             _events.send(AdjustmentDigestEvent.UndoneAll(succeeded, batch.size))
+        }
+    }
+
+    /** Confirms [entry]'s lot at the quantity the job left it (a zero-delta `confirmed` row). */
+    fun onConfirm(entry: AdjustmentDigestEntry) {
+        confirm(entry, entry.quantityNow)
+    }
+
+    /** Replaces [entry]'s lot quantity with the user's [newQuantity] as a `confirmed` row. */
+    fun onCorrect(entry: AdjustmentDigestEntry, newQuantity: Int) {
+        confirm(entry, newQuantity)
+    }
+
+    /**
+     * A confirmed row supersedes every digest row on the lot, so all of them drop straight
+     * away and come back in place if the write fails.
+     */
+    private fun confirm(entry: AdjustmentDigestEntry, newQuantity: Int) {
+        val state = _uiState.value
+        if (state !is AdjustmentDigestUiState.Success || state.undoingAll) return
+        val lotRows = state.entries.withIndex().filter { it.value.lotId == entry.lotId }
+        if (lotRows.isEmpty()) return
+        _uiState.value = state.copy(entries = state.entries.filter { it.lotId != entry.lotId })
+        viewModelScope.launch {
+            val out = applyInventoryAdjustmentUseCase.execute(
+                ApplyInventoryAdjustment(
+                    id = entry.lotId,
+                    delta = newQuantity - entry.quantityNow,
+                    reason = AdjustmentReason.Confirmed,
+                ),
+            )
+            if (out is ApplyInventoryAdjustmentUseCase.Output.Failure) {
+                lotRows.forEach { restore(it.value, it.index) }
+                _events.send(AdjustmentDigestEvent.UpdateFailed(entry.productName))
+            }
         }
     }
 

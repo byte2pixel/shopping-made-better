@@ -114,6 +114,7 @@
         <item quantity="other">%1$d adjustments this week</item>
     </plurals>
     <string name="pantry_digest_undo_all">Undo all (%1$d)</string>
+    <string name="pantry_digest_confirm">Confirm</string>
     <string name="pantry_digest_change">%1$d, now %2$d</string>
     <string name="pantry_digest_why_history">Based on how often you buy this</string>
     <string name="pantry_digest_why_shelf_life">Based on typical shelf life</string>

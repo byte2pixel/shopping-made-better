@@ -13,6 +13,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.todayIn
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -56,6 +57,8 @@ class GetAdjustmentDigestUseCaseImplTest {
         inventoryItemId: String = "lot1",
         estimateSource: String? = "history",
         createdAtEpoch: Long = epochDaysAgo(0),
+        lotOwner: String? = null,
+        isOwn: Boolean = true,
     ) = AdjustmentDigestEntryDto(
         adjustmentId = adjustmentId,
         inventoryItemId = inventoryItemId,
@@ -68,6 +71,8 @@ class GetAdjustmentDigestUseCaseImplTest {
         lowStockThreshold = 3,
         estimateSource = estimateSource,
         createdAtEpoch = createdAtEpoch,
+        lotOwner = lotOwner,
+        isOwn = isOwn,
     )
 
     private fun GetAdjustmentDigestUseCase.Output.entries(): List<AdjustmentDigestEntry> {
@@ -92,6 +97,19 @@ class GetAdjustmentDigestUseCaseImplTest {
         assertEquals(4, entry.productQuantity)
         assertEquals(3, entry.lowStockThreshold)
         assertEquals(EstimateSource.History, entry.source)
+        assertNull(entry.lotOwner)
+        assertTrue(entry.isOwn)
+    }
+
+    @Test
+    fun `execute maps a housemate's lot owner and isOwn`() = runTest {
+        val repo = FakePantryRepository(entries = listOf(dto(lotOwner = "Demo Shopper", isOwn = false)))
+        val useCase = GetAdjustmentDigestUseCaseImpl(repo, fixedClock)
+
+        val entry = useCase.execute(Unit).entries().single()
+
+        assertEquals("Demo Shopper", entry.lotOwner)
+        assertFalse(entry.isOwn)
     }
 
     @Test

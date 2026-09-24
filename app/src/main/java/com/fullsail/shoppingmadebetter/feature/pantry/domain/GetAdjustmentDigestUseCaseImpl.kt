@@ -40,6 +40,8 @@ class GetAdjustmentDigestUseCaseImpl @Inject constructor(
             source = EstimateSource.fromDbValue(estimateSource),
             daysAgo = Instant.fromEpochSeconds(createdAtEpoch)
                 .toLocalDateTime(timeZone).date.daysUntil(today),
+            lotOwner = lotOwner,
+            isOwn = isOwn,
         )
 
     private companion object {

@@ -1,6 +1,9 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentDigestEntry
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentReason
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustment
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.GetAdjustmentDigestUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustment
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UndoInventoryAdjustmentUseCase
@@ -54,10 +57,31 @@ class AdjustmentDigestViewModelTest {
         }
     }
 
-    private fun entry(adjustmentId: String, productName: String = "Jasmine Rice") =
+    /** Fake apply use case: records every call and fails the lots in [failFor]. */
+    private class FakeApplyInventoryAdjustmentUseCase(
+        private val failFor: Set<String> = emptySet(),
+    ) : ApplyInventoryAdjustmentUseCase {
+        val applied = mutableListOf<ApplyInventoryAdjustment>()
+        override suspend fun execute(
+            input: ApplyInventoryAdjustment,
+        ): ApplyInventoryAdjustmentUseCase.Output {
+            applied += input
+            return if (input.id in failFor) {
+                ApplyInventoryAdjustmentUseCase.Output.Failure(IOException("boom"))
+            } else {
+                ApplyInventoryAdjustmentUseCase.Output.Success(newQuantity = 2, appliedDelta = 0)
+            }
+        }
+    }
+
+    private fun entry(
+        adjustmentId: String,
+        productName: String = "Jasmine Rice",
+        lotId: String = "lot-$adjustmentId",
+    ) =
         AdjustmentDigestEntry(
             adjustmentId = adjustmentId,
-            lotId = "lot-$adjustmentId",
+            lotId = lotId,
             productId = "p1",
             productName = productName,
             imageUrl = "",
@@ -70,7 +94,8 @@ class AdjustmentDigestViewModelTest {
     private fun buildViewModel(
         digest: FakeGetAdjustmentDigestUseCase = FakeGetAdjustmentDigestUseCase(),
         undo: FakeUndoInventoryAdjustmentUseCase = FakeUndoInventoryAdjustmentUseCase(),
-    ) = AdjustmentDigestViewModel(digest, undo)
+        apply: FakeApplyInventoryAdjustmentUseCase = FakeApplyInventoryAdjustmentUseCase(),
+    ) = AdjustmentDigestViewModel(digest, undo, apply)
 
     private fun digestOf(vararg ids: String) = FakeGetAdjustmentDigestUseCase(
         GetAdjustmentDigestUseCase.Output.Success(ids.map { entry(it) })
@@ -197,6 +222,89 @@ class AdjustmentDigestViewModelTest {
         gate.complete(Unit)
 
         // Each row was reversed once, by the batch.
+        assertEquals(listOf("a1", "a2"), undo.undone)
+    }
+
+    @Test
+    fun `onConfirm writes a zero-delta confirmed row and drops the row`() = runTest {
+        val apply = FakeApplyInventoryAdjustmentUseCase()
+        val viewModel = buildViewModel(digest = digestOf("a1", "a2"), apply = apply)
+
+        viewModel.onConfirm(viewModel.uiState.value.entries.first())
+
+        assertEquals(
+            listOf(ApplyInventoryAdjustment("lot-a1", 0, AdjustmentReason.Confirmed)),
+            apply.applied,
+        )
+        assertEquals(listOf("a2"), viewModel.uiState.value.entries.map { it.adjustmentId })
+    }
+
+    @Test
+    fun `onCorrect writes the difference from the lot's quantity as confirmed`() = runTest {
+        val apply = FakeApplyInventoryAdjustmentUseCase()
+        val viewModel = buildViewModel(digest = digestOf("a1"), apply = apply)
+
+        // The entry's lot holds 2, so a corrected count of 5 is +3.
+        viewModel.onCorrect(viewModel.uiState.value.entries.first(), 5)
+
+        assertEquals(
+            listOf(ApplyInventoryAdjustment("lot-a1", 3, AdjustmentReason.Confirmed)),
+            apply.applied,
+        )
+        assertTrue(viewModel.uiState.value.entries.isEmpty())
+    }
+
+    @Test
+    fun `confirming a lot drops every digest row on that lot`() = runTest {
+        val apply = FakeApplyInventoryAdjustmentUseCase()
+        val digest = FakeGetAdjustmentDigestUseCase(
+            GetAdjustmentDigestUseCase.Output.Success(
+                listOf(entry("a1", lotId = "lot-x"), entry("a2"), entry("a3", lotId = "lot-x")),
+            ),
+        )
+        val viewModel = buildViewModel(digest = digest, apply = apply)
+
+        viewModel.onConfirm(viewModel.uiState.value.entries.last())
+
+        assertEquals(1, apply.applied.size)
+        assertEquals(listOf("a2"), viewModel.uiState.value.entries.map { it.adjustmentId })
+    }
+
+    @Test
+    fun `a failed confirm puts the lot's rows back where they were and says so`() = runTest {
+        val apply = FakeApplyInventoryAdjustmentUseCase(failFor = setOf("lot-x"))
+        val digest = FakeGetAdjustmentDigestUseCase(
+            GetAdjustmentDigestUseCase.Output.Success(
+                listOf(entry("a1", lotId = "lot-x"), entry("a2"), entry("a3", lotId = "lot-x")),
+            ),
+        )
+        val viewModel = buildViewModel(digest = digest, apply = apply)
+
+        viewModel.onConfirm(viewModel.uiState.value.entries.first())
+
+        assertEquals(
+            listOf("a1", "a2", "a3"),
+            viewModel.uiState.value.entries.map { it.adjustmentId },
+        )
+        assertEquals(
+            AdjustmentDigestEvent.UpdateFailed("Jasmine Rice"),
+            viewModel.events.first(),
+        )
+    }
+
+    @Test
+    fun `onConfirm is ignored while a bulk undo is running`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val undo = FakeUndoInventoryAdjustmentUseCase(gate = gate)
+        val apply = FakeApplyInventoryAdjustmentUseCase()
+        val viewModel = buildViewModel(digest = digestOf("a1", "a2"), undo = undo, apply = apply)
+        val first = viewModel.uiState.value.entries.first()
+
+        viewModel.onUndoAll()
+        viewModel.onConfirm(first)
+        gate.complete(Unit)
+
+        assertTrue(apply.applied.isEmpty())
         assertEquals(listOf("a1", "a2"), undo.undone)
     }
 
