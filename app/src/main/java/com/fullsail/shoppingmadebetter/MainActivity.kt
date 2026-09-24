@@ -26,6 +26,7 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -176,6 +178,7 @@ fun ShoppingMadeBetterApp(
     val canNavigateBack = currentTab == null
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val openProfile = { navController.navigate(Dest.Profile) { launchSingleTop = true } }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -187,7 +190,7 @@ fun ShoppingMadeBetterApp(
             AppDrawer(
                 onProfile = {
                     scope.launch { drawerState.close() }
-                    navController.navigate(Dest.Profile) { launchSingleTop = true }
+                    openProfile()
                 },
                 onLogout = {
                     scope.launch { drawerState.close() }
@@ -209,6 +212,7 @@ fun ShoppingMadeBetterApp(
                     canNavigateBack = canNavigateBack,
                     onMenuClick = { scope.launch { drawerState.open() } },
                     onBackClick = navigationViewModel::navigateUp,
+                    onProfileClick = openProfile,
                 )
             }
         },
@@ -423,10 +427,21 @@ private fun AppDrawer(onProfile: () -> Unit, onLogout: () -> Unit) {
                 .fillMaxSize()
                 .padding(16.dp),
         ) {
+            // Bold and in the primary colour so the row reads as a button, not a label.
             NavigationDrawerItem(
-                label = { Text(stringResource(R.string.menu_profile)) },
+                label = {
+                    Text(
+                        text = stringResource(R.string.menu_profile),
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
+                icon = { Icon(painterResource(R.drawable.ic_account_box), contentDescription = null) },
                 selected = false,
                 onClick = onProfile,
+                colors = NavigationDrawerItemDefaults.colors(
+                    unselectedTextColor = MaterialTheme.colorScheme.primary,
+                    unselectedIconColor = MaterialTheme.colorScheme.primary,
+                ),
             )
             // The weight pushes logout to the bottom.
             Spacer(modifier = Modifier.weight(1f))
@@ -472,9 +487,18 @@ private fun AppTopBar(
     canNavigateBack: Boolean,
     onMenuClick: () -> Unit,
     onBackClick: () -> Unit,
+    onProfileClick: () -> Unit,
 ) {
     TopAppBar(
         title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        actions = {
+            IconButton(onClick = onProfileClick) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_account_box),
+                    contentDescription = stringResource(R.string.menu_profile),
+                )
+            }
+        },
         navigationIcon = {
             if (canNavigateBack) {
                 IconButton(onClick = onBackClick) {
