@@ -19,6 +19,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -51,6 +53,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -61,7 +64,7 @@ import com.fullsail.shoppingmadebetter.feature.household.domain.HouseholdMember
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import kotlinx.coroutines.launch
 
-/** Create or join a household, or see the current one and leave it. */
+/** Create or join a household, see the current one and leave it, or manage it as its head. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HouseholdScreen(
@@ -88,6 +91,11 @@ fun HouseholdScreen(
                 HouseholdEvent.JoinFailed -> R.string.household_error_join
                 HouseholdEvent.LeaveRefusedHead -> R.string.household_error_leave_head
                 HouseholdEvent.LeaveFailed -> R.string.household_error_leave
+                HouseholdEvent.RenameFailed -> R.string.household_error_rename
+                HouseholdEvent.TransferFailed -> R.string.household_error_transfer
+                HouseholdEvent.RemoveFailed -> R.string.household_error_remove
+                HouseholdEvent.RegenerateFailed -> R.string.household_error_regenerate
+                HouseholdEvent.NotHead -> R.string.household_error_not_head
             }
             snackbarHostState.showSnackbar(resources.getString(message))
         }
@@ -147,6 +155,10 @@ fun HouseholdScreen(
                         context.startActivity(Intent.createChooser(send, resources.getString(R.string.household_share)))
                     },
                     onLeave = viewModel::onLeave,
+                    onRename = viewModel::onRename,
+                    onTransferHead = viewModel::onTransferHead,
+                    onRemoveMember = viewModel::onRemoveMember,
+                    onRegenerateCode = viewModel::onRegenerateCode,
                 )
             }
         }
@@ -213,6 +225,7 @@ private fun NoHouseholdContent(
     }
 }
 
+/** The member view. Management controls show only when the caller is the head; the RPCs re-check. */
 @Composable
 private fun MemberContent(
     household: Household,
@@ -221,9 +234,17 @@ private fun MemberContent(
     onCopyCode: (String) -> Unit,
     onShareCode: (String) -> Unit,
     onLeave: () -> Unit,
+    onRename: (String) -> Unit,
+    onTransferHead: (String) -> Unit,
+    onRemoveMember: (String) -> Unit,
+    onRegenerateCode: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isHead = members.any { it.isSelf && it.isHead }
     var confirmLeave by rememberSaveable { mutableStateOf(false) }
+    var showRename by rememberSaveable { mutableStateOf(false) }
+    var confirmNewCode by rememberSaveable { mutableStateOf(false) }
+    var removeTargetId by rememberSaveable { mutableStateOf<String?>(null) }
 
     Column(
         modifier = modifier
@@ -232,7 +253,23 @@ private fun MemberContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(household.name, style = MaterialTheme.typography.titleLarge)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = household.name,
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            if (isHead) {
+                IconButton(onClick = { showRename = true }, enabled = !busy) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_edit),
+                        contentDescription = stringResource(R.string.household_rename),
+                    )
+                }
+            }
+        }
 
         Text(
             text = stringResource(R.string.household_invite_code),
@@ -258,6 +295,14 @@ private fun MemberContent(
                     contentDescription = stringResource(R.string.household_share),
                 )
             }
+            if (isHead) {
+                IconButton(onClick = { confirmNewCode = true }, enabled = !busy) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_update),
+                        contentDescription = stringResource(R.string.household_new_code),
+                    )
+                }
+            }
         }
 
         HorizontalDivider()
@@ -267,7 +312,15 @@ private fun MemberContent(
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        members.forEach { member -> MemberRow(member) }
+        members.forEach { member ->
+            MemberRow(
+                member = member,
+                canManage = isHead && !member.isSelf,
+                enabled = !busy,
+                onTransfer = { onTransferHead(member.id) },
+                onRemove = { removeTargetId = member.id },
+            )
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -302,16 +355,126 @@ private fun MemberContent(
             },
         )
     }
+
+    if (showRename) {
+        RenameDialog(
+            currentName = household.name,
+            onDismiss = { showRename = false },
+            onSave = { name ->
+                showRename = false
+                onRename(name)
+            },
+        )
+    }
+
+    if (confirmNewCode) {
+        AlertDialog(
+            onDismissRequest = { confirmNewCode = false },
+            title = { Text(stringResource(R.string.household_new_code_confirm_title)) },
+            text = { Text(stringResource(R.string.household_new_code_confirm_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmNewCode = false
+                        onRegenerateCode()
+                    },
+                ) {
+                    Text(stringResource(R.string.household_new_code))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmNewCode = false }) {
+                    Text(stringResource(R.string.household_cancel))
+                }
+            },
+        )
+    }
+
+    // A reload can drop the row while the dialog is up; then there is nothing to confirm.
+    val removeTarget = removeTargetId?.let { id -> members.firstOrNull { it.id == id } }
+    if (removeTarget != null) {
+        AlertDialog(
+            onDismissRequest = { removeTargetId = null },
+            title = { Text(stringResource(R.string.household_remove_confirm_title, removeTarget.displayName)) },
+            text = { Text(stringResource(R.string.household_remove_confirm_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        removeTargetId = null
+                        onRemoveMember(removeTarget.id)
+                    },
+                ) {
+                    Text(stringResource(R.string.household_remove_member), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { removeTargetId = null }) {
+                    Text(stringResource(R.string.household_cancel))
+                }
+            },
+        )
+    }
 }
 
 @Composable
-private fun MemberRow(member: HouseholdMember) {
+private fun RenameDialog(
+    currentName: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    var name by rememberSaveable { mutableStateOf(currentName) }
+    val trimmed = name.trim()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.household_rename)) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text(stringResource(R.string.household_rename_hint)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(trimmed) },
+                enabled = trimmed.isNotEmpty() && trimmed != currentName,
+            ) {
+                Text(stringResource(R.string.household_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.household_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun MemberRow(
+    member: HouseholdMember,
+    canManage: Boolean,
+    enabled: Boolean,
+    onTransfer: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(member.displayName, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(
+            text = member.displayName,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
         if (member.isSelf) {
             LabelChip(
                 label = stringResource(R.string.household_you),
@@ -323,6 +486,32 @@ private fun MemberRow(member: HouseholdMember) {
                 label = stringResource(R.string.household_head),
                 accentColor = MaterialTheme.colorScheme.primary,
             )
+        }
+        if (canManage) {
+            Box {
+                IconButton(onClick = { menuOpen = true }, enabled = enabled) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_more_vert),
+                        contentDescription = stringResource(R.string.household_member_menu),
+                    )
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.household_make_head)) },
+                        onClick = {
+                            menuOpen = false
+                            onTransfer()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.household_remove_member)) },
+                        onClick = {
+                            menuOpen = false
+                            onRemove()
+                        },
+                    )
+                }
+            }
         }
     }
 }
@@ -375,6 +564,32 @@ private fun MemberPreview() {
             onCopyCode = {},
             onShareCode = {},
             onLeave = {},
+            onRename = {},
+            onTransferHead = {},
+            onRemoveMember = {},
+            onRegenerateCode = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun HeadPreview() {
+    ShoppingMadeBetterTheme {
+        MemberContent(
+            household = Household(id = "h1", name = "Demo Household", inviteCode = "DEMO2026"),
+            members = listOf(
+                HouseholdMember(id = "u1", displayName = "Demo Shopper", isHead = true, isSelf = true),
+                HouseholdMember(id = "u2", displayName = "Demo Roommate", isHead = false, isSelf = false),
+            ),
+            busy = false,
+            onCopyCode = {},
+            onShareCode = {},
+            onLeave = {},
+            onRename = {},
+            onTransferHead = {},
+            onRemoveMember = {},
+            onRegenerateCode = {},
         )
     }
 }

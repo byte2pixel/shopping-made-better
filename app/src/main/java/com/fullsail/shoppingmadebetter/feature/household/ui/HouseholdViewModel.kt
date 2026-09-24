@@ -8,6 +8,11 @@ import com.fullsail.shoppingmadebetter.feature.household.domain.Household
 import com.fullsail.shoppingmadebetter.feature.household.domain.HouseholdMember
 import com.fullsail.shoppingmadebetter.feature.household.domain.JoinHouseholdUseCase
 import com.fullsail.shoppingmadebetter.feature.household.domain.LeaveHouseholdUseCase
+import com.fullsail.shoppingmadebetter.feature.household.domain.RegenerateInviteCodeUseCase
+import com.fullsail.shoppingmadebetter.feature.household.domain.RemoveMemberUseCase
+import com.fullsail.shoppingmadebetter.feature.household.domain.RenameHousehold
+import com.fullsail.shoppingmadebetter.feature.household.domain.RenameHouseholdUseCase
+import com.fullsail.shoppingmadebetter.feature.household.domain.TransferHeadUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +36,11 @@ sealed interface HouseholdEvent {
     data object JoinFailed : HouseholdEvent
     data object LeaveRefusedHead : HouseholdEvent
     data object LeaveFailed : HouseholdEvent
+    data object RenameFailed : HouseholdEvent
+    data object TransferFailed : HouseholdEvent
+    data object RemoveFailed : HouseholdEvent
+    data object RegenerateFailed : HouseholdEvent
+    data object NotHead : HouseholdEvent
 }
 
 @HiltViewModel
@@ -39,6 +49,10 @@ class HouseholdViewModel @Inject constructor(
     private val createHouseholdUseCase: CreateHouseholdUseCase,
     private val joinHouseholdUseCase: JoinHouseholdUseCase,
     private val leaveHouseholdUseCase: LeaveHouseholdUseCase,
+    private val renameHouseholdUseCase: RenameHouseholdUseCase,
+    private val transferHeadUseCase: TransferHeadUseCase,
+    private val removeMemberUseCase: RemoveMemberUseCase,
+    private val regenerateInviteCodeUseCase: RegenerateInviteCodeUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<HouseholdUiState>(HouseholdUiState.Loading)
     val uiState: StateFlow<HouseholdUiState> = _uiState.asStateFlow()
@@ -83,6 +97,50 @@ class HouseholdViewModel @Inject constructor(
             LeaveHouseholdUseCase.Output.HeadWithMembers -> _events.send(HouseholdEvent.LeaveRefusedHead)
             is LeaveHouseholdUseCase.Output.Failure -> _events.send(HouseholdEvent.LeaveFailed)
         }
+    }
+
+    fun onRename(name: String) = whileBusy {
+        val current = (_uiState.value as? HouseholdUiState.Member)?.household ?: return@whileBusy
+        when (renameHouseholdUseCase.execute(RenameHousehold(current.id, name))) {
+            RenameHouseholdUseCase.Output.Success -> refresh()
+            is RenameHouseholdUseCase.Output.Failure -> _events.send(HouseholdEvent.RenameFailed)
+        }
+    }
+
+    fun onTransferHead(memberId: String) = whileBusy {
+        when (transferHeadUseCase.execute(memberId)) {
+            TransferHeadUseCase.Output.Success -> refresh()
+            TransferHeadUseCase.Output.NotHead -> notHead()
+            // They left in the meantime; the reload drops the row.
+            TransferHeadUseCase.Output.MemberNotInHousehold -> refresh()
+            is TransferHeadUseCase.Output.Failure -> _events.send(HouseholdEvent.TransferFailed)
+        }
+    }
+
+    fun onRemoveMember(memberId: String) = whileBusy {
+        when (removeMemberUseCase.execute(memberId)) {
+            RemoveMemberUseCase.Output.Success -> refresh()
+            RemoveMemberUseCase.Output.NotHead -> notHead()
+            RemoveMemberUseCase.Output.MemberNotInHousehold -> refresh()
+            // The screen never offers Remove on the caller's own row.
+            RemoveMemberUseCase.Output.CannotRemoveSelf -> _events.send(HouseholdEvent.RemoveFailed)
+            is RemoveMemberUseCase.Output.Failure -> _events.send(HouseholdEvent.RemoveFailed)
+        }
+    }
+
+    fun onRegenerateCode() = whileBusy {
+        when (regenerateInviteCodeUseCase.execute(Unit)) {
+            // The reload picks the new code up with the household row.
+            is RegenerateInviteCodeUseCase.Output.Success -> refresh()
+            RegenerateInviteCodeUseCase.Output.NotHead -> notHead()
+            is RegenerateInviteCodeUseCase.Output.Failure -> _events.send(HouseholdEvent.RegenerateFailed)
+        }
+    }
+
+    /** A stale head screen: tell the user and reload into the member view. */
+    private suspend fun notHead() {
+        _events.send(HouseholdEvent.NotHead)
+        refresh()
     }
 
     private suspend fun refresh() {

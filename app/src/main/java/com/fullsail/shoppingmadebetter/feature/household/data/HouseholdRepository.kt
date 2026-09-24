@@ -12,4 +12,16 @@ interface HouseholdRepository {
     suspend fun joinHousehold(inviteCode: String): HouseholdDto
 
     suspend fun leaveHousehold()
+
+    /** Head only; RLS makes a member's update a no-op. */
+    suspend fun renameHousehold(householdId: String, name: String)
+
+    /** Head only. Makes [memberId] the head and the caller a member. */
+    suspend fun transferHead(memberId: String)
+
+    /** Head only. Drops [memberId] from the household. */
+    suspend fun removeMember(memberId: String)
+
+    /** Head only. Replaces the invite code and returns the new one. */
+    suspend fun regenerateInviteCode(): String
 }

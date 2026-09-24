@@ -32,4 +32,26 @@ class HouseholdRepositoryImpl @Inject constructor(
         postgrest.rpc("leave_household")
         Unit
     }
+
+    override suspend fun renameHousehold(householdId: String, name: String) = withContext(Dispatchers.IO) {
+        postgrest.from("households").update({ set("name", name) }) {
+            filter { eq("id", householdId) }
+        }
+        Unit
+    }
+
+    override suspend fun transferHead(memberId: String) = withContext(Dispatchers.IO) {
+        postgrest.rpc("transfer_household_head", buildJsonObject { put("p_member", memberId) })
+        Unit
+    }
+
+    override suspend fun removeMember(memberId: String) = withContext(Dispatchers.IO) {
+        postgrest.rpc("remove_household_member", buildJsonObject { put("p_member", memberId) })
+        Unit
+    }
+
+    // The RPC returns text, which PostgREST serialises as a bare JSON string.
+    override suspend fun regenerateInviteCode(): String = withContext(Dispatchers.IO) {
+        postgrest.rpc("regenerate_invite_code").decodeAs<String>()
+    }
 }

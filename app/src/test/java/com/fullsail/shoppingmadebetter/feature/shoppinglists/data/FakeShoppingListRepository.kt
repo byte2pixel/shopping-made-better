@@ -60,6 +60,8 @@ internal open class FakeShoppingListRepository : ShoppingListRepository {
 
     override suspend fun getItemDetails(id: String): ItemDetailsDto = notStubbed("getItemDetails")
 
+    override suspend fun getStoreAddress(id: String): StoreAddressInformationDto = notStubbed("getStoreAddress")
+
     private fun notStubbed(method: String): Nothing =
         throw NotImplementedError("$method was called but this fake does not stub it")
 }

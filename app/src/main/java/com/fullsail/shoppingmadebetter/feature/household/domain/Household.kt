@@ -18,7 +18,9 @@ object HouseholdErrors {
     const val ALREADY_IN_HOUSEHOLD = "already in a household"
     const val HEAD_CANNOT_LEAVE = "head cannot leave while other members remain"
     const val NOT_IN_HOUSEHOLD = "not in a household"
-    const val NAME_REQUIRED = "name required"
+    const val NOT_THE_HEAD = "not the head"
+    const val MEMBER_NOT_IN_HOUSEHOLD = "member not in household"
+    const val CANNOT_REMOVE_SELF = "cannot remove yourself"
 
     fun Throwable.mentions(token: String): Boolean = message?.contains(token) == true
 }
