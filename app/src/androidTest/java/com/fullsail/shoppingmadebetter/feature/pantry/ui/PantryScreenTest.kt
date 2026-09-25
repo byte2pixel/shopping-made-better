@@ -56,6 +56,7 @@ import com.fullsail.shoppingmadebetter.feature.stores.domain.GetStoresUseCase
 import com.fullsail.shoppingmadebetter.feature.stores.domain.Store
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -679,23 +680,22 @@ class PantryScreenTest {
     }
 
     @Test
-    fun theTotalQuantityChipEditsOnlyTheProductThreshold() {
+    fun theLotQuantityPopupEditsTheProductThresholdToo() {
         val updateThreshold = FakeUpdateInventoryLowStockThresholdUseCase()
-        setScreen(updateThreshold = updateThreshold)
+        val applyAdjustment = FakeApplyInventoryAdjustmentUseCase()
+        setScreen(updateThreshold = updateThreshold, applyAdjustment = applyAdjustment)
+        toggleCard("2% Milk")
 
         composeTestRule
-            .onNodeWithContentDescription(
-                quantityString(R.plurals.pantry_card_total_quantity_desc, 2, 2)
-            )
+            .onNodeWithContentDescription(quantityString(R.plurals.pantry_card_quantity_desc, 2, 2))
             .performClick()
 
-        // The popup offers only the low-stock threshold — no quantity stepper.
+        // One popup carries both: the lot's quantity and the product's low-stock alert.
+        composeTestRule.onNodeWithText(string(R.string.pantry_quantity_edit_label)).assertIsDisplayed()
         composeTestRule.onNodeWithText(string(R.string.pantry_low_stock_label)).assertIsDisplayed()
-        composeTestRule
-            .onNodeWithText(string(R.string.pantry_quantity_edit_label))
-            .assertDoesNotExist()
 
-        // Raising from Off sets 1; dismissing commits it against the product.
+        // Raising the alert from Off sets 1; dismissing commits it against the product
+        // and, with the quantity untouched, writes no adjustment.
         composeTestRule
             .onNodeWithContentDescription(string(R.string.pantry_low_stock_increase))
             .performClick()
@@ -706,6 +706,22 @@ class PantryScreenTest {
             UpdateInventoryLowStockThreshold(productId = "p1", threshold = 1),
             updateThreshold.lastInput,
         )
+        assertNull(applyAdjustment.lastInput)
+    }
+
+    @Test
+    fun tappingTheTotalChipTogglesTheLotsLikeTheHeader() {
+        setScreen()
+        val totalDesc = quantityString(R.plurals.pantry_card_total_quantity_desc, 2, 2)
+        val lotQuantityDesc = quantityString(R.plurals.pantry_card_quantity_desc, 2, 2)
+
+        // The chip is read-only, so the tap falls through to the header's toggle.
+        composeTestRule.onNodeWithContentDescription(totalDesc).performClick()
+        composeTestRule.onNodeWithContentDescription(lotQuantityDesc).assertIsDisplayed()
+        composeTestRule.onNodeWithText(string(R.string.pantry_low_stock_label)).assertDoesNotExist()
+
+        composeTestRule.onNodeWithContentDescription(totalDesc).performClick()
+        composeTestRule.onNodeWithContentDescription(lotQuantityDesc).assertDoesNotExist()
     }
 
     @Test
