@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -368,11 +369,23 @@ class PantryScreenTest {
         composeTestRule.onNodeWithText("2% Milk").assertIsDisplayed()
         composeTestRule.onNodeWithText("Great Value").assertIsDisplayed()
         composeTestRule.onNodeWithText("1 gal").assertIsDisplayed()
+
+        // The header aggregates are spoken values, not buttons. Unmerged, because the
+        // merged tree folds them into the header's own click.
         composeTestRule
             .onNodeWithContentDescription(
-                quantityString(R.plurals.pantry_card_total_quantity_desc, 2, 2)
+                quantityString(R.plurals.pantry_card_total_quantity_desc, 2, 2),
+                useUnmergedTree = true,
             )
             .assertIsDisplayed()
+            .assertHasNoClickAction()
+        composeTestRule
+            .onNodeWithContentDescription(
+                string(R.string.pantry_card_location_desc, string(R.string.pantry_dashboard_pantry)),
+                useUnmergedTree = true,
+            )
+            .assertIsDisplayed()
+            .assertHasNoClickAction()
     }
 
     @Test

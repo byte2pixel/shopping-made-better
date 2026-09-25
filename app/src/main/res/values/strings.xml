@@ -153,7 +153,6 @@
     <!-- Pantry product card: header aggregates + expandable lot rows -->
     <string name="pantry_card_expand_lots">Show lots</string>
     <string name="pantry_card_collapse_lots">Hide lots</string>
-    <string name="pantry_card_total_quantity">Total %1$d</string>
     <plurals name="pantry_card_total_quantity_desc">
         <item quantity="one">%1$d in stock across all lots</item>
         <item quantity="other">%1$d in stock across all lots</item>
