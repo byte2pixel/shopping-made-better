@@ -288,6 +288,7 @@ fun ShoppingMadeBetterApp(
                 val selectedDiets = rememberSaveable { mutableStateOf(emptySet<String>()) }
                 val selectedCategories = rememberSaveable { mutableStateOf(emptySet<String>()) }
                 val selectedGoal = rememberSaveable { mutableStateOf<String?>(null) }
+                val selectedAutoAdjust = rememberSaveable { mutableStateOf<Boolean?>(null) }
 
 
                 LaunchedEffect(uiState) {
@@ -309,6 +310,7 @@ fun ShoppingMadeBetterApp(
                     selectedDiets = selectedDiets.value,
                     selectedCategories = selectedCategories.value,
                     selectedGoal = selectedGoal.value,
+                    selectedAutoAdjust = selectedAutoAdjust.value,
                     onDietToggled = { diet ->
                         val current = selectedDiets.value
                         selectedDiets.value = if (current.contains(diet)) current - diet else current + diet
@@ -318,13 +320,15 @@ fun ShoppingMadeBetterApp(
                         selectedCategories.value = if (current.contains(category)) current - category else current + category
                     },
                     onGoalSelected = { goal -> selectedGoal.value = goal },
+                    onAutoAdjustSelected = { enabled -> selectedAutoAdjust.value = enabled },
 
 
                     onSubmit = {
                         onboardingViewModel.submitFinalPreferences(
                             dietary = selectedDiets.value.toList(),
                             categories = selectedCategories.value.toList(),
-                            goal = selectedGoal.value ?: ""
+                            goal = selectedGoal.value ?: "",
+                            autoAdjust = selectedAutoAdjust.value ?: false
                         )
                     },
                     onNavigateBack = { navController.popBackStack() }

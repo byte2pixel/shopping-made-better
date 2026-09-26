@@ -26,14 +26,20 @@ class OnboardingViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<OnboardingUiState>(OnboardingUiState.Idle)
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
 
-    fun submitFinalPreferences(dietary: List<String>, categories: List<String>, goal: String) {
+    fun submitFinalPreferences(
+        dietary: List<String>,
+        categories: List<String>,
+        goal: String,
+        autoAdjust: Boolean,
+    ) {
         viewModelScope.launch {
             _uiState.value = OnboardingUiState.Submitting
             try {
                 val domainModel = SavePreferences(
                     dietaryRestrictions = dietary,
                     topCategories = categories,
-                    primaryGoal = goal
+                    primaryGoal = goal,
+                    autoAdjustEnabled = autoAdjust
                 )
                 savePreferencesUseCase(domainModel)
                 _uiState.value = OnboardingUiState.Success

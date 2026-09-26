@@ -4,10 +4,13 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
+
+private const val STEP_COUNT = 4
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -16,19 +19,21 @@ fun OnboardingScreen(
     selectedDiets: Set<String>,
     selectedCategories: Set<String>,
     selectedGoal: String?,
+    selectedAutoAdjust: Boolean?,
     onDietToggled: (String) -> Unit,
     onCategoryToggled: (String) -> Unit,
     onGoalSelected: (String) -> Unit,
+    onAutoAdjustSelected: (Boolean) -> Unit,
     onSubmit: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var currentStep by remember { mutableIntStateOf(0) }
+    var currentStep by rememberSaveable { mutableIntStateOf(0) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Profile Setup (${currentStep + 1}/3)") },
+                title = { Text("Profile Setup (${currentStep + 1}/$STEP_COUNT)") },
                 navigationIcon = {
                     TextButton(
                         onClick = {
@@ -55,7 +60,7 @@ fun OnboardingScreen(
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    if (currentStep < 2) {
+                    if (currentStep < STEP_COUNT - 1) {
                         Button(
                             onClick = { currentStep++ },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
@@ -65,7 +70,7 @@ fun OnboardingScreen(
                     } else {
                         Button(
                             onClick = onSubmit,
-                            enabled = !isSubmitting && selectedGoal != null,
+                            enabled = !isSubmitting && selectedGoal != null && selectedAutoAdjust != null,
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
                             if (isSubmitting) {
@@ -106,6 +111,10 @@ fun OnboardingScreen(
                         selectedGoal = selectedGoal,
                         onGoalSelected = onGoalSelected
                     )
+                    3 -> AutoAdjustPreferenceScreen(
+                        selected = selectedAutoAdjust,
+                        onSelected = onAutoAdjustSelected
+                    )
                 }
             }
         }
@@ -121,9 +130,11 @@ fun OnboardingScreenPreview() {
             selectedDiets = setOf("Vegan"),
             selectedCategories = setOf("🥦 Produce"),
             selectedGoal = "Save money & budget",
+            selectedAutoAdjust = true,
             onDietToggled = {},
             onCategoryToggled = {},
             onGoalSelected = {},
+            onAutoAdjustSelected = {},
             onSubmit = {},
             onNavigateBack = {}
         )

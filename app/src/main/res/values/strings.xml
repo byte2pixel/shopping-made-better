@@ -21,6 +21,11 @@
     <string name="profile_auto_adjust_description">Lowers quantities based on how often you buy each item.</string>
     <string name="profile_auto_adjust_failed">Couldn\'t update auto-adjust</string>
 
+    <!-- Onboarding -->
+    <string name="onboarding_auto_adjust_question">Keep your pantry up to date automatically?</string>
+    <string name="onboarding_auto_adjust_yes">Yes, lower quantities for me</string>
+    <string name="onboarding_auto_adjust_no">No, I\'ll update them myself</string>
+
     <!-- Authentication (sign in / sign up) -->
     <string name="auth_sign_in">Sign In</string>
     <string name="auth_sign_up">Sign Up</string>
