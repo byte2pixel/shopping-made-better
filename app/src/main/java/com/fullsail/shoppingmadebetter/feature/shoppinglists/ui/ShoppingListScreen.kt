@@ -175,7 +175,7 @@ fun ShoppingListsScreen(
 private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison :(dest : Dest) -> Unit, onRename: () -> Unit, tripList : List<ShoppingTrip>, viewModel: ShoppingTripsViewModel = hiltViewModel(),  )
 {
     OutlinedCard(
-        onClick = {
+        onClick = {onItemComparison(Dest.ShoppingListCartScreen(trip.shoppingListId))
         },
         Modifier.fillMaxWidth(),
         colors = CardDefaults.outlinedCardColors(MaterialTheme.colorScheme.surfaceContainer))

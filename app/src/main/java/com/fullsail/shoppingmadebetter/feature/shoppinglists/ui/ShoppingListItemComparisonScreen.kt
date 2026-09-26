@@ -213,6 +213,11 @@ fun ShoppingListItemComparisonScreen(
 
                             }
                         }
+                        Card(colors = CardDefaults.cardColors( containerColor = BottomSheetDefaults.ContainerColor, contentColor = MaterialTheme.colorScheme.primary), onClick = {onAddNewListClicked()}) {
+                           Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center)
+                           {Text("Create new list",style = MaterialTheme.typography.titleMedium)}
+                        }
+
                     }
                 }
 
@@ -246,7 +251,7 @@ fun ShoppingListItemComparisonScreen(
 
         OutlinedCard(
             onClick = {
-               onAddClicked()
+               pickList = true
 
             },
             colors = CardDefaults.outlinedCardColors(MaterialTheme.colorScheme.surfaceContainer),
@@ -292,16 +297,6 @@ fun ShoppingListItemComparisonScreen(
                     )
                     {
                         Icon(painterResource(id = R.drawable.ic_shopping_cart), contentDescription = "Add to existing cart", Modifier.size(24.dp))
-                    }
-
-                    IconButton(
-                        onClick =
-                            {
-                                onAddNewListClicked()
-                            },
-                    )
-                    {
-                        Icon(painterResource(id = R.drawable.ic_add_shopping_cart), contentDescription = "add to new cart", Modifier.size(24.dp))
                     }
                 }
             }
