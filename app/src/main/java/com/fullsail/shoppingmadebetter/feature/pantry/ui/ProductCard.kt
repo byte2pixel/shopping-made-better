@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
@@ -44,6 +45,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
@@ -302,15 +305,15 @@ private fun ProductCardHeader(
         }
         Row(
             modifier = Modifier.padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TotalQuantityChip(
+            TotalValue(
                 totalQuantity = group.totalQuantity,
                 lowStockThreshold = group.lowStockThreshold,
             )
-            HeaderLocationChip(group = group)
-            group.earliestExpiresInDays?.let { days -> HeaderExpiryChip(expiresInDays = days) }
+            LocationValue(group = group)
+            group.earliestExpiresInDays?.let { days -> ExpiryValue(expiresInDays = days) }
         }
     }
 }
@@ -522,24 +525,52 @@ private val locationChoices = listOf(
 )
 
 /**
+ * One read-only aggregate on the card header: an optional icon and a label in one
+ * colour, no pill and no click, so it does not promise a tap. The spoken
+ * [contentDescription] replaces the text. A tap falls through to the header's toggle.
+ */
+@Composable
+private fun HeaderValue(
+    text: String,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+    @DrawableRes iconRes: Int? = null,
+    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+) {
+    Row(
+        modifier = modifier.clearAndSetSemantics { this.contentDescription = contentDescription },
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (iconRes != null) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Text(text = text, style = MaterialTheme.typography.labelLarge, color = color)
+    }
+}
+
+/**
  * The header's location aggregate.
  */
 @Composable
-private fun HeaderLocationChip(group: ProductGroup, modifier: Modifier = Modifier) {
+private fun LocationValue(group: ProductGroup, modifier: Modifier = Modifier) {
     val single = group.singleLocation
     if (single != null) {
         val label = stringResource(single.labelRes())
-        LabelChip(
-            label = label,
-            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            iconRes = single.iconRes(),
+        HeaderValue(
+            text = label,
             contentDescription = stringResource(R.string.pantry_card_location_desc, label),
+            iconRes = single.iconRes(),
             modifier = modifier,
         )
     } else {
-        LabelChip(
-            label = stringResource(R.string.pantry_location_mixed),
-            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        HeaderValue(
+            text = stringResource(R.string.pantry_location_mixed),
             contentDescription = stringResource(R.string.pantry_card_location_mixed_desc),
             modifier = modifier,
         )
@@ -550,15 +581,15 @@ private fun HeaderLocationChip(group: ProductGroup, modifier: Modifier = Modifie
  * The header's expiry aggregate.
  */
 @Composable
-private fun HeaderExpiryChip(expiresInDays: Int, modifier: Modifier = Modifier) {
-    LabelChip(
-        label = expiryChipLabel(expiresInDays),
-        accentColor = expiryAccent(expiryBucket(expiresInDays)),
-        iconRes = R.drawable.ic_expiring,
+private fun ExpiryValue(expiresInDays: Int, modifier: Modifier = Modifier) {
+    HeaderValue(
+        text = expiryChipLabel(expiresInDays),
         contentDescription = stringResource(
             R.string.pantry_card_expiry_soonest_desc,
             expiryChipDescription(expiresInDays),
         ),
+        iconRes = R.drawable.ic_expiring,
+        color = expiryAccent(expiryBucket(expiresInDays)),
         modifier = modifier,
     )
 }
@@ -619,26 +650,26 @@ private fun AddedByChip(addedBy: String?, modifier: Modifier = Modifier) {
 }
 
 /**
- * The header's total-quantity chip: how many are on hand across every lot, colored
- * by the product's stock severity. Read-only; the threshold it is judged against is
- * edited from a lot's [LotQuantityChip], and a tap here toggles the lots like the
- * rest of the header.
+ * The header's total-quantity value: how many are on hand across every lot, colored
+ * by the product's stock severity. Read-only; the tag icon stands in for the word
+ * "Total" and the spoken description still says it. The threshold it is judged against
+ * is edited from a lot's [LotQuantityChip].
  */
 @Composable
-private fun TotalQuantityChip(
+private fun TotalValue(
     totalQuantity: Int,
     lowStockThreshold: Int?,
     modifier: Modifier = Modifier,
 ) {
-    LabelChip(
-        label = stringResource(R.string.pantry_card_total_quantity, totalQuantity),
-        accentColor = stockAccent(stockLevel(totalQuantity, lowStockThreshold)),
-        iconRes = R.drawable.ic_add,
+    HeaderValue(
+        text = totalQuantity.toString(),
         contentDescription = pluralStringResource(
             R.plurals.pantry_card_total_quantity_desc,
             totalQuantity,
             totalQuantity,
         ),
+        iconRes = R.drawable.ic_tag,
+        color = stockAccent(stockLevel(totalQuantity, lowStockThreshold)),
         modifier = modifier,
     )
 }
