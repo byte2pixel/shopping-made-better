@@ -13,44 +13,65 @@ fun CreateRecipeScreen(
     modifier: Modifier = Modifier,
     viewModel: CreateRecipeViewModel = hiltViewModel()
 ) {
-    val title by viewModel.title.collectAsState()
-    val category by viewModel.category.collectAsState()
-    val ingredients by viewModel.ingredients.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+
+
+    LaunchedEffect(uiState.isSuccess) {
+        if (uiState.isSuccess) {
+            onNavigateBack()
+        }
+    }
 
     Column(
         modifier = modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         OutlinedTextField(
-            value = title,
-            onValueChange = viewModel::updateTitle,
+            value = uiState.title,
+            onValueChange = viewModel::onTitleChange,
             label = { Text("Recipe Title") },
             modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
-            value = category,
-            onValueChange = viewModel::updateCategory,
+            value = uiState.category,
+            onValueChange = viewModel::onCategoryChange,
             label = { Text("Category (e.g., Can Make)") },
             modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
-            value = ingredients,
-            onValueChange = viewModel::updateIngredients,
+            value = uiState.ingredients,
+            onValueChange = viewModel::onIngredientsChange,
             label = { Text("Ingredients (comma separated)") },
             modifier = Modifier.fillMaxWidth(),
             minLines = 3
         )
 
+
+        if (uiState.error != null) {
+            Text(
+                text = uiState.error!!,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = 4.dp)
+            )
+        }
+
         Button(
-            onClick = {
-                viewModel.saveRecipe()
-                onNavigateBack()
-            },
-            modifier = Modifier.fillMaxWidth()
+            onClick = viewModel::saveRecipe,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !uiState.isLoading
         ) {
-            Text("Save Recipe")
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("Save Recipe")
+            }
         }
     }
 }
