@@ -8,5 +8,6 @@ interface MealsRepository {
     suspend fun addMealToShoppingList(mealId: String, activeListId: String)
     suspend fun toggleFavoriteMeal(mealId: String, isFavorite: Boolean)
 
+    suspend fun saveCustomRecipe(mealDto: MealDto): Result<Unit>
     suspend fun saveCustomMeal(title: String, category: String, ingredients: String)
 }
