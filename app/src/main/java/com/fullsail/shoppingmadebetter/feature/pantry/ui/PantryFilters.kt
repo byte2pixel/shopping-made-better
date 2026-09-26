@@ -74,13 +74,27 @@ private fun <T> Set<PantryDashboardFilter>.orGroups(
         .values
 
 /**
- * Narrows [groups] to the product cards to show for the active dashboard [filters].
- * A surviving card keeps every one of its lots and its true aggregates — filtering
- * decides which products are listed, never what a listed product contains.
+ * Case-insensitive match of [query] against the product name or brand; a blank
+ * query matches everything. No minimum length: the list is in memory and one letter
+ * is a useful narrowing.
+ */
+internal fun ProductGroup.matchesSearch(query: String): Boolean {
+    val term = query.trim()
+    return term.isEmpty() ||
+        name.contains(term, ignoreCase = true) ||
+        brand.contains(term, ignoreCase = true)
+}
+
+/**
+ * Narrows [groups] to the product cards to show for the active dashboard [filters]
+ * and search [query], which AND together. A surviving card keeps every one of its
+ * lots and its true aggregates — filtering decides which products are listed, never
+ * what a listed product contains.
  *
- * See [matchesFilters] for how a group is matched.
+ * See [matchesFilters] and [matchesSearch] for how a group is matched.
  */
 internal fun applyPantryFilters(
     groups: List<ProductGroup>,
     filters: Set<PantryDashboardFilter>,
-): List<ProductGroup> = groups.filter { it.matchesFilters(filters) }
+    query: String = "",
+): List<ProductGroup> = groups.filter { it.matchesFilters(filters) && it.matchesSearch(query) }

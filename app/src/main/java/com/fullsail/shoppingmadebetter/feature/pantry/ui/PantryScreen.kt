@@ -44,19 +44,24 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.AddToShoppingListSheet
+import com.fullsail.shoppingmadebetter.core.ui.SearchField
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
-/** Persists the set of selected dashboard filters across configuration changes. */
 /** Stable key for the digest card, so it is not confused with a product row. */
 private const val DIGEST_KEY = "adjustment_digest"
 
+/** Stable key for the no-matches message. */
+private const val NO_MATCHES_KEY = "no_matches"
+
+/** Persists the set of selected dashboard filters across configuration changes. */
 private val filterSetSaver = listSaver<Set<PantryDashboardFilter>, String>(
     save = { selected -> selected.map { it.name } },
     restore = { names -> names.map { PantryDashboardFilter.valueOf(it) }.toSet() },
@@ -280,9 +285,10 @@ private fun PantryContent(
                 var selectedFilters by rememberSaveable(stateSaver = filterSetSaver) {
                     mutableStateOf(emptySet<PantryDashboardFilter>())
                 }
+                var searchQuery by rememberSaveable { mutableStateOf("") }
 
-                val visibleGroups = remember(uiState.productGroups, selectedFilters) {
-                    applyPantryFilters(uiState.productGroups, selectedFilters)
+                val visibleGroups = remember(uiState.productGroups, selectedFilters, searchQuery) {
+                    applyPantryFilters(uiState.productGroups, selectedFilters, searchQuery)
                 }
 
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -296,6 +302,15 @@ private fun PantryContent(
                                 selectedFilters + filter
                             }
                         },
+                    )
+                    SearchField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = stringResource(R.string.pantry_search_label),
+                        clearContentDescription = stringResource(R.string.pantry_search_clear),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                     HorizontalDivider()
                     LazyColumn(
@@ -314,6 +329,20 @@ private fun PantryContent(
                                     lotCount = digestLotCount,
                                     onReview = onReviewDigest,
                                     modifier = Modifier.animateItem(),
+                                )
+                            }
+                        }
+                        // Shown only when a search or filter emptied the list, not for an empty pantry.
+                        if (visibleGroups.isEmpty() && (searchQuery.isNotBlank() || selectedFilters.isNotEmpty())) {
+                            item(key = NO_MATCHES_KEY) {
+                                Text(
+                                    text = stringResource(R.string.pantry_search_no_matches),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 24.dp),
                                 )
                             }
                         }
