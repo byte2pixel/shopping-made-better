@@ -3,5 +3,6 @@ package com.fullsail.shoppingmadebetter.feature.onboarding.domain.savePreference
 data class SavePreferences(
     val dietaryRestrictions: List<String>,
     val topCategories: List<String>,
-    val primaryGoal: String
+    val primaryGoal: String,
+    val autoAdjustEnabled: Boolean,
 )
