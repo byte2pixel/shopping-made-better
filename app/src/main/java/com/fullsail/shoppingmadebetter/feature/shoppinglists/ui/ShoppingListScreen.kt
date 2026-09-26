@@ -44,6 +44,7 @@ fun ShoppingListsScreen(
     var showDeleteDialog by remember {mutableStateOf(false)}
     var showRenameDialog by remember {mutableStateOf(false)}
     var selectedList by remember {mutableStateOf<String?>(null)}
+    var sortType by remember {mutableStateOf(false)}
 
     if (showRenameDialog)
     {
@@ -122,11 +123,15 @@ fun ShoppingListsScreen(
                 Row(Modifier.fillMaxWidth())
                 {
                     IconButton(onClick = {
-                        viewModel.sortListsByCreated()
-                    }) { Icon(painterResource(id = R.drawable.ic_cake), contentDescription = "SortByCreated", Modifier.size(24.dp))}
-                    IconButton(onClick = {
-                        viewModel.sortListsByUpdated()
-                    }) { Icon(painterResource(id = R.drawable.ic_update), contentDescription = "SortByUpdated", Modifier.size(24.dp))}
+                        sortType = !sortType
+                        if(sortType)
+                        {
+                            viewModel.sortListsByCreated()
+                        }
+                        else{
+                            viewModel.sortListsByUpdated()
+                        }
+                    }) { Icon(painterResource(id = R.drawable.ic_filter_list), contentDescription = "Change Sort Type", Modifier.size(24.dp))}
 
                 }
 
@@ -229,8 +234,8 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
                         tripList.forEach {
                             if (it.sortOrder == trip.sortOrder - 1)
                             {
-                                viewModel.setSortOrder(SortOrder(it.shoppingListId,trip.sortOrder))
-                                viewModel.setSortOrder(SortOrder(trip.shoppingListId,it.sortOrder))
+                                viewModel.setSortOrder(SortOrder(trip.shoppingListId,trip.sortOrder,it.shoppingListId, it.sortOrder))
+
                             }
                         }
                     })
@@ -240,8 +245,7 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
                     IconButton(onClick = {tripList.forEach {
                         if (it.sortOrder == trip.sortOrder + 1)
                         {
-                            viewModel.setSortOrder(SortOrder(it.shoppingListId,trip.sortOrder))
-                            viewModel.setSortOrder(SortOrder(trip.shoppingListId,it.sortOrder))
+                            viewModel.setSortOrder(SortOrder(trip.shoppingListId,trip.sortOrder,it.shoppingListId, it.sortOrder))
                         }
                     }})
                     {

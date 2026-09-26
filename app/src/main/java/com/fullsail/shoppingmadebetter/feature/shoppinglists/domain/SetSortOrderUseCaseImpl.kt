@@ -9,7 +9,7 @@ class SetSortOrderUseCaseImpl @Inject constructor(
 ) : SetSortOrderUseCase {
     override suspend fun execute(input: SortOrder): SetSortOrderUseCase.Output {
         return try {
-            repository.setSortOrder(input.listId, input.newSortOrder)
+            repository.setSortOrder(input.listId, input.newSortOrder, input.listId2, input.newSortOrder2 )
             SetSortOrderUseCase.Output.Success
 
         } catch (e: Exception) {
