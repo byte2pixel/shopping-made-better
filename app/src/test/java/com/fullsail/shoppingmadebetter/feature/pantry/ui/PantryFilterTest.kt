@@ -435,6 +435,57 @@ class PantryFilterTest {
         assertEquals(listOf("pA"), applyPantryFilters(together, coldAndExpiring).ids())
     }
 
+    // --- Search ---
+
+    private val searchGroups = groupsOf(
+        listOf(
+            lot("milk", productId = "milk").copy(name = "2% Milk", brand = "Great Value"),
+            lot("yogurt", productId = "yogurt", location = PantryLocation.Fridge)
+                .copy(name = "Yogurt", brand = "Chobani"),
+            lot("beans", productId = "beans").copy(name = "Canned Beans", brand = "Goya"),
+        ),
+    )
+
+    @Test
+    fun `search matches on the product name`() {
+        assertEquals(listOf("milk"), applyPantryFilters(searchGroups, emptySet(), "Milk").ids())
+    }
+
+    @Test
+    fun `search matches on the brand`() {
+        assertEquals(listOf("yogurt"), applyPantryFilters(searchGroups, emptySet(), "Chobani").ids())
+    }
+
+    @Test
+    fun `search ignores case`() {
+        assertEquals(listOf("beans"), applyPantryFilters(searchGroups, emptySet(), "cANNED").ids())
+    }
+
+    @Test
+    fun `search trims surrounding whitespace`() {
+        assertEquals(listOf("yogurt"), applyPantryFilters(searchGroups, emptySet(), "  yog ").ids())
+    }
+
+    @Test
+    fun `a blank search matches every card`() {
+        assertEquals(searchGroups, applyPantryFilters(searchGroups, emptySet(), "   "))
+        assertTrue(searchGroups.all { it.matchesSearch("") })
+    }
+
+    @Test
+    fun `a search with no match empties the list`() {
+        assertTrue(applyPantryFilters(searchGroups, emptySet(), "zzz").isEmpty())
+    }
+
+    @Test
+    fun `search ANDs with the dashboard filters`() {
+        // The beans and the yogurt both match "an"; only the yogurt is in the fridge.
+        val fridge = setOf(PantryDashboardFilter.Fridge)
+        assertEquals(listOf("yogurt", "beans"), applyPantryFilters(searchGroups, emptySet(), "an").ids())
+        assertEquals(listOf("yogurt"), applyPantryFilters(searchGroups, fridge, "an").ids())
+        assertTrue(applyPantryFilters(searchGroups, fridge, "milk").isEmpty())
+    }
+
     @Test
     fun `product-level stock ANDs against a lot-level location`() {
         // Both products are low overall (two on hand against a threshold of three);

@@ -22,9 +22,7 @@ import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -53,6 +51,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fullsail.shoppingmadebetter.R
+import com.fullsail.shoppingmadebetter.core.ui.SearchField
 import com.fullsail.shoppingmadebetter.feature.history.domain.HistoryDatePreset
 import com.fullsail.shoppingmadebetter.feature.history.domain.HistoryFilter
 import com.fullsail.shoppingmadebetter.feature.history.domain.activeCount
@@ -136,25 +135,14 @@ internal fun HistoryFilterPanel(
 
         AnimatedVisibility(visible = expanded) {
             Column {
-                OutlinedTextField(
+                SearchField(
                     value = searchInput,
                     onValueChange = onSearchChange,
+                    label = stringResource(R.string.history_search_label),
+                    clearContentDescription = stringResource(R.string.history_search_clear),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    label = { Text(text = stringResource(R.string.history_search_label)) },
-                    singleLine = true,
-                    trailingIcon = {
-                        // Only worth offering once there is something to clear.
-                        if (searchInput.isNotEmpty()) {
-                            IconButton(onClick = { onSearchChange("") }) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_close),
-                                    contentDescription = stringResource(R.string.history_search_clear),
-                                )
-                            }
-                        }
-                    },
                 )
 
                 if (stores.isNotEmpty()) {

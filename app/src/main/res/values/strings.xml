@@ -163,6 +163,11 @@
     <string name="pantry_card_lot_details">View product details</string>
     <string name="pantry_card_remove_lot">Remove this lot</string>
 
+    <!-- Pantry search (client-side, over product name and brand) -->
+    <string name="pantry_search_label">Search your pantry</string>
+    <string name="pantry_search_clear">Clear search</string>
+    <string name="pantry_search_no_matches">No pantry items match</string>
+
     <!-- Pantry inventory card chip indicators - location -->
     <string name="pantry_card_location_desc">Stored in %1$s</string>
 

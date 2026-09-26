@@ -983,6 +983,82 @@ class PantryScreenTest {
         composeTestRule.onAllNodesWithText("Sourdough").assertCountEquals(1)
     }
 
+    // --- Search ---
+
+    private fun searchField() =
+        composeTestRule.onNodeWithText(string(R.string.pantry_search_label))
+
+    @Test
+    fun typingASearchKeepsOnlyTheMatchingProducts() {
+        setScreen(
+            inventory = FakeGetInventoryUseCase(inventoryOf(milk, expiringYogurt, cannedBeans))
+        )
+        composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
+
+        searchField().performTextInput("milk")
+
+        composeTestRule.onNodeWithText("2% Milk").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Yogurt").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Canned Beans").assertDoesNotExist()
+    }
+
+    @Test
+    fun clearingTheSearchBringsEveryProductBack() {
+        setScreen(
+            inventory = FakeGetInventoryUseCase(inventoryOf(milk, expiringYogurt, cannedBeans))
+        )
+        val clear = string(R.string.pantry_search_clear)
+        composeTestRule.onNodeWithContentDescription(clear).assertDoesNotExist()
+
+        searchField().performTextInput("milk")
+        composeTestRule.onNodeWithText("Yogurt").assertDoesNotExist()
+
+        composeTestRule.onNodeWithContentDescription(clear).performClick()
+
+        composeTestRule.onNodeWithText("2% Milk").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Canned Beans").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(clear).assertDoesNotExist()
+    }
+
+    @Test
+    fun aSearchWithNoMatchSaysSo() {
+        setScreen(inventory = FakeGetInventoryUseCase(inventoryOf(milk, expiringYogurt)))
+        val noMatches = string(R.string.pantry_search_no_matches)
+        composeTestRule.onNodeWithText(noMatches).assertDoesNotExist()
+
+        searchField().performTextInput("zzz")
+
+        composeTestRule.onNodeWithText(noMatches).assertIsDisplayed()
+        composeTestRule.onNodeWithText("2% Milk").assertDoesNotExist()
+    }
+
+    @Test
+    fun aSearchNarrowsWithinTheDashboardFilter() {
+        val expiringMilk = milk.copy(expiresInDays = 1)
+        setScreen(
+            inventory = FakeGetInventoryUseCase(
+                inventoryOf(expiringMilk, expiringYogurt, cannedBeans)
+            )
+        )
+
+        // The filter drops the undated beans and counts the two expiring products.
+        composeTestRule
+            .onNodeWithContentDescription(cardDescription(PantryDashboardFilter.Expiring, count = 2))
+            .performClick()
+        composeTestRule.onNodeWithText("2% Milk").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Canned Beans").assertDoesNotExist()
+
+        // The search narrows what the filter left; the card's count ignores the search.
+        searchField().performTextInput("yog")
+        composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
+        composeTestRule.onNodeWithText("2% Milk").assertDoesNotExist()
+        composeTestRule
+            .onNodeWithContentDescription(cardDescription(PantryDashboardFilter.Expiring, count = 2))
+            .assertIsDisplayed()
+    }
+
     // --- Zero-stock gate ---
 
     private val emptyMilk = milk.copy(
