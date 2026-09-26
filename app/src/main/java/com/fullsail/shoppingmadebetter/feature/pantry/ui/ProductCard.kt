@@ -16,6 +16,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -157,9 +158,10 @@ private fun <T> expandSpring() = spring<T>(
  * product — total quantity, soonest expiry, shared (or "Mixed") location — and
  * tapping it expands the card to one row per lot for per-lot editing.
  *
- * Per-product actions (add to list, the low-stock threshold behind the total
- * quantity chip) live in the header; quantity/expiry/location edits and removal
- * act on a single lot from its row.
+ * Add to list lives in the header; every edit (quantity, the product's low-stock
+ * threshold, expiry, location) and removal acts from a lot row. The header's
+ * aggregate chips are read-only and a tap on them toggles the lots like the rest
+ * of the header.
  *
  * @param isExpanded whether the lot rows are showing; hoisted so the caller owns it.
  * @param onExpandedChange requests the new expanded state after a header tap.
@@ -199,7 +201,6 @@ fun ProductCard(
                 isExpanded = isExpanded,
                 onToggleExpanded = { onExpandedChange(!isExpanded) },
                 onAddToList = onAddToList,
-                onLowStockThresholdChange = onLowStockThresholdChange,
             )
             // Expand with a light spring settle; collapse critically damped — a height
             // bounce reads as broken while content is being clipped away.
@@ -219,9 +220,11 @@ fun ProductCard(
                     group.lots.forEach { lot ->
                         LotRow(
                             lot = lot,
+                            lowStockThreshold = group.lowStockThreshold,
                             onClick = { onLotClick(lot) },
                             onRemove = { onRemoveLot(lot) },
                             onQuantityChange = { newQuantity -> onQuantityChange(lot, newQuantity) },
+                            onLowStockThresholdChange = onLowStockThresholdChange,
                             onLocationChange = { newLocation -> onLocationChange(lot, newLocation) },
                             onExpiryChange = { newDays -> onExpiryChange(lot, newDays) },
                             onConfirmEstimate = { onConfirmEstimate(lot) },
@@ -238,8 +241,8 @@ fun ProductCard(
 /**
  * The always-visible top of a [ProductCard]: product image and details, the
  * add-to-list action, a rotating chevron, and the aggregate indicator chips.
- * Tapping anywhere on it (outside the buttons and the quantity chip) toggles
- * the lot rows via [onToggleExpanded].
+ * Tapping anywhere on it outside the add-to-list button, the chips included,
+ * toggles the lot rows via [onToggleExpanded].
  */
 @Composable
 private fun ProductCardHeader(
@@ -247,7 +250,6 @@ private fun ProductCardHeader(
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
     onAddToList: () -> Unit,
-    onLowStockThresholdChange: (Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val toggleLabel = stringResource(
@@ -306,7 +308,6 @@ private fun ProductCardHeader(
             TotalQuantityChip(
                 totalQuantity = group.totalQuantity,
                 lowStockThreshold = group.lowStockThreshold,
-                onLowStockThresholdChange = onLowStockThresholdChange,
             )
             HeaderLocationChip(group = group)
             group.earliestExpiresInDays?.let { days -> HeaderExpiryChip(expiresInDays = days) }
@@ -324,9 +325,11 @@ private fun ProductCardHeader(
 @Composable
 private fun LotRow(
     lot: InventoryItem,
+    lowStockThreshold: Int?,
     onClick: () -> Unit,
     onRemove: () -> Unit,
     onQuantityChange: (Int) -> Unit,
+    onLowStockThresholdChange: (Int?) -> Unit,
     onLocationChange: (PantryLocation) -> Unit,
     onExpiryChange: (Int) -> Unit,
     onConfirmEstimate: () -> Unit,
@@ -354,7 +357,12 @@ private fun LotRow(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 itemVerticalAlignment = Alignment.CenterVertically,
             ) {
-                LotQuantityChip(quantity = lot.quantity, onQuantityChange = onQuantityChange)
+                LotQuantityChip(
+                    quantity = lot.quantity,
+                    lowStockThreshold = lowStockThreshold,
+                    onQuantityChange = onQuantityChange,
+                    onLowStockThresholdChange = onLowStockThresholdChange,
+                )
                 if (lot.estimated) {
                     EstimateChip(
                         estimateSource = lot.estimateSource,
@@ -612,67 +620,35 @@ private fun AddedByChip(addedBy: String?, modifier: Modifier = Modifier) {
 
 /**
  * The header's total-quantity chip: how many are on hand across every lot, colored
- * by the product's stock severity. Tapping it opens an anchored popup with the
- * product's low-stock threshold stepper — the one per-product setting — committed
- * via [onLowStockThresholdChange] when the popup closes (only when changed).
+ * by the product's stock severity. Read-only; the threshold it is judged against is
+ * edited from a lot's [LotQuantityChip], and a tap here toggles the lots like the
+ * rest of the header.
  */
 @Composable
 private fun TotalQuantityChip(
     totalQuantity: Int,
     lowStockThreshold: Int?,
-    onLowStockThresholdChange: (Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    var thresholdDraft by remember { mutableStateOf(lowStockThreshold) }
-
-    Box(modifier = modifier) {
-        LabelChip(
-            label = stringResource(R.string.pantry_card_total_quantity, totalQuantity),
-            accentColor = stockAccent(stockLevel(totalQuantity, lowStockThreshold)),
-            iconRes = R.drawable.ic_add,
-            contentDescription = pluralStringResource(
-                R.plurals.pantry_card_total_quantity_desc,
-                totalQuantity,
-                totalQuantity,
-            ),
-            onClick = {
-                thresholdDraft = lowStockThreshold
-                expanded = true
-            },
-        )
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = {
-                expanded = false
-                onLowStockThresholdChange(thresholdDraft)
-            },
-            shape = MaterialTheme.shapes.medium,
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.pantry_low_stock_label),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                LowStockThresholdStepper(
-                    threshold = thresholdDraft,
-                    onThresholdChange = { thresholdDraft = it },
-                )
-            }
-        }
-    }
+    LabelChip(
+        label = stringResource(R.string.pantry_card_total_quantity, totalQuantity),
+        accentColor = stockAccent(stockLevel(totalQuantity, lowStockThreshold)),
+        iconRes = R.drawable.ic_add,
+        contentDescription = pluralStringResource(
+            R.plurals.pantry_card_total_quantity_desc,
+            totalQuantity,
+            totalQuantity,
+        ),
+        modifier = modifier,
+    )
 }
 
 /**
  * A lot row's quantity chip. Tapping it opens an anchored popup with a quantity
- * [Stepper]; the new value is committed via [onQuantityChange] when the popup
- * closes, and only when actually changed. Quantity floors at 0 — that's "out of
- * stock", and an empty lot is the one severity this chip shows.
+ * [Stepper] and, under it, the product's low-stock threshold stepper. Each value is
+ * committed when the popup closes, via [onQuantityChange] and
+ * [onLowStockThresholdChange], and only when actually changed. Quantity floors at 0 —
+ * that's "out of stock", and an empty lot is the one severity this chip shows.
  * Running low is a property of the product, not of one lot — the threshold is
  * per-product and the quantity that answers it is the total across every lot — so it
  * is colored once, on the header's [TotalQuantityChip], and never here.
@@ -680,11 +656,14 @@ private fun TotalQuantityChip(
 @Composable
 private fun LotQuantityChip(
     quantity: Int,
+    lowStockThreshold: Int?,
     onQuantityChange: (Int) -> Unit,
+    onLowStockThresholdChange: (Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var draft by remember { mutableIntStateOf(quantity) }
+    var thresholdDraft by remember { mutableStateOf(lowStockThreshold) }
 
     Box(modifier = modifier) {
         LabelChip(
@@ -698,6 +677,7 @@ private fun LotQuantityChip(
             ),
             onClick = {
                 draft = quantity
+                thresholdDraft = lowStockThreshold
                 expanded = true
             },
         )
@@ -709,15 +689,26 @@ private fun LotQuantityChip(
             onDismissRequest = {
                 expanded = false
                 onQuantityChange(draft)
+                onLowStockThresholdChange(thresholdDraft)
             },
-        )
+        ) {
+            Text(
+                text = stringResource(R.string.pantry_low_stock_label),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            LowStockThresholdStepper(
+                threshold = thresholdDraft,
+                onThresholdChange = { thresholdDraft = it },
+            )
+        }
     }
 }
 
 /**
  * The anchored quantity-stepper popup shared by [LotQuantityChip], [EstimateConfirmRow]'s
  * Fix action and the digest row's. The caller owns the draft and decides what to commit on
- * [onDismissRequest].
+ * [onDismissRequest]; [extraContent] goes under the stepper in the same column.
  */
 @Composable
 internal fun QuantityStepperPopup(
@@ -726,6 +717,7 @@ internal fun QuantityStepperPopup(
     draft: Int,
     onDraftChange: (Int) -> Unit,
     onDismissRequest: () -> Unit,
+    extraContent: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     DropdownMenu(
         expanded = expanded,
@@ -750,6 +742,7 @@ internal fun QuantityStepperPopup(
                 incrementContentDescription = stringResource(R.string.pantry_quantity_increase),
                 decrementEnabled = draft > MIN_QUANTITY,
             )
+            extraContent?.invoke(this)
         }
     }
 }
