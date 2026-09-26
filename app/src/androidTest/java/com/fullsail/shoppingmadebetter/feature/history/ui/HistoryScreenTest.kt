@@ -21,7 +21,9 @@ import androidx.lifecycle.SavedStateHandle
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.history.domain.GetPurchaseHistoryUseCase
 import com.fullsail.shoppingmadebetter.feature.history.domain.GetSpendSummaryUseCase
+import com.fullsail.shoppingmadebetter.feature.history.domain.MonthlySpend
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTripSummary
+import com.fullsail.shoppingmadebetter.feature.history.domain.SpendSummary
 import com.fullsail.shoppingmadebetter.feature.stores.domain.GetStoresUseCase
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 import kotlinx.coroutines.CompletableDeferred
@@ -69,14 +71,19 @@ class HistoryScreenTest {
     }
 
     /**
-     * Fails by default, which leaves the insights section absent. A first-load failure
-     * raises no warning, so it cannot interfere with the assertions below.
+     * Fails by default, which leaves the insights slot empty. A first-load failure
+     * raises no warning, so it cannot interfere with the assertions below. [gate], when
+     * set, holds the answer back so a test can land the summary after the trips.
      */
     private class FakeGetSpendSummaryUseCase(
         var output: GetSpendSummaryUseCase.Output =
             GetSpendSummaryUseCase.Output.Failure(IOException("not under test")),
+        var gate: CompletableDeferred<Unit>? = null,
     ) : GetSpendSummaryUseCase {
-        override suspend fun execute(input: GetSpendSummaryUseCase.Input) = output
+        override suspend fun execute(input: GetSpendSummaryUseCase.Input): GetSpendSummaryUseCase.Output {
+            gate?.await()
+            return output
+        }
     }
 
     private val fixedClock = object : Clock {
@@ -91,6 +98,13 @@ class HistoryScreenTest {
         recordedTotal = 42.32,
         lineTotal = 42.32,
         itemCount = 4,
+    )
+
+    private val augustSummary = SpendSummary(
+        thisMonth = MonthlySpend(LocalDate(2026, 8, 1), total = 100.0, tripCount = 3),
+        lastMonth = null,
+        byStore = emptyList(),
+        cheapest = null,
     )
 
     private var clickedTripId: String? = null
@@ -229,6 +243,32 @@ class HistoryScreenTest {
         composeTestRule.onNodeWithContentDescription(boughtBy).performClick()
 
         composeTestRule.onNodeWithText(boughtBy).assertIsDisplayed()
+    }
+
+    @Test
+    fun theInsightsStayOnScreenWhenTheyArriveAfterTheTrips() {
+        // Enough trips to overflow the viewport: a list that fits cannot scroll past the
+        // cards, so the bug only shows once the list is scrollable.
+        val trips = List(30) { aldiTrip.copy(id = "trip-$it", storeName = "Store $it") }
+        val gate = CompletableDeferred<Unit>()
+        setScreen(
+            history = FakeGetPurchaseHistoryUseCase(
+                GetPurchaseHistoryUseCase.Output.Success(trips, endReached = true),
+            ),
+            spend = FakeGetSpendSummaryUseCase(
+                GetSpendSummaryUseCase.Output.Success(augustSummary),
+                gate = gate,
+            ),
+        )
+        awaitText("Store 0")
+
+        gate.complete(Unit)
+
+        // The list anchored on the insights slot, not the first trip, so the cards land
+        // in view; without the slot they sit above the viewport and are not displayed.
+        awaitText(string(R.string.history_insights_this_month))
+        composeTestRule.onNodeWithText(string(R.string.history_insights_this_month)).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Store 0").assertIsDisplayed()
     }
 
     @Test

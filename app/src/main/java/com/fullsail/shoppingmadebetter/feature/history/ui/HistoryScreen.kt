@@ -3,6 +3,7 @@ package com.fullsail.shoppingmadebetter.feature.history.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -209,9 +210,14 @@ private fun HistoryList(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        if (spendSummary != null) {
-            item(key = INSIGHTS_KEY) {
+        // The slot is always present so the list anchors on it from the first frame;
+        // the summary lands after the first trip page, and inserting it then would
+        // leave the cards above the viewport.
+        item(key = INSIGHTS_KEY) {
+            if (spendSummary != null) {
                 SpendInsightsSection(summary = spendSummary, modifier = Modifier.animateItem())
+            } else {
+                Spacer(Modifier.fillMaxWidth())
             }
         }
 
