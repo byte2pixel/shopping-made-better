@@ -18,6 +18,7 @@ private data class DbMeal(
 )
 
 class MealsRepositoryImpl @Inject constructor(
+    private val customRecipeDataSource: CustomRecipeSupabaseDataSource,
     private val supabaseClient: SupabaseClient,
     private val pantryRepository: PantryRepository,
     private val recipeApiDataSource: RecipeApiDataSource
@@ -171,5 +172,9 @@ class MealsRepositoryImpl @Inject constructor(
     override suspend fun saveCustomMeal(title: String, category: String, ingredients: String) {
         val newMealId = UUID.randomUUID().toString()
         println("Simulating DB Save -> ID: $newMealId, Title: $title, Category: $category, Ingredients: $ingredients")
+    }
+
+    override suspend fun saveCustomRecipe(mealDto: MealDto): Result<Unit> {
+        return customRecipeDataSource.saveRecipe(mealDto)
     }
 }
