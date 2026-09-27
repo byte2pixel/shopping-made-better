@@ -107,13 +107,19 @@ fun ShoppingListItemComparisonScreen(
                     }
 
                       else  {
+                          Column() {
+                        Row()
+                        {
+                            IconButton( onClick = {}) { Icon(painterResource(id = R.drawable.ic_filter_list), contentDescription = "Sort Type", Modifier.size(24.dp))}
 
+                        }
             LazyColumn(
                 Modifier
                     .fillMaxSize()
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+
                 items(state.price.filter { it.productTitle == selectedProduct }.sortedBy { it.price }, key = {it.productId + it.storeId }) {
                     if ((ActivityCompat.checkSelfPermission(
                             LocalContext.current,
@@ -133,7 +139,7 @@ fun ShoppingListItemComparisonScreen(
                     }
                     ItemCard(it, viewModel, onItemComparison) }
             }
-
+            }
               }
 
                 else -> {}
