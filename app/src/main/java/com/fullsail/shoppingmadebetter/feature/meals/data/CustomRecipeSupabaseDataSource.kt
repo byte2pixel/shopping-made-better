@@ -37,4 +37,39 @@ class CustomRecipeSupabaseDataSource @Inject constructor(
             }
         }
     }
+
+    suspend fun deleteCustomRecipe(mealId: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                supabaseClient.postgrest["meals"].delete {
+                    filter {
+                        eq("id", mealId)
+                    }
+                }
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun updateCustomRecipe(mealId: String, title: String, category: String, ingredients: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                supabaseClient.postgrest["meals"].update(
+                    {
+                        set("name", title)
+                        set("description", "Custom Recipe: $category")
+                    }
+                ) {
+                    filter {
+                        eq("id", mealId)
+                    }
+                }
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
 }

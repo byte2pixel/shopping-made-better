@@ -177,4 +177,12 @@ class MealsRepositoryImpl @Inject constructor(
     override suspend fun saveCustomRecipe(mealDto: MealDto): Result<Unit> {
         return customRecipeDataSource.saveRecipe(mealDto)
     }
+
+    override suspend fun deleteCustomRecipe(mealId: String): Result<Unit> {
+        return customRecipeDataSource.deleteCustomRecipe(mealId)
+    }
+
+    override suspend fun updateCustomRecipe(mealId: String, title: String, category: String, ingredients: String): Result<Unit> {
+        return customRecipeDataSource.updateCustomRecipe(mealId, title, category, ingredients)
+    }
 }

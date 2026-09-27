@@ -1,8 +1,10 @@
 package com.fullsail.shoppingmadebetter.feature.meals.ui
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.feature.meals.domain.SaveCustomRecipeUseCase
+import com.fullsail.shoppingmadebetter.feature.meals.domain.UpdateCustomRecipeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,8 +24,13 @@ data class CreateRecipeUiState(
 
 @HiltViewModel
 class CreateRecipeViewModel @Inject constructor(
-    private val saveCustomRecipeUseCase: SaveCustomRecipeUseCase
+    private val saveCustomRecipeUseCase: SaveCustomRecipeUseCase,
+    private val updateCustomRecipeUseCase: UpdateCustomRecipeUseCase,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    private val mealId: String? = savedStateHandle.get<String>("mealId")
+    val isEditMode: Boolean = mealId != null
 
     private val _uiState = MutableStateFlow(CreateRecipeUiState())
     val uiState: StateFlow<CreateRecipeUiState> = _uiState.asStateFlow()
@@ -40,15 +47,24 @@ class CreateRecipeViewModel @Inject constructor(
         _uiState.update { it.copy(ingredients = newIngredients, error = null) }
     }
 
-    fun saveRecipe() {
+    fun saveOrUpdateRecipe() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            val result = saveCustomRecipeUseCase(
-                title = _uiState.value.title,
-                category = _uiState.value.category,
-                ingredients = _uiState.value.ingredients
-            )
+            val result = if (isEditMode && mealId != null) {
+                updateCustomRecipeUseCase(
+                    mealId = mealId,
+                    title = _uiState.value.title,
+                    category = _uiState.value.category,
+                    ingredients = _uiState.value.ingredients
+                )
+            } else {
+                saveCustomRecipeUseCase(
+                    title = _uiState.value.title,
+                    category = _uiState.value.category,
+                    ingredients = _uiState.value.ingredients
+                )
+            }
 
             result.fold(
                 onSuccess = {

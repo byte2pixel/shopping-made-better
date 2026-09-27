@@ -400,30 +400,3 @@ private fun MealRecipeCard(
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun MealsScreenPreview() {
-    ShoppingMadeBetterTheme {
-        MealsContent(
-            uiState = MealsUiState.Success(
-                meals = listOf(
-                    Meal("1", "Chicken Alfredo", 95, 4, "$34.19", "Recommended"),
-                    Meal("2", "Veggie Stir Fry", 88, 3, "$12.50", "Can Make"),
-                    Meal("3", "Tomato Soup", 80, 2, "$8.99", "Expiring")
-                ),
-                selectedFilter = "All",
-                searchQuery = "",
-                canMakeCount = 12,
-                almostThereCount = 3,
-                expiringCount = 5,
-                recommendedCount = 5
-            ),
-            onSearchQueryChanged = {},
-            onFilterSelected = {},
-            onSelectMeal = { _ -> },
-            onQuickAddIngredient = { _, _ -> },
-            onAddMealToList = {},
-            onRetry = {}
-        )
-    }
-}
