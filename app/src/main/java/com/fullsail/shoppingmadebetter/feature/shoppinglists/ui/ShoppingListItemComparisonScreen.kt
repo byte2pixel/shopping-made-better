@@ -372,33 +372,78 @@ fun ShoppingListItemComparisonScreen(
                 }
                 else if(textFieldState.text == "")
                 {
-                    viewModel.itemInformation.collectAsState().value.forEach { result ->
-                        ListItem(
-                            headlineContent = { Text(result.name)
-                            },
-                            trailingContent = {
-                                IconButton(onClick = {
-                                    onInfoScreen(Dest.InformationScreen(result.productId))
-                                })
-                                {
-                                    Icon(
-                                        painterResource(id = R.drawable.ic_info),
-                                        contentDescription = "information",
-                                        Modifier.size(24.dp)
-                                    )
-                                }
-                            },
-                            modifier =Modifier
-                                .clickable {
-                                    textFieldState.edit { replace(0, length, result.name) }
-                                    expanded = false
-                                    onSearch(textFieldState.text.toString())
+                    Text("Out of Stock")
+                    Column()
+                    {
+                        viewModel.itemInformation.collectAsState().value.forEach { result ->
+                            if (result.totalQuantity != 0)
+                            {
+                                return@forEach
+                            }
+                            ListItem(
+                                headlineContent = { Text(result.name)
+                                },
+                                trailingContent = {
+                                    IconButton(onClick = {
+                                        onInfoScreen(Dest.InformationScreen(result.productId))
+                                    })
+                                    {
+                                        Icon(
+                                            painterResource(id = R.drawable.ic_info),
+                                            contentDescription = "information",
+                                            Modifier.size(24.dp)
+                                        )
+                                    }
+                                },
+                                modifier =Modifier
+                                    .clickable {
+                                        textFieldState.edit { replace(0, length, result.name) }
+                                        expanded = false
+                                        onSearch(textFieldState.text.toString())
 
-                                }
-                                .fillMaxWidth()
-                        )
+                                    }
+                                    .fillMaxWidth()
+                            )
 
+                        }
                     }
+                    Text("Expiring Soon")
+                    Column()
+                    {
+                        viewModel.itemInformation.collectAsState().value.forEach { result ->
+                            if (result.earliestExpiresInDays != 0)
+                            {
+                                return@forEach
+                            }
+                            ListItem(
+                                headlineContent = { Text(result.name)
+                                },
+                                trailingContent = {
+                                    IconButton(onClick = {
+                                        onInfoScreen(Dest.InformationScreen(result.productId))
+                                    })
+                                    {
+                                        Icon(
+                                            painterResource(id = R.drawable.ic_info),
+                                            contentDescription = "information",
+                                            Modifier.size(24.dp)
+                                        )
+                                    }
+                                },
+                                modifier =Modifier
+                                    .clickable {
+                                        textFieldState.edit { replace(0, length, result.name) }
+                                        expanded = false
+                                        onSearch(textFieldState.text.toString())
+
+                                    }
+                                    .fillMaxWidth()
+                            )
+
+                        }
+                    }
+
+
                 }
                 else {
 

@@ -71,7 +71,7 @@ class ItemComparisonViewmodel @Inject constructor(
             when (val out = getInventoryUseCase.execute(Unit))
             {
                 is GetInventoryUseCase.Output.Success ->{
-                    _itemInformation.value = out.productGroups.filter { it.totalQuantity== 0 }
+                    _itemInformation.value = out.productGroups.filter { it.totalQuantity== 0 || it.earliestExpiresInDays == 0 }
                 }
                 is GetInventoryUseCase.Output.Failure ->
                     ItemComparisonUIState.Error

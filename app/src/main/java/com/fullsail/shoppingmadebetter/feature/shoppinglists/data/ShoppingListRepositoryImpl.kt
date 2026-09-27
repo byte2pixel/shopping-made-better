@@ -178,14 +178,13 @@ class ShoppingListRepositoryImpl @Inject constructor(
         postgrest.rpc("sortlistbyupdatedat")
     }
 
-    override suspend fun setSortOrder(list1: String, sortOrder: Int) {
-        postgrest.from("shopping_lists").update(
-            {
-                set("sort_order", sortOrder)
-            }
-        ) {
-            filter { eq("id", list1) }
-        }
+    override suspend fun setSortOrder(list1: String, sortOrder: Int, list2: String, sortOrder2 : Int) {
+        postgrest.rpc("swap_list_order_rpc", buildJsonObject {
+            put("list_id_1", list1)
+            put("sort_order_1", sortOrder)
+            put("list_id_2", list2)
+            put("sort_order_2", sortOrder2)
+        } )
     }
 
     override suspend fun getStoreAddress(id: String): StoreAddressInformationDto {
