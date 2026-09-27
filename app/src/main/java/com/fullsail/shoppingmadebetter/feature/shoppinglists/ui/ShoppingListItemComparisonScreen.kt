@@ -76,6 +76,7 @@ fun ShoppingListItemComparisonScreen(
 ) {
 
     var selectedProduct by rememberSaveable {mutableStateOf<String?>(null)}
+    var bAscending by remember { mutableStateOf(false)}
     val uiState by viewModel.uiState.collectAsState()
     val getPermissions = rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestMultiplePermissions())
     {}
@@ -110,7 +111,9 @@ fun ShoppingListItemComparisonScreen(
                           Column() {
                         Row()
                         {
-                            IconButton( onClick = {}) { Icon(painterResource(id = R.drawable.ic_filter_list), contentDescription = "Sort Type", Modifier.size(24.dp))}
+                            IconButton( onClick = {
+                                bAscending = !bAscending
+                            }) { Icon(painterResource(id = R.drawable.ic_filter_list), contentDescription = "Sort Type", Modifier.size(24.dp))}
 
                         }
             LazyColumn(
@@ -119,25 +122,52 @@ fun ShoppingListItemComparisonScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                if (bAscending) {
 
-                items(state.price.filter { it.productTitle == selectedProduct }.sortedBy { it.price }, key = {it.productId + it.storeId }) {
-                    if ((ActivityCompat.checkSelfPermission(
-                            LocalContext.current,
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                        ) != PackageManager.PERMISSION_GRANTED) || (ActivityCompat.checkSelfPermission(
-                            LocalContext.current,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                        ) != PackageManager.PERMISSION_GRANTED)
-                    ) {
-                        LaunchedEffect(Unit) {
-                            getPermissions.launch(
-                                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION)
-                            )
+
+                    items(state.price.filter { it.productTitle == selectedProduct }
+                        .sortedBy { it.price }, key = { it.productId + it.storeId }) {
+                        if ((ActivityCompat.checkSelfPermission(
+                                LocalContext.current,
+                                Manifest.permission.ACCESS_FINE_LOCATION
+                            ) != PackageManager.PERMISSION_GRANTED) || (ActivityCompat.checkSelfPermission(
+                                LocalContext.current,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            ) != PackageManager.PERMISSION_GRANTED)
+                        ) {
+                            LaunchedEffect(Unit) {
+                                getPermissions.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
+                            }
+
                         }
-
+                        ItemCard(it, viewModel, onItemComparison)
                     }
-                    ItemCard(it, viewModel, onItemComparison) }
+                }
+                else {
+                    items(state.price.filter { it.productTitle == selectedProduct }.sortedByDescending { it.price }, key = {it.productId + it.storeId }) {
+                        if ((ActivityCompat.checkSelfPermission(
+                                LocalContext.current,
+                                Manifest.permission.ACCESS_FINE_LOCATION
+                            ) != PackageManager.PERMISSION_GRANTED) || (ActivityCompat.checkSelfPermission(
+                                LocalContext.current,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            ) != PackageManager.PERMISSION_GRANTED)
+                        ) {
+                            LaunchedEffect(Unit) {
+                                getPermissions.launch(
+                                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION)
+                                )
+                            }
+
+                        }
+                        ItemCard(it, viewModel, onItemComparison) }
+                }
             }
             }
               }
