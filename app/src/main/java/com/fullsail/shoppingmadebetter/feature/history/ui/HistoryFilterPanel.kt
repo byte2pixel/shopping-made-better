@@ -5,16 +5,15 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.TextAutoSize
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Badge
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
@@ -22,6 +21,7 @@ import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -48,6 +49,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fullsail.shoppingmadebetter.R
@@ -96,7 +98,7 @@ import kotlinx.datetime.LocalDate
  * @param onSelectPreset invoked when a date preset chip is tapped, including the
  *   already-selected one — clearing is the caller's rule.
  * @param onCustomRange invoked with the range confirmed in the picker.
- * @param onClearFilters invoked when the Clear chip is tapped.
+ * @param onClearFilters invoked when the header's Clear button is tapped.
  */
 @Composable
 internal fun HistoryFilterPanel(
@@ -131,6 +133,7 @@ internal fun HistoryFilterPanel(
             summary = if (expanded) null else filterSummary(filter, stores, selectedPreset),
             expanded = expanded,
             onToggle = { onExpandedChange(!expanded) },
+            onClear = onClearFilters.takeIf { filter.isActive },
         )
 
         AnimatedVisibility(visible = expanded) {
@@ -147,7 +150,7 @@ internal fun HistoryFilterPanel(
 
                 if (stores.isNotEmpty()) {
                     ChipRow {
-                        items(stores, key = { it.id }) { store ->
+                        stores.forEach { store ->
                             val isSelected = store.id in filter.storeIds
                             FilterChoiceChip(
                                 label = store.name,
@@ -167,7 +170,7 @@ internal fun HistoryFilterPanel(
                 }
 
                 ChipRow {
-                    items(HistoryDatePreset.entries, key = { it.name }) { preset ->
+                    HistoryDatePreset.entries.forEach { preset ->
                         DateChip(
                             label = stringResource(preset.labelRes()),
                             isSelected = preset == selectedPreset,
@@ -175,25 +178,14 @@ internal fun HistoryFilterPanel(
                         )
                     }
 
-                    item(key = CUSTOM_CHIP_KEY) {
-                        // Only a hand-picked range belongs to this chip. A preset's
-                        // dates are shown by the preset's own chip.
-                        val isCustom = filter.hasCustomRange(selectedPreset)
-                        DateChip(
-                            label = customRangeLabel(filter.takeIf { isCustom }),
-                            isSelected = isCustom,
-                            onClick = { showRangePicker = true },
-                        )
-                    }
-
-                    if (filter.isActive) {
-                        item(key = CLEAR_CHIP_KEY) {
-                            AssistChip(
-                                onClick = onClearFilters,
-                                label = { Text(text = stringResource(R.string.history_filter_clear)) },
-                            )
-                        }
-                    }
+                    // Only a hand-picked range belongs to this chip. A preset's
+                    // dates are shown by the preset's own chip.
+                    val isCustom = filter.hasCustomRange(selectedPreset)
+                    DateChip(
+                        label = customRangeLabel(filter.takeIf { isCustom }),
+                        isSelected = isCustom,
+                        onClick = { showRangePicker = true },
+                    )
                 }
             }
         }
@@ -250,7 +242,11 @@ private enum class HistoryScope(val ownOnly: Boolean, @StringRes val labelRes: I
 /**
  * The always-visible header: what the panel is, how much it is filtering, and a
  * chevron that turns over as it opens. The whole block is one tap target, so the
- * summary line expands the panel too.
+ * summary line expands the panel too. The Clear button is the one exception: it is
+ * its own target, so clearing leaves the panel as it was.
+ *
+ * @param onClear invoked by the Clear button; null hides it, which is the case while
+ *   nothing is filtered.
  */
 @Composable
 private fun FilterPanelHeader(
@@ -258,6 +254,7 @@ private fun FilterPanelHeader(
     summary: String?,
     expanded: Boolean,
     onToggle: () -> Unit,
+    onClear: (() -> Unit)?,
 ) {
     val toggleLabel = stringResource(
         if (expanded) R.string.history_filters_collapse else R.string.history_filters_expand,
@@ -271,10 +268,13 @@ private fun FilterPanelHeader(
             .fillMaxWidth()
             .clickable(onClickLabel = toggleLabel, role = Role.Button, onClick = onToggle)
             .semantics { stateDescription = state }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
+        // Tall enough for the Clear button, so the row does not grow when it
+        // appears; the header is the same 48 dp with or without it.
         Row(
+            modifier = Modifier.heightIn(min = HEADER_ROW_HEIGHT),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -301,6 +301,24 @@ private fun FilterPanelHeader(
                 }
             }
             Spacer(modifier = Modifier.weight(1f))
+            if (onClear != null) {
+                // The short label fits beside the chevron; the description keeps
+                // the spoken name the chip used to have. The button keeps its own
+                // 40 dp height rather than the 48 dp touch minimum, which would
+                // push the row taller than the header without it.
+                val clearDescription = stringResource(R.string.history_filter_clear)
+                CompositionLocalProvider(
+                    LocalMinimumInteractiveComponentSize provides Dp.Unspecified,
+                ) {
+                    TextButton(
+                        onClick = onClear,
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        modifier = Modifier.semantics { contentDescription = clearDescription },
+                    ) {
+                        Text(text = stringResource(R.string.history_filter_clear_short))
+                    }
+                }
+            }
             Icon(
                 painter = painterResource(R.drawable.ic_expand_more),
                 contentDescription = null,
@@ -462,11 +480,16 @@ private fun rangeHeadline(startMillis: Long?, endMillis: Long?): String {
     return stringResource(R.string.history_filter_date_range, start, end)
 }
 
-/** One horizontally scrolling row of filter chips. */
+/**
+ * A wrapping row of filter chips, so every chip is on screen without a sideways
+ * drag. Lines sit flush because a Material chip already pads its own touch height.
+ */
 @Composable
-private fun ChipRow(content: LazyListScope.() -> Unit) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+private fun ChipRow(content: @Composable FlowRowScope.() -> Unit) {
+    FlowRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         content = content,
     )
@@ -520,11 +543,11 @@ private fun HistoryDatePreset.labelRes(): Int = when (this) {
     HistoryDatePreset.ThisYear -> R.string.history_filter_date_year
 }
 
-private const val CUSTOM_CHIP_KEY = "history-filter-custom-range"
-private const val CLEAR_CHIP_KEY = "history-filter-clear"
-
 /** Points the chevron up once the panel is open. */
 private const val CHEVRON_UP_ROTATION = 180f
+
+/** The header row's height: a Material text button, which is its tallest child. */
+private val HEADER_ROW_HEIGHT = 40.dp
 
 /** Joins the named filters on the collapsed summary line. */
 private const val SUMMARY_SEPARATOR = " · "
