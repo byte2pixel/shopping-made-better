@@ -2,6 +2,7 @@ package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -158,6 +159,10 @@ class AdjustmentDigestScreenTest {
         composeTestRule
             .onAllNodesWithText(string(R.string.pantry_dashboard_out))
             .assertCountEquals(1)
+        // A marker, not a chip: nothing to tap.
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_dashboard_running_low))
+            .assertHasNoClickAction()
     }
 
     @Test
