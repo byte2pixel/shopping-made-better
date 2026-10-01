@@ -37,7 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
-import com.fullsail.shoppingmadebetter.core.ui.LabelChip
+import com.fullsail.shoppingmadebetter.core.ui.InlineValue
 import com.fullsail.shoppingmadebetter.core.ui.OwnerChip
 import com.fullsail.shoppingmadebetter.core.ui.ProductImage
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentDigestEntry
@@ -216,7 +216,7 @@ private fun RowDetails(entry: AdjustmentDigestEntry, modifier: Modifier = Modifi
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
             )
-            StockChip(entry = entry)
+            StockValue(entry = entry)
             if (!entry.isOwn) {
                 OwnerChip(
                     text = stringResource(
@@ -299,16 +299,23 @@ private fun RowActions(
     }
 }
 
-/** Out or Low against the product's total, the same basis as the pantry card's chip. */
+/**
+ * Out or Low against the product's total, the same basis as the pantry card's total.
+ * Plain coloured text: it opens nothing.
+ */
 @Composable
-private fun StockChip(entry: AdjustmentDigestEntry) {
+private fun StockValue(entry: AdjustmentDigestEntry) {
     val level = stockLevel(entry.productQuantity, entry.lowStockThreshold)
     val label = when (level) {
         StockLevel.Out -> R.string.pantry_dashboard_out
         StockLevel.Low -> R.string.pantry_dashboard_running_low
         StockLevel.Ok -> return
     }
-    LabelChip(label = stringResource(label), accentColor = stockAccent(level))
+    InlineValue(
+        text = stringResource(label),
+        color = stockAccent(level),
+        style = MaterialTheme.typography.labelMedium,
+    )
 }
 
 /** The estimate's basis; `null` for a manual rate, which has nothing to explain. */

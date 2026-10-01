@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
@@ -45,11 +44,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
+import com.fullsail.shoppingmadebetter.core.ui.InlineValue
 import com.fullsail.shoppingmadebetter.core.ui.LabelChip
 import com.fullsail.shoppingmadebetter.core.ui.OwnerChip
 import com.fullsail.shoppingmadebetter.core.ui.ProductImage
@@ -525,36 +524,6 @@ private val locationChoices = listOf(
 )
 
 /**
- * One read-only aggregate on the card header: an optional icon and a label in one
- * colour, no pill and no click, so it does not promise a tap. The spoken
- * [contentDescription] replaces the text. A tap falls through to the header's toggle.
- */
-@Composable
-private fun HeaderValue(
-    text: String,
-    contentDescription: String,
-    modifier: Modifier = Modifier,
-    @DrawableRes iconRes: Int? = null,
-    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-) {
-    Row(
-        modifier = modifier.clearAndSetSemantics { this.contentDescription = contentDescription },
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (iconRes != null) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(16.dp),
-            )
-        }
-        Text(text = text, style = MaterialTheme.typography.labelLarge, color = color)
-    }
-}
-
-/**
  * The header's location aggregate.
  */
 @Composable
@@ -562,14 +531,14 @@ private fun LocationValue(group: ProductGroup, modifier: Modifier = Modifier) {
     val single = group.singleLocation
     if (single != null) {
         val label = stringResource(single.labelRes())
-        HeaderValue(
+        InlineValue(
             text = label,
             contentDescription = stringResource(R.string.pantry_card_location_desc, label),
             iconRes = single.iconRes(),
             modifier = modifier,
         )
     } else {
-        HeaderValue(
+        InlineValue(
             text = stringResource(R.string.pantry_location_mixed),
             contentDescription = stringResource(R.string.pantry_card_location_mixed_desc),
             modifier = modifier,
@@ -582,7 +551,7 @@ private fun LocationValue(group: ProductGroup, modifier: Modifier = Modifier) {
  */
 @Composable
 private fun ExpiryValue(expiresInDays: Int, modifier: Modifier = Modifier) {
-    HeaderValue(
+    InlineValue(
         text = expiryChipLabel(expiresInDays),
         contentDescription = stringResource(
             R.string.pantry_card_expiry_soonest_desc,
@@ -661,7 +630,7 @@ private fun TotalValue(
     lowStockThreshold: Int?,
     modifier: Modifier = Modifier,
 ) {
-    HeaderValue(
+    InlineValue(
         text = totalQuantity.toString(),
         contentDescription = pluralStringResource(
             R.plurals.pantry_card_total_quantity_desc,

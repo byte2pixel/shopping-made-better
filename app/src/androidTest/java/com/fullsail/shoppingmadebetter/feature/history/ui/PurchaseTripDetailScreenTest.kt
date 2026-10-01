@@ -6,6 +6,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -188,6 +189,19 @@ class PurchaseTripDetailScreenTest {
         row().performTouchInput { click(Offset(24.dp.toPx(), height - 1f)) }
         toggleStrip().assertIsOn()
         assertNull(clickedProductId)
+    }
+
+    @Test
+    fun theLineItemsPantryMarkerIsSpokenButNotTappable() {
+        setScreen(purchase = trip.copy(items = listOf(milk.copy(addedToInventory = true))))
+
+        composeTestRule
+            .onNodeWithContentDescription(
+                string(R.string.history_line_item_pantry_desc),
+                useUnmergedTree = true,
+            )
+            .assertIsDisplayed()
+            .assertHasNoClickAction()
     }
 
     @Test
