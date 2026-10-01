@@ -162,9 +162,17 @@
         <item quantity="one">%1$d in stock across all lots</item>
         <item quantity="other">%1$d in stock across all lots</item>
     </plurals>
-    <string name="pantry_location_mixed">Mixed</string>
+    <string name="pantry_card_stat_on_hand">On hand</string>
+    <string name="pantry_card_stat_where">Where</string>
+    <string name="pantry_card_stat_expires">Expires</string>
+    <plurals name="pantry_card_location_count">
+        <item quantity="one">%1$d place</item>
+        <item quantity="other">%1$d places</item>
+    </plurals>
     <string name="pantry_card_location_mixed_desc">Stored in multiple locations</string>
     <string name="pantry_card_expiry_soonest_desc">Soonest expiry: %1$s</string>
+    <string name="pantry_card_expiry_none">No date</string>
+    <string name="pantry_card_expiry_none_desc">No expiry date</string>
     <string name="pantry_card_lot_details">View product details</string>
     <string name="pantry_card_remove_lot">Remove this lot</string>
 

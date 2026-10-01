@@ -367,21 +367,40 @@ class PantryScreenTest {
         setScreen()
 
         composeTestRule.onNodeWithText("2% Milk").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Great Value").assertIsDisplayed()
-        composeTestRule.onNodeWithText("1 gal").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Great Value · 1 gal").assertIsDisplayed()
 
-        // The header aggregates are spoken values, not buttons. Unmerged, because the
-        // merged tree folds them into the header's own click.
+        // The header stats are spoken values, not buttons, and the expiry column is
+        // there even without a date. Unmerged, because the merged tree folds them into
+        // the header's own click.
+        listOf(
+            quantityString(R.plurals.pantry_card_total_quantity_desc, 2, 2),
+            string(R.string.pantry_card_location_desc, string(R.string.pantry_dashboard_pantry)),
+            string(R.string.pantry_card_expiry_none_desc),
+        ).forEach { description ->
+            composeTestRule
+                .onNodeWithContentDescription(description, useUnmergedTree = true)
+                .assertIsDisplayed()
+                .assertHasNoClickAction()
+        }
+    }
+
+    @Test
+    fun aProductWithNoBrandShowsNoBlankLine() {
+        setScreen(inventory = FakeGetInventoryUseCase(inventoryOf(milk.copy(brand = ""))))
+
+        // The brand and size share one line, so a missing brand leaves no separator behind.
+        composeTestRule.onNodeWithText("1 gal").assertIsDisplayed()
+        composeTestRule.onNodeWithText("·", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun lotsInSeveralPlacesShowHowMany() {
+        val fridgeLot = milk.copy(id = "i9", location = PantryLocation.Fridge)
+        setScreen(inventory = FakeGetInventoryUseCase(inventoryOf(milk, fridgeLot)))
+
         composeTestRule
             .onNodeWithContentDescription(
-                quantityString(R.plurals.pantry_card_total_quantity_desc, 2, 2),
-                useUnmergedTree = true,
-            )
-            .assertIsDisplayed()
-            .assertHasNoClickAction()
-        composeTestRule
-            .onNodeWithContentDescription(
-                string(R.string.pantry_card_location_desc, string(R.string.pantry_dashboard_pantry)),
+                string(R.string.pantry_card_location_mixed_desc),
                 useUnmergedTree = true,
             )
             .assertIsDisplayed()
