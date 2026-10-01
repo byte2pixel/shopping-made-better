@@ -61,6 +61,9 @@ private const val DIGEST_KEY = "adjustment_digest"
 /** Stable key for the no-matches message. */
 private const val NO_MATCHES_KEY = "no_matches"
 
+/** Stable key for the empty-pantry message. */
+private const val EMPTY_KEY = "empty"
+
 private val LIST_EDGE = 16.dp
 private val ITEM_GAP = 12.dp
 
@@ -349,19 +352,18 @@ private fun PantryContent(
                                 Spacer(Modifier.fillMaxWidth())
                             }
                         }
-                        // Shown only when a search or filter emptied the list, not for an empty pantry.
-                        if (visibleGroups.isEmpty() && (searchQuery.isNotBlank() || selectedFilters.isNotEmpty())) {
-                            item(key = NO_MATCHES_KEY) {
-                                Text(
-                                    text = stringResource(R.string.pantry_search_no_matches),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 24.dp),
-                                )
+                        // An empty pantry shows a relevant message. The no-matches line is only for a search or
+                        // filter that emptied a non-empty pantry.
+                        when {
+                            uiState.productGroups.isEmpty() -> item(key = EMPTY_KEY) {
+                                PantryMessage(text = stringResource(R.string.pantry_empty))
                             }
+
+                            visibleGroups.isEmpty() &&
+                                (searchQuery.isNotBlank() || selectedFilters.isNotEmpty()) ->
+                                item(key = NO_MATCHES_KEY) {
+                                    PantryMessage(text = stringResource(R.string.pantry_search_no_matches))
+                                }
                         }
                         items(visibleGroups, key = { it.productId }) { group ->
                             // UI-only state, keyed by the item key, survives scrolling away and config changes.
@@ -390,6 +392,20 @@ private fun PantryContent(
             }
         }
     }
+}
+
+/** Centred, muted line in the list body for the empty and no-matches states. */
+@Composable
+private fun PantryMessage(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
+    )
 }
 
 @Composable
