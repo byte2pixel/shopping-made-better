@@ -67,16 +67,11 @@
     </plurals>
 
     <!-- Pantry item detail -->
-    <string name="pantry_detail_brand">Brand</string>
-    <string name="pantry_detail_size">Size</string>
-    <string name="pantry_detail_stock">Stock</string>
     <string name="pantry_detail_description">Description</string>
-    <string name="pantry_detail_stores">Stores</string>
-    <string name="pantry_detail_expiration">Expiration</string>
-    <string name="pantry_detail_coming_soon">Coming soon</string>
     <string name="pantry_detail_not_found">Item not found</string>
+    <string name="pantry_detail_lots">In your pantry (%1$d)</string>
+    <string name="pantry_detail_no_lots">Not in your pantry right now.</string>
     <!-- Expiration status shown against the item's remaining shelf life -->
-    <string name="pantry_detail_expires_unknown">No expiration date</string>
     <string name="pantry_detail_expired">Expired</string>
     <string name="pantry_detail_expires_today">Expires today</string>
     <plurals name="pantry_detail_expires_in_days">

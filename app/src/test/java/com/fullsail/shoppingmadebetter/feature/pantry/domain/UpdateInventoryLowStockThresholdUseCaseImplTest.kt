@@ -24,6 +24,7 @@ class UpdateInventoryLowStockThresholdUseCaseImplTest {
         var called = false
 
         override suspend fun getInventoryItems(): List<InventoryItemDto> = emptyList()
+        override suspend fun getInventoryItems(productId: String): List<InventoryItemDto> = emptyList()
         override suspend fun deleteInventoryItem(id: String) = Unit
         override suspend fun updateLocation(id: String, location: String) = Unit
         override suspend fun updateExpiry(id: String, expiresAt: LocalDate) = Unit

@@ -35,6 +35,9 @@ class GetInventoryUseCaseTest {
         override suspend fun getInventoryItems(): List<InventoryItemDto> =
             error?.let { throw it } ?: items
 
+        override suspend fun getInventoryItems(productId: String): List<InventoryItemDto> =
+            items.filter { it.productId == productId }
+
         override suspend fun deleteInventoryItem(id: String) = Unit
 
         override suspend fun updateLocation(id: String, location: String) = Unit

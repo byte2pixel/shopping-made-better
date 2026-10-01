@@ -1,11 +1,8 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.domain
 
 import android.util.Log
-import com.fullsail.shoppingmadebetter.feature.pantry.data.InventoryItemDto
 import com.fullsail.shoppingmadebetter.feature.pantry.data.PantryRepository
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.daysUntil
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock
 import javax.inject.Inject
@@ -22,25 +19,6 @@ class GetInventoryUseCaseImpl @Inject constructor(
         Log.e(TAG, "Failed to fetch inventory items: ${e.message}", e)
         GetInventoryUseCase.Output.Failure(e)
     }
-
-    private fun InventoryItemDto.toDomain(today: LocalDate) = InventoryItem(
-        id = id,
-        productId = productId,
-        name = name,
-        brand = brand,
-        description = description,
-        size = size,
-        imageUrl = imageUrl,
-        quantity = quantity,
-        expiresInDays = expiryDate?.let { today.daysUntil(it) },
-        location = PantryLocation.fromDbValue(location),
-        lowStockThreshold = lowStockThreshold,
-        lastAdjustmentReason = AdjustmentReason.fromDbValue(lastAdjustmentReason),
-        estimateSource = EstimateSource.fromDbValue(estimateSource),
-        lastAdjustmentId = lastAdjustmentId,
-        addedBy = addedBy,
-        isOwn = isOwn,
-    )
 
     private companion object {
         const val TAG = "GetInventoryUseCase"

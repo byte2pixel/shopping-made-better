@@ -1,6 +1,5 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
-import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
@@ -499,22 +498,6 @@ private fun EstimateConfirmRow(
     }
 }
 
-/** The drawable icon representing where an item is stored. */
-@DrawableRes
-internal fun PantryLocation.iconRes(): Int = when (this) {
-    PantryLocation.Freezer -> R.drawable.ic_freezer
-    PantryLocation.Fridge -> R.drawable.ic_fridge
-    PantryLocation.Pantry -> R.drawable.ic_pantry
-}
-
-/** The display name for a storage location, shared with the pantry dashboard. */
-@StringRes
-internal fun PantryLocation.labelRes(): Int = when (this) {
-    PantryLocation.Freezer -> R.string.pantry_dashboard_freezer
-    PantryLocation.Fridge -> R.string.pantry_dashboard_fridge
-    PantryLocation.Pantry -> R.string.pantry_dashboard_pantry
-}
-
 /** The three storage locations, in the order they're offered in the location picker. */
 private val locationChoices = listOf(
     PantryLocation.Pantry,
@@ -606,9 +589,12 @@ private fun ExpiryStat(expiresInDays: Int?, modifier: Modifier = Modifier) {
     )
 }
 
-/** The expiry stat's value: "Expired", "Today", or a spelled-out day count. */
+/**
+ * The expiry stat's value: "Expired", "Today", or a spelled-out day count. The product
+ * detail's lot rows use the same words.
+ */
 @Composable
-private fun expiryStatLabel(expiresInDays: Int): String = if (expiresInDays < 0) {
+internal fun expiryStatLabel(expiresInDays: Int): String = if (expiresInDays < 0) {
     stringResource(R.string.pantry_expiry_expired)
 } else {
     expiryDraftLabel(expiresInDays)
