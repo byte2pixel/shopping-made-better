@@ -61,6 +61,9 @@ private const val DIGEST_KEY = "adjustment_digest"
 /** Stable key for the no-matches message. */
 private const val NO_MATCHES_KEY = "no_matches"
 
+private val LIST_EDGE = 16.dp
+private val ITEM_GAP = 12.dp
+
 /** Persists the set of selected dashboard filters across configuration changes. */
 private val filterSetSaver = listSaver<Set<PantryDashboardFilter>, String>(
     save = { selected -> selected.map { it.name } },
@@ -319,17 +322,31 @@ private fun PantryContent(
                         modifier = Modifier
                             .fillMaxSize()
                             .clipToBounds(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        // spacedBy counts the digest slot even while it is empty, so the top inset
+                        // gives up one gap and the card takes it back as its own top padding.
+                        contentPadding = PaddingValues(
+                            start = LIST_EDGE,
+                            top = LIST_EDGE - ITEM_GAP,
+                            end = LIST_EDGE,
+                            bottom = LIST_EDGE,
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(ITEM_GAP),
                     ) {
-                        // The digest spans the whole pantry, so the filters do not apply to it.
-                        if (digestLotCount > 0) {
-                            item(key = DIGEST_KEY) {
+                        // Always present so the list anchors on it from the first frame; the count
+                        // lands after the inventory, and inserting the card then would leave it
+                        // above the viewport. The digest spans the whole pantry, so the filters do
+                        // not apply to it.
+                        item(key = DIGEST_KEY) {
+                            if (digestLotCount > 0) {
                                 AdjustmentDigestCard(
                                     lotCount = digestLotCount,
                                     onReview = onReviewDigest,
-                                    modifier = Modifier.animateItem(),
+                                    modifier = Modifier
+                                        .animateItem()
+                                        .padding(top = ITEM_GAP),
                                 )
+                            } else {
+                                Spacer(Modifier.fillMaxWidth())
                             }
                         }
                         // Shown only when a search or filter emptied the list, not for an empty pantry.

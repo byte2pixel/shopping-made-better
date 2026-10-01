@@ -8,6 +8,8 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -56,6 +58,7 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip
 import com.fullsail.shoppingmadebetter.feature.stores.domain.GetStoresUseCase
 import com.fullsail.shoppingmadebetter.feature.stores.domain.Store
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -153,11 +156,16 @@ class PantryScreenTest {
         }
     }
 
+    /** [gate], when set, holds the answer back so a test can land the count after the inventory. */
     private class FakeGetAdjustmentDigestUseCase(
         private val output: GetAdjustmentDigestUseCase.Output =
             GetAdjustmentDigestUseCase.Output.Success(emptyList()),
+        private val gate: CompletableDeferred<Unit>? = null,
     ) : GetAdjustmentDigestUseCase {
-        override suspend fun execute(input: Unit) = output
+        override suspend fun execute(input: Unit): GetAdjustmentDigestUseCase.Output {
+            gate?.await()
+            return output
+        }
     }
 
     private class FakeGetAutoAdjustEnabledUseCase(
@@ -1220,6 +1228,35 @@ class PantryScreenTest {
         composeTestRule
             .onNode(hasClickLabel(string(R.string.pantry_digest_card_action)))
             .assertDoesNotExist()
+    }
+
+    @Test
+    fun theDigestCardIsOnScreenWhenItsCountArrivesAfterTheInventory() {
+        // Enough products to overflow the viewport: a list that fits cannot scroll past the
+        // card, so the bug only shows once the list is scrollable.
+        val products = List(30) { milk.copy(id = "i$it", productId = "p$it", name = "Product $it") }
+        val gate = CompletableDeferred<Unit>()
+        setScreen(
+            inventory = FakeGetInventoryUseCase(inventoryOf(*products.toTypedArray())),
+            digest = FakeGetAdjustmentDigestUseCase(
+                GetAdjustmentDigestUseCase.Output.Success(listOf(digestEntry("lot1"))),
+                gate = gate,
+            ),
+        )
+        composeTestRule.onNodeWithText("Product 0").assertIsDisplayed()
+
+        gate.complete(Unit)
+
+        // The list anchored on the digest slot, not the first product, so the card lands
+        // in view. Without the slot it sits above the list with a few dp peeking into the
+        // top inset, which still counts as displayed, so the whole title must be unclipped.
+        val title = quantityString(R.plurals.pantry_digest_card_title, 1, 1)
+        composeTestRule.waitUntil(SHEET_TIMEOUT_MS) {
+            composeTestRule.onAllNodesWithText(title).fetchSemanticsNodes().isNotEmpty()
+        }
+        val digestTitle = composeTestRule.onNodeWithText(title)
+        assertEquals(digestTitle.getUnclippedBoundsInRoot(), digestTitle.getBoundsInRoot())
+        composeTestRule.onNodeWithText("Product 0").assertIsDisplayed()
     }
 
     @Test
