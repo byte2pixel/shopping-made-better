@@ -180,6 +180,7 @@
     <string name="pantry_search_label">Search your pantry</string>
     <string name="pantry_search_clear">Clear search</string>
     <string name="pantry_search_no_matches">No pantry items match</string>
+    <string name="pantry_empty">Nothing in your pantry yet. Add items from a shopping trip, or with the + button.</string>
 
     <!-- Pantry inventory card chip indicators - location -->
     <string name="pantry_card_location_desc">Stored in %1$s</string>

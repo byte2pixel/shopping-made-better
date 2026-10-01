@@ -1061,6 +1061,14 @@ class PantryScreenTest {
     }
 
     @Test
+    fun anEmptyPantrySaysSo() {
+        setScreen(inventory = FakeGetInventoryUseCase(inventoryOf()))
+
+        composeTestRule.onNodeWithText(string(R.string.pantry_empty)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(string(R.string.pantry_search_no_matches)).assertDoesNotExist()
+    }
+
+    @Test
     fun aSearchNarrowsWithinTheDashboardFilter() {
         val expiringMilk = milk.copy(expiresInDays = 1)
         setScreen(
