@@ -5,7 +5,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -44,8 +46,15 @@ class HistoryFilterPanelTest {
     private fun mineButton() =
         composeTestRule.onNodeWithText(string(R.string.history_scope_mine))
 
+    /** The header's Clear button, by the spoken name it kept from the old chip. */
+    private fun clearButton() =
+        composeTestRule.onNodeWithContentDescription(string(R.string.history_filter_clear))
+
     /** Every scope the panel reported, in order. */
     private val scopeChanges = mutableListOf<Boolean>()
+
+    /** How many times the panel asked to clear. */
+    private var clearCount = 0
 
     private val activeFilter = HistoryFilter(
         storeIds = setOf("s-2"),
@@ -74,7 +83,7 @@ class HistoryFilterPanelTest {
                     onToggleStore = {},
                     onSelectPreset = {},
                     onCustomRange = { _, _ -> },
-                    onClearFilters = {},
+                    onClearFilters = { clearCount++ },
                 )
             }
         }
@@ -181,5 +190,41 @@ class HistoryFilterPanelTest {
         composeTestRule
             .onNodeWithContentDescription(plural(R.plurals.history_filters_active, 3, 3))
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun aCleanPanelShowsNoClearButton() {
+        setPanel()
+
+        clearButton().assertDoesNotExist()
+        header().performClick()
+        composeTestRule.waitForIdle()
+        clearButton().assertDoesNotExist()
+    }
+
+    @Test
+    fun clearShowsInTheHeaderWhileFiltersAreActiveAndClears() {
+        setPanel(filter = activeFilter, selectedPreset = HistoryDatePreset.Last30Days)
+
+        clearButton().assertIsDisplayed()
+        clearButton().performClick()
+        composeTestRule.waitForIdle()
+        assertEquals(1, clearCount)
+
+        // Open or closed, the button is in the header, not the body.
+        header().performClick()
+        composeTestRule.waitForIdle()
+        clearButton().assertIsDisplayed()
+    }
+
+    @Test
+    fun clearingDoesNotToggleThePanel() {
+        setPanel(filter = activeFilter, selectedPreset = HistoryDatePreset.Last30Days)
+
+        clearButton().performClick()
+        composeTestRule.waitForIdle()
+
+        header().assert(hasStateDescription(string(R.string.history_filters_collapsed)))
+        searchField().assertDoesNotExist()
     }
 }

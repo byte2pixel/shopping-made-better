@@ -332,8 +332,10 @@
     <string name="history_filter_date_title_input">Enter dates</string>
     <string name="history_filter_date_start">Start date</string>
     <string name="history_filter_date_end">End date</string>
-    <!-- Drops every filter at once; only shown while at least one is on. -->
+    <!-- Drops every filter at once; only shown while at least one is on. The short
+         form is the header button's label, the long one its spoken description. -->
     <string name="history_filter_clear">Clear filters</string>
+    <string name="history_filter_clear_short">Clear</string>
     <!-- Product search over past trips. Shorter than two characters is ignored, so
          the hint says what the field matches rather than promising instant results. -->
     <string name="history_search_label">Search what you bought</string>
