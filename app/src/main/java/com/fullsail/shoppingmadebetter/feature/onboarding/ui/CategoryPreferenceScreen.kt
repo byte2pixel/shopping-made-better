@@ -28,7 +28,6 @@ fun CategoryPreferenceScreen(
         Text(
             text = "What categories do you shop for most frequently?",
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
@@ -44,10 +43,6 @@ fun CategoryPreferenceScreen(
                     selected = isSelected,
                     onClick = { onCategoryToggled(category) },
                     label = { Text(category) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        selectedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 )
             }
         }

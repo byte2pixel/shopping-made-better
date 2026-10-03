@@ -2,6 +2,8 @@ package com.fullsail.shoppingmadebetter.feature.onboarding.di
 
 import com.fullsail.shoppingmadebetter.feature.onboarding.data.OnboardingRepository
 import com.fullsail.shoppingmadebetter.feature.onboarding.data.OnboardingRepositoryImpl
+import com.fullsail.shoppingmadebetter.feature.onboarding.domain.getPreferences.GetPreferencesUseCase
+import com.fullsail.shoppingmadebetter.feature.onboarding.domain.getPreferences.GetPreferencesUseCaseImpl
 import com.fullsail.shoppingmadebetter.feature.onboarding.domain.savePreferences.SavePreferencesUseCase
 import com.fullsail.shoppingmadebetter.feature.onboarding.domain.savePreferences.SavePreferencesUseCaseImpl
 import dagger.Binds
@@ -25,4 +27,10 @@ abstract class OnboardingModule {
     abstract fun bindSavePreferencesUseCase(
         impl: SavePreferencesUseCaseImpl
     ): SavePreferencesUseCase
+
+    @Binds
+    @ViewModelScoped
+    abstract fun bindGetPreferencesUseCase(
+        impl: GetPreferencesUseCaseImpl
+    ): GetPreferencesUseCase
 }

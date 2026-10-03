@@ -28,7 +28,6 @@ fun DietaryPreferenceScreen(
         Text(
             text = "Do you follow any of these dietary patterns?",
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
@@ -44,10 +43,6 @@ fun DietaryPreferenceScreen(
                     selected = isSelected,
                     onClick = { onDietToggled(diet) },
                     label = { Text(diet) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        selectedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 )
             }
         }
