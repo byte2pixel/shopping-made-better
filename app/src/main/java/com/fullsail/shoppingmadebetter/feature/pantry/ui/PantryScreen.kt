@@ -84,10 +84,12 @@ fun PantryScreen(
     onReviewDigest: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PantryViewModel = hiltViewModel(),
+    listSheetViewModel: AddToListSheetViewModel = hiltViewModel(),
+    pantrySheetViewModel: AddToPantrySheetViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val sheetState by viewModel.addToListSheet.collectAsState()
-    val pantrySheetState by viewModel.addToPantrySheet.collectAsState()
+    val sheetState by listSheetViewModel.addToListSheet.collectAsState()
+    val pantrySheetState by pantrySheetViewModel.addToPantrySheet.collectAsState()
     val removeConfirm by viewModel.removeConfirm.collectAsState()
     val zeroStockAlert by viewModel.zeroStockAlert.collectAsState()
     val digestLotCount by viewModel.digestLotCount.collectAsState()
@@ -101,31 +103,6 @@ fun PantryScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is PantryEvent.ItemAdded -> {
-                    val result = snackbarHostState.showSnackbar(
-                        message = resources.getString(
-                            R.string.added_to_list, event.itemName, event.listName
-                        ),
-                        actionLabel = resources.getString(R.string.add_to_list_undo),
-                        duration = SnackbarDuration.Short,
-                    )
-                    if (result == SnackbarResult.ActionPerformed) {
-                        viewModel.undoAdd(event.insertedItemId, event.itemName)
-                    }
-                }
-
-                is PantryEvent.AddFailed -> snackbarHostState.showSnackbar(
-                    resources.getString(R.string.add_to_list_failed, event.itemName)
-                )
-
-                is PantryEvent.ItemRemoved -> snackbarHostState.showSnackbar(
-                    resources.getString(R.string.removed_from_list, event.itemName)
-                )
-
-                is PantryEvent.UndoFailed -> snackbarHostState.showSnackbar(
-                    resources.getString(R.string.undo_failed, event.itemName)
-                )
-
                 is PantryEvent.RemovedFromPantry -> snackbarHostState.showSnackbar(
                     resources.getString(R.string.pantry_removed, event.itemName)
                 )
@@ -136,21 +113,6 @@ fun PantryScreen(
 
                 is PantryEvent.UpdateFailed -> snackbarHostState.showSnackbar(
                     resources.getString(R.string.pantry_update_failed, event.itemName)
-                )
-
-                is PantryEvent.AddedToPantry -> {
-                    val result = snackbarHostState.showSnackbar(
-                        message = resources.getString(R.string.pantry_added, event.itemName),
-                        actionLabel = resources.getString(R.string.add_to_list_undo),
-                        duration = SnackbarDuration.Short,
-                    )
-                    if (result == SnackbarResult.ActionPerformed) {
-                        viewModel.undoAddToPantry(event.lotId, event.itemName)
-                    }
-                }
-
-                is PantryEvent.AddToPantryFailed -> snackbarHostState.showSnackbar(
-                    resources.getString(R.string.pantry_add_failed, event.itemName)
                 )
 
                 PantryEvent.RefreshFailed -> {
@@ -164,6 +126,72 @@ fun PantryScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        listSheetViewModel.events.collect { event ->
+            when (event) {
+                is AddToListSheetEvent.ItemAdded -> {
+                    val result = snackbarHostState.showSnackbar(
+                        message = resources.getString(
+                            R.string.added_to_list, event.itemName, event.listName
+                        ),
+                        actionLabel = resources.getString(R.string.add_to_list_undo),
+                        duration = SnackbarDuration.Short,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        listSheetViewModel.undoAdd(event.insertedItemId, event.itemName)
+                    }
+                }
+
+                is AddToListSheetEvent.AddFailed -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.add_to_list_failed, event.itemName)
+                )
+
+                is AddToListSheetEvent.ItemRemoved -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.removed_from_list, event.itemName)
+                )
+
+                is AddToListSheetEvent.UndoFailed -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.undo_failed, event.itemName)
+                )
+            }
+        }
+    }
+
+    // The sheet writes lots it cannot see; the pantry reloads so the new card appears with
+    // the expiry and location the database derived.
+    LaunchedEffect(Unit) {
+        pantrySheetViewModel.events.collect { event ->
+            when (event) {
+                is AddToPantrySheetEvent.Added -> {
+                    viewModel.loadInventory()
+                    val result = snackbarHostState.showSnackbar(
+                        message = resources.getString(R.string.pantry_added, event.itemName),
+                        actionLabel = resources.getString(R.string.add_to_list_undo),
+                        duration = SnackbarDuration.Short,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        pantrySheetViewModel.undoAddToPantry(event.lotId, event.itemName)
+                    }
+                }
+
+                is AddToPantrySheetEvent.AddFailed -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.pantry_add_failed, event.itemName)
+                )
+
+                is AddToPantrySheetEvent.Undone -> {
+                    viewModel.loadInventory()
+                    snackbarHostState.showSnackbar(
+                        resources.getString(R.string.pantry_removed, event.itemName)
+                    )
+                }
+
+                is AddToPantrySheetEvent.UndoFailed -> snackbarHostState.showSnackbar(
+                    resources.getString(R.string.pantry_remove_failed, event.itemName)
+                )
+            }
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         PantryContent(
             uiState = uiState,
@@ -171,7 +199,7 @@ fun PantryScreen(
             onProductClick = onProductClick,
             digestLotCount = digestLotCount,
             onReviewDigest = onReviewDigest,
-            onAddToListClick = viewModel::onAddToListClicked,
+            onAddToListClick = listSheetViewModel::onAddToListClicked,
             onRemoveClick = viewModel::onRemoveClicked,
             onQuantityChange = viewModel::onQuantityChanged,
             onLocationChange = viewModel::onLocationChanged,
@@ -182,7 +210,7 @@ fun PantryScreen(
             onUndoEstimate = viewModel::onUndoEstimate,
         )
         FloatingActionButton(
-            onClick = viewModel::onAddToPantryClicked,
+            onClick = pantrySheetViewModel::onAddToPantryClicked,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
@@ -208,22 +236,22 @@ fun PantryScreen(
             stores = visible.stores,
             // A pantry item belongs to no store, so the sheet preselects the first.
             defaultStoreId = null,
-            onDismiss = viewModel::dismissAddToListSheet,
-            onListChosen = viewModel::onListChosen,
-            onCreateList = viewModel::onCreateList,
+            onDismiss = listSheetViewModel::dismiss,
+            onListChosen = listSheetViewModel::onListChosen,
+            onCreateList = listSheetViewModel::onCreateList,
         )
     }
 
     (pantrySheetState as? AddToPantrySheetState.Visible)?.let { visible ->
         AddToPantrySheet(
             state = visible,
-            onQueryChange = viewModel::onAddToPantryQuery,
-            onProductSelected = viewModel::onAddToPantryProductSelected,
-            onProductCleared = viewModel::onAddToPantryProductCleared,
-            onQuantityChange = viewModel::onAddToPantryQuantity,
-            onLocationChange = viewModel::onAddToPantryLocation,
-            onConfirm = viewModel::onAddToPantryConfirm,
-            onDismiss = viewModel::dismissAddToPantrySheet,
+            onQueryChange = pantrySheetViewModel::onAddToPantryQuery,
+            onProductSelected = pantrySheetViewModel::onAddToPantryProductSelected,
+            onProductCleared = pantrySheetViewModel::onAddToPantryProductCleared,
+            onQuantityChange = pantrySheetViewModel::onAddToPantryQuantity,
+            onLocationChange = pantrySheetViewModel::onAddToPantryLocation,
+            onConfirm = pantrySheetViewModel::onAddToPantryConfirm,
+            onDismiss = pantrySheetViewModel::dismiss,
         )
     }
 
@@ -235,11 +263,17 @@ fun PantryScreen(
         )
     }
 
-    zeroStockAlert?.let { lot ->
+    // Held back while a sheet is up, so an alert cannot land on top of it.
+    val sheetsHidden = sheetState is AddToListSheetState.Hidden &&
+        pantrySheetState is AddToPantrySheetState.Hidden
+    zeroStockAlert?.takeIf { sheetsHidden }?.let { lot ->
         key(lot.id) {
             ZeroStockAlertDialog(
                 lot = lot,
-                onOut = { viewModel.onZeroStockOut(lot) },
+                onOut = {
+                    listSheetViewModel.onAddToListClicked(lot)
+                    viewModel.onZeroStockOut(lot)
+                },
                 onStillHave = { count -> viewModel.onZeroStockStillHave(lot, count) },
                 onDismiss = { viewModel.onZeroStockDismissed(lot) },
             )
