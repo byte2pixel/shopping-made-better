@@ -59,7 +59,7 @@ fun CreateRecipeScreen(
         }
 
         Button(
-            onClick = viewModel::saveRecipe,
+            onClick = viewModel::saveOrUpdateRecipe,
             modifier = Modifier.fillMaxWidth(),
             enabled = !uiState.isLoading
         ) {
