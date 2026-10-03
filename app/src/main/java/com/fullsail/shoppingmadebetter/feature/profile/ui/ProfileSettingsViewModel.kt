@@ -31,7 +31,8 @@ class ProfileSettingsViewModel @Inject constructor(
     private val _events = Channel<ProfileSettingsEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    init {
+    /** Reads the flag; the screen calls this on every entry so an edit made in onboarding shows on return. */
+    fun load() {
         viewModelScope.launch {
             val out = getAutoAdjustEnabledUseCase.execute(Unit)
             if (out is GetAutoAdjustEnabledUseCase.Output.Success) _autoAdjustEnabled.value = out.enabled

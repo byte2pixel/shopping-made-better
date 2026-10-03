@@ -22,6 +22,9 @@
     <string name="profile_auto_adjust_failed">Couldn\'t update auto-adjust</string>
 
     <!-- Onboarding -->
+    <string name="onboarding_title">Profile Setup (%1$d/%2$d)</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_complete">Complete Setup</string>
     <string name="onboarding_auto_adjust_question">Keep your pantry up to date automatically?</string>
     <string name="onboarding_auto_adjust_yes">Yes, lower quantities for me</string>
     <string name="onboarding_auto_adjust_no">No, I\'ll update them myself</string>
