@@ -353,12 +353,8 @@
 
     <!-- History: one completed trip and what was bought on it -->
     <string name="history_detail_not_found">That trip is no longer available</string>
-    <string name="history_detail_store">Store</string>
-    <!-- Shown only on a housemate's trip. -->
-    <string name="history_detail_bought_by">Bought by</string>
-    <string name="history_detail_date">Purchased</string>
-    <string name="history_detail_total">Total</string>
-    <string name="history_detail_items">Items</string>
+    <!-- Trip header line, e.g. "Sep 23, 2026 · 9 items". -->
+    <string name="history_detail_date_items">%1$s · %2$s</string>
     <!-- e.g. "Qty 1.5 × $2.00" -->
     <string name="history_line_quantity_price">Qty %1$s × %2$s</string>
     <!-- Click label on a line item; the checkbox beside it keeps its own label. -->

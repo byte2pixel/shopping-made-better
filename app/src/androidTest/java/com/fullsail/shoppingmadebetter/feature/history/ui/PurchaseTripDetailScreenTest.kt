@@ -205,21 +205,34 @@ class PurchaseTripDetailScreenTest {
     }
 
     @Test
+    fun theHeaderReadsDateItemCountAndTotalAsOneNode() {
+        setScreen()
+
+        val itemCount = composeTestRule.activity.resources
+            .getQuantityString(R.plurals.history_trip_item_count, 1, 1)
+        val dateLine =
+            string(R.string.history_detail_date_items, formatTripDate(trip.purchasedOn), itemCount)
+        // The line item's total is also $7.98, so match the merged header node.
+        composeTestRule
+            .onNode(hasText(dateLine) and hasText(formatPrice(trip.total)))
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun aHousemateTripSaysWhoBoughtIt() {
         setScreen(purchase = trip.copy(purchasedBy = "Demo Roommate", isOwn = false))
 
         composeTestRule
-            .onNodeWithText(string(R.string.history_detail_bought_by))
+            .onNodeWithText(string(R.string.history_bought_by, "Demo Roommate"))
             .assertIsDisplayed()
-        composeTestRule.onNodeWithText("Demo Roommate").assertIsDisplayed()
     }
 
     @Test
-    fun anOwnTripHasNoBoughtByField() {
+    fun anOwnTripHasNoBoughtByLine() {
         setScreen()
 
         composeTestRule
-            .onNodeWithText(string(R.string.history_detail_bought_by))
+            .onNodeWithText(string(R.string.history_bought_by, ""), substring = true)
             .assertDoesNotExist()
     }
 
