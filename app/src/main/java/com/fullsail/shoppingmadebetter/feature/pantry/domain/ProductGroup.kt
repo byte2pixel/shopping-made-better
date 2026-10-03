@@ -39,7 +39,7 @@ data class ProductGroup(
 }
 
 /** Soonest expiry first; lots with no expiry date sort last. */
-private val byExpiry: Comparator<Int?> = nullsLast(naturalOrder())
+internal val byExpiry: Comparator<Int?> = nullsLast(naturalOrder())
 
 /**
  * Collapses [items] into one [ProductGroup] per [InventoryItem.productId].

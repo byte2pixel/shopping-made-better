@@ -5,9 +5,9 @@ import kotlinx.serialization.Serializable
 
 /**
  * One row of the `product_details` view: the catalog record plus the household's pantry
- * position for it. [quantity] is the total on hand across every household lot (0 when
- * nobody holds it), [expiryDate] is the soonest-expiring lot, if any, and
- * [lowStockThreshold] is the current user's own setting.
+ * position for it. [lowStockThreshold] is the current user's own setting. [quantity]
+ * (total on hand) and [expiryDate] (soonest lot) still come back from the view but the
+ * app derives both from the lots instead.
  */
 @Serializable
 data class ProductDetailDto(

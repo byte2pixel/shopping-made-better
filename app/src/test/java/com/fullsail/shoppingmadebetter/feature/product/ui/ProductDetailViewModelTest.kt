@@ -1,5 +1,6 @@
 package com.fullsail.shoppingmadebetter.feature.product.ui
 
+import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
 import com.fullsail.shoppingmadebetter.feature.product.domain.GetProductDetailUseCase
@@ -59,8 +60,19 @@ class ProductDetailViewModelTest {
         description = "2% milk",
         size = "1 gal",
         imageUrl = "http://img/milk.png",
-        quantityOnHand = 2,
-        expiresInDays = null,
+        lots = listOf(
+            InventoryItem(
+                id = "l1",
+                productId = "p1",
+                name = "Milk",
+                brand = "Dairy Co",
+                description = "2% milk",
+                size = "1 gal",
+                imageUrl = "http://img/milk.png",
+                quantity = 2,
+                expiresInDays = null,
+            ),
+        ),
     )
 
     @Test
@@ -89,7 +101,7 @@ class ProductDetailViewModelTest {
 
     @Test
     fun `a product no longer in the pantry still loads`() = runTest {
-        val notHeld = sampleProduct.copy(quantityOnHand = 0, expiresInDays = null)
+        val notHeld = sampleProduct.copy(lots = emptyList())
         val viewModel = viewModel(
             FakeGetProductDetailUseCase(GetProductDetailUseCase.Output.Success(notHeld))
         )
@@ -97,6 +109,7 @@ class ProductDetailViewModelTest {
         viewModel.load("p1")
 
         val state = viewModel.uiState.value as ProductDetailUiState.Success
+        assertTrue(state.product.lots.isEmpty())
         assertEquals(0, state.product.quantityOnHand)
         assertNull(state.product.expiresInDays)
     }
