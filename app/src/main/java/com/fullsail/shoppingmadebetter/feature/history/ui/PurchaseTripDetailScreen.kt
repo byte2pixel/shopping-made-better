@@ -194,7 +194,10 @@ private fun PurchaseTripDetailContent(
     }
 }
 
-/** The trip header: what was bought where, when, for how much, and "Buy again". */
+/**
+ * The trip header: when, how many items, for how much, who bought it if not you, and
+ * "Buy again". The store is left out because it is already the top-bar title.
+ */
 @Composable
 private fun TripSummary(
     trip: PurchaseTrip,
@@ -208,33 +211,44 @@ private fun TripSummary(
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SummaryField(
-            label = stringResource(R.string.history_detail_store),
-            value = trip.storeName ?: stringResource(R.string.history_unknown_store),
-        )
-        if (!trip.isOwn) {
-            SummaryField(
-                label = stringResource(R.string.history_detail_bought_by),
-                value = trip.purchasedBy ?: stringResource(R.string.owner_chip_household),
-            )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics(mergeDescendants = true) {},
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(
+                        R.string.history_detail_date_items,
+                        formatTripDate(trip.purchasedOn),
+                        pluralStringResource(
+                            R.plurals.history_trip_item_count,
+                            trip.itemCount,
+                            trip.itemCount,
+                        ),
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                if (!trip.isOwn) {
+                    Text(
+                        text = stringResource(
+                            R.string.history_bought_by,
+                            trip.purchasedBy ?: stringResource(R.string.owner_chip_household),
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Text(text = formatPrice(trip.total), style = MaterialTheme.typography.headlineSmall)
         }
-        SummaryField(
-            label = stringResource(R.string.history_detail_date),
-            value = formatTripDate(trip.purchasedOn),
-        )
-        SummaryField(
-            label = stringResource(R.string.history_detail_total),
-            value = formatPrice(trip.total),
-        )
-        SummaryField(
-            label = stringResource(R.string.history_detail_items),
-            value = pluralStringResource(
-                R.plurals.history_trip_item_count,
-                trip.itemCount,
-                trip.itemCount,
-            ),
-        )
-        FilledTonalButton(onClick = onBuyAgainClick, enabled = buyAgainEnabled) {
+        FilledTonalButton(
+            onClick = onBuyAgainClick,
+            enabled = buyAgainEnabled,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             Icon(
                 painter = painterResource(R.drawable.ic_shopping_cart),
                 contentDescription = null,
@@ -305,18 +319,6 @@ private fun StoreCostRow(cost: StoreBasketCost, isCheapest: Boolean) {
             )
         }
         Text(text = formatPrice(cost.cost), style = MaterialTheme.typography.bodyLarge)
-    }
-}
-
-@Composable
-private fun SummaryField(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(text = value, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
