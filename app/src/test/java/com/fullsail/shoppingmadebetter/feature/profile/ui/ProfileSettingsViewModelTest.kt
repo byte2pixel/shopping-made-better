@@ -35,11 +35,13 @@ class ProfileSettingsViewModelTest {
     }
 
     @Test
-    fun `init loads the flag`() = runTest {
+    fun `load reads the flag`() = runTest {
         val viewModel = ProfileSettingsViewModel(
             FakeGetAutoAdjustEnabledUseCase(GetAutoAdjustEnabledUseCase.Output.Success(enabled = false)),
             FakeSetAutoAdjustEnabledUseCase(),
         )
+
+        viewModel.load()
 
         assertEquals(false, viewModel.autoAdjustEnabled.value)
     }
@@ -51,6 +53,8 @@ class ProfileSettingsViewModelTest {
             FakeSetAutoAdjustEnabledUseCase(),
         )
 
+        viewModel.load()
+
         assertNull(viewModel.autoAdjustEnabled.value)
     }
 
@@ -58,6 +62,7 @@ class ProfileSettingsViewModelTest {
     fun `onAutoAdjustToggled saves the new value and keeps it`() = runTest {
         val set = FakeSetAutoAdjustEnabledUseCase()
         val viewModel = ProfileSettingsViewModel(FakeGetAutoAdjustEnabledUseCase(), set)
+        viewModel.load()
 
         viewModel.onAutoAdjustToggled(false)
 
@@ -71,6 +76,7 @@ class ProfileSettingsViewModelTest {
             SetAutoAdjustEnabledUseCase.Output.Failure(IOException("boom"))
         )
         val viewModel = ProfileSettingsViewModel(FakeGetAutoAdjustEnabledUseCase(), set)
+        viewModel.load()
 
         viewModel.onAutoAdjustToggled(false)
 
