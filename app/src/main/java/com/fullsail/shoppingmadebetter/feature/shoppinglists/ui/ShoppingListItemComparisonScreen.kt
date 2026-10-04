@@ -58,6 +58,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -125,6 +126,8 @@ fun ShoppingListItemComparisonScreen(
                     }
 
                       else  {
+                        val prices = remember(state.price) {state.price.sortedBy { it.price }}
+                        val highestPrice= prices.maxOf{it.price}
 
             LazyColumn(
                 Modifier
@@ -132,11 +135,10 @@ fun ShoppingListItemComparisonScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                val highestPrice = state.price.filter { it.productTitle == selectedProduct }.sortedByDescending{it.price}[0].price
+
+
                 items(state.price.filter { it.productTitle == selectedProduct }.sortedBy { it.price }, key = {it.productId + it.storeId }) {
-
-
-                    ItemCard(it, viewModel, onItemComparison, String.format("%.2f",100 - it.price.replace("$","").toFloat() / highestPrice.replace("$","").toFloat() * 100)) }
+                    ItemCard(it, viewModel, onItemComparison, String.format("%.2f",100 - it.price / highestPrice * 100 )) }
             }
 
               }
@@ -283,8 +285,9 @@ fun ShoppingListItemComparisonScreen(
                 }
                 val store = storeInfo[product.storeId]
                 if (store != null) {
+                    val distance = viewModel.addressToCoordinates(store.address)
                     Text(
-                        product.price + "    " + viewModel.addressToCoordinates(store.address) + " miles away ",
+                        product.displayPrice + (distance?.let { "    $it miles away" } ?: ""),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.padding(12.dp))
@@ -293,7 +296,7 @@ fun ShoppingListItemComparisonScreen(
 
                 } else {
                     Text(
-                        product.price + "    loading distance...",
+                        product.displayPrice + "    loading distance...",
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.padding(12.dp))
