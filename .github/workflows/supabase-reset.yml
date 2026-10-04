@@ -1,0 +1,59 @@
+name: Reset Supabase (destructive, pre-launch only)
+
+# Drops the cloud database and rebuilds it from supabase/migrations plus the
+# [db.seed] files in config.toml, exactly as `supabase db reset` does locally.
+# Every row goes, accounts included. Manual only; never run after launch.
+#
+# supabase-deploy.yml stays the release path (migrations only, idempotent) and
+# supabase-seed.yml stays the first-time catalog load. This one exists because
+# the seed changed after the first deploy and neither of those can reload it.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type WIPE CLOUD DATABASE to proceed"
+        required: true
+        type: string
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+    steps:
+      # Before checkout, so a wrong phrase touches nothing.
+      - name: Refuse without the confirmation phrase
+        if: ${{ inputs.confirm != 'WIPE CLOUD DATABASE' }}
+        run: |
+          echo "::error::Confirmation phrase did not match; nothing was touched."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+
+      # seed.sql is gitignored/generated -- rebuild it from the committed CSV.
+      - name: Regenerate seed.sql from CSV
+        run: python scripts/generate_seed.py
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: latest
+
+      - name: Link to cloud project
+        run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+
+      # Replays every migration, then seed.sql and dummy_account.sql in the
+      # config.toml order. Fallback if the runner cannot reach the database:
+      # `supabase db reset --db-url "${{ secrets.SUPABASE_DB_URL }}" --yes`
+      # (Session Pooler URL, percent-encoded) and drop the link step.
+      - name: Wipe, migrate and seed
+        run: supabase db reset --linked --yes
