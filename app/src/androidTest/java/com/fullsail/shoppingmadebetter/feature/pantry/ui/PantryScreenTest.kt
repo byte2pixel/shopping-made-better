@@ -8,6 +8,8 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -56,6 +58,7 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip
 import com.fullsail.shoppingmadebetter.feature.stores.domain.GetStoresUseCase
 import com.fullsail.shoppingmadebetter.feature.stores.domain.Store
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -153,11 +156,16 @@ class PantryScreenTest {
         }
     }
 
+    /** [gate], when set, holds the answer back so a test can land the count after the inventory. */
     private class FakeGetAdjustmentDigestUseCase(
         private val output: GetAdjustmentDigestUseCase.Output =
             GetAdjustmentDigestUseCase.Output.Success(emptyList()),
+        private val gate: CompletableDeferred<Unit>? = null,
     ) : GetAdjustmentDigestUseCase {
-        override suspend fun execute(input: Unit) = output
+        override suspend fun execute(input: Unit): GetAdjustmentDigestUseCase.Output {
+            gate?.await()
+            return output
+        }
     }
 
     private class FakeGetAutoAdjustEnabledUseCase(
@@ -347,17 +355,20 @@ class PantryScreenTest {
         onReviewDigest: () -> Unit = {},
     ) {
         val viewModel = PantryViewModel(
-            inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, applyAdjustment,
-            updateLocation, updateExpiry, updateThreshold, alerts, undoAdjustment, autoAdjust,
-            digest, createList, stores, search, addToPantry,
+            inventory, deleteInventory, getSkip, setSkip, applyAdjustment, updateLocation,
+            updateExpiry, updateThreshold, alerts, undoAdjustment, autoAdjust, digest,
         )
+        val listSheetViewModel = AddToListSheetViewModel(trips, insert, delete, createList, stores)
+        val pantrySheetViewModel = AddToPantrySheetViewModel(search, addToPantry, deleteInventory)
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
                 PantryScreen(
-                onProductClick = onProductClick,
-                onReviewDigest = onReviewDigest,
-                viewModel = viewModel,
-            )
+                    onProductClick = onProductClick,
+                    onReviewDigest = onReviewDigest,
+                    viewModel = viewModel,
+                    listSheetViewModel = listSheetViewModel,
+                    pantrySheetViewModel = pantrySheetViewModel,
+                )
             }
         }
     }
@@ -367,21 +378,40 @@ class PantryScreenTest {
         setScreen()
 
         composeTestRule.onNodeWithText("2% Milk").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Great Value").assertIsDisplayed()
-        composeTestRule.onNodeWithText("1 gal").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Great Value · 1 gal").assertIsDisplayed()
 
-        // The header aggregates are spoken values, not buttons. Unmerged, because the
-        // merged tree folds them into the header's own click.
+        // The header stats are spoken values, not buttons, and the expiry column is
+        // there even without a date. Unmerged, because the merged tree folds them into
+        // the header's own click.
+        listOf(
+            quantityString(R.plurals.pantry_card_total_quantity_desc, 2, 2),
+            string(R.string.pantry_card_location_desc, string(R.string.pantry_dashboard_pantry)),
+            string(R.string.pantry_card_expiry_none_desc),
+        ).forEach { description ->
+            composeTestRule
+                .onNodeWithContentDescription(description, useUnmergedTree = true)
+                .assertIsDisplayed()
+                .assertHasNoClickAction()
+        }
+    }
+
+    @Test
+    fun aProductWithNoBrandShowsNoBlankLine() {
+        setScreen(inventory = FakeGetInventoryUseCase(inventoryOf(milk.copy(brand = ""))))
+
+        // The brand and size share one line, so a missing brand leaves no separator behind.
+        composeTestRule.onNodeWithText("1 gal").assertIsDisplayed()
+        composeTestRule.onNodeWithText("·", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun lotsInSeveralPlacesShowHowMany() {
+        val fridgeLot = milk.copy(id = "i9", location = PantryLocation.Fridge)
+        setScreen(inventory = FakeGetInventoryUseCase(inventoryOf(milk, fridgeLot)))
+
         composeTestRule
             .onNodeWithContentDescription(
-                quantityString(R.plurals.pantry_card_total_quantity_desc, 2, 2),
-                useUnmergedTree = true,
-            )
-            .assertIsDisplayed()
-            .assertHasNoClickAction()
-        composeTestRule
-            .onNodeWithContentDescription(
-                string(R.string.pantry_card_location_desc, string(R.string.pantry_dashboard_pantry)),
+                string(R.string.pantry_card_location_mixed_desc),
                 useUnmergedTree = true,
             )
             .assertIsDisplayed()
@@ -1034,6 +1064,14 @@ class PantryScreenTest {
     }
 
     @Test
+    fun anEmptyPantrySaysSo() {
+        setScreen(inventory = FakeGetInventoryUseCase(inventoryOf()))
+
+        composeTestRule.onNodeWithText(string(R.string.pantry_empty)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(string(R.string.pantry_search_no_matches)).assertDoesNotExist()
+    }
+
+    @Test
     fun aSearchNarrowsWithinTheDashboardFilter() {
         val expiringMilk = milk.copy(expiresInDays = 1)
         setScreen(
@@ -1151,6 +1189,27 @@ class PantryScreenTest {
     }
 
     @Test
+    fun theNextZeroStockDialogWaitsForTheAddToListSheetToClose() {
+        val emptyYogurt = expiringYogurt.copy(quantity = 0, lastAdjustmentReason = AdjustmentReason.Auto)
+        setScreen(inventory = FakeGetInventoryUseCase(inventoryOf(emptyMilk, emptyYogurt)))
+
+        // Yogurt's dialog comes first; "Add to list" opens the sheet for it.
+        composeTestRule.onNodeWithText(string(R.string.pantry_zero_stock_add_to_list)).performClick()
+        composeTestRule
+            .onNodeWithText(string(R.string.add_to_list_title, "Yogurt"))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_zero_stock_message, "2% Milk"))
+            .assertDoesNotExist()
+
+        Espresso.pressBack()
+
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_zero_stock_message, "2% Milk"))
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun zeroStockDialogsComeOneAtATime() {
         val emptyYogurt = expiringYogurt.copy(quantity = 0, lastAdjustmentReason = AdjustmentReason.Auto)
         setScreen(inventory = FakeGetInventoryUseCase(inventoryOf(emptyMilk, emptyYogurt)))
@@ -1201,6 +1260,35 @@ class PantryScreenTest {
         composeTestRule
             .onNode(hasClickLabel(string(R.string.pantry_digest_card_action)))
             .assertDoesNotExist()
+    }
+
+    @Test
+    fun theDigestCardIsOnScreenWhenItsCountArrivesAfterTheInventory() {
+        // Enough products to overflow the viewport: a list that fits cannot scroll past the
+        // card, so the bug only shows once the list is scrollable.
+        val products = List(30) { milk.copy(id = "i$it", productId = "p$it", name = "Product $it") }
+        val gate = CompletableDeferred<Unit>()
+        setScreen(
+            inventory = FakeGetInventoryUseCase(inventoryOf(*products.toTypedArray())),
+            digest = FakeGetAdjustmentDigestUseCase(
+                GetAdjustmentDigestUseCase.Output.Success(listOf(digestEntry("lot1"))),
+                gate = gate,
+            ),
+        )
+        composeTestRule.onNodeWithText("Product 0").assertIsDisplayed()
+
+        gate.complete(Unit)
+
+        // The list anchored on the digest slot, not the first product, so the card lands
+        // in view. Without the slot it sits above the list with a few dp peeking into the
+        // top inset, which still counts as displayed, so the whole title must be unclipped.
+        val title = quantityString(R.plurals.pantry_digest_card_title, 1, 1)
+        composeTestRule.waitUntil(SHEET_TIMEOUT_MS) {
+            composeTestRule.onAllNodesWithText(title).fetchSemanticsNodes().isNotEmpty()
+        }
+        val digestTitle = composeTestRule.onNodeWithText(title)
+        assertEquals(digestTitle.getUnclippedBoundsInRoot(), digestTitle.getBoundsInRoot())
+        composeTestRule.onNodeWithText("Product 0").assertIsDisplayed()
     }
 
     @Test
@@ -1267,6 +1355,35 @@ class PantryScreenTest {
             AddInventoryItem("p1", quantity = 2, location = PantryLocation.Freezer),
             addToPantry.lastInput,
         )
+    }
+
+    @Test
+    fun addingShowsTheNewLotAndUndoRemovesIt() {
+        val inventory = FakeGetInventoryUseCase(inventoryOf(milk))
+        val deleteInventory = FakeDeleteInventoryItemUseCase()
+        setScreen(inventory = inventory, deleteInventory = deleteInventory)
+        openAddToPantrySheet()
+        searchAndPick()
+        val oatMilk = milk.copy(id = "lot-9", productId = "p9", name = SEARCH_RESULT_NAME)
+
+        // The sheet's write lands in the next inventory read; the screen reloads on the event.
+        inventory.output = inventoryOf(milk, oatMilk)
+        composeTestRule.onNodeWithText(string(R.string.pantry_add_confirm)).performClick()
+
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_added, SEARCH_RESULT_NAME))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText(SEARCH_RESULT_NAME).assertIsDisplayed()
+
+        inventory.output = inventoryOf(milk)
+        composeTestRule.onNodeWithText(string(R.string.add_to_list_undo)).performClick()
+
+        // Undo deletes exactly the lot the add created, and the list reloads without it.
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_removed, SEARCH_RESULT_NAME))
+            .assertIsDisplayed()
+        assertEquals("lot-9", deleteInventory.lastId)
+        composeTestRule.onNodeWithText(SEARCH_RESULT_NAME).assertDoesNotExist()
     }
 
 

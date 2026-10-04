@@ -338,27 +338,55 @@ join public.products pr on pr.id = p.product_id;
 --    adjustment job would have nothing visible to do. Add five pantry
 --    staples to the two ALDI trips 93 days apart; the estimator then derives
 --    a history rate of (4 - 2) / 93 = 0.0215/day for each, and the apply run
---    visibly adjusts those lots. Idempotent because section 5 recreates
+--    visibly adjusts those lots. Lines are priced at ALDI's current price so
+--    "what this basket costs today" matches what was paid; the older trip sits
+--    5% under to show drift. Idempotent because section 5 recreates
 --    purchase_history (items cascade) on every run.
-insert into public.purchase_history_items
-  (purchase_id, product_id, quantity, price_paid, added_to_inventory)
-select ph.id, p.id, v.qty, v.price, true
-from (values
-  ('21125083_EA',  3, 2, 2.49),  -- Mac & Cheese Sauce
-  ('21125083_EA', 96, 2, 2.49),
-  ('21219491_EA',  3, 2, 4.99),  -- Peanut Butter
-  ('21219491_EA', 96, 2, 4.99),
-  ('21535597_EA',  3, 2, 3.29),  -- Jasmine Rice pouch
-  ('21535597_EA', 96, 2, 3.29),
-  ('21469394_EA',  3, 2, 8.99),  -- Jerk Chicken Wings
-  ('21469394_EA', 96, 2, 8.99),
-  ('21496426_EA',  3, 2, 3.79),  -- Frozen Red Raspberries
-  ('21496426_EA', 96, 2, 3.79)
-) as v(source_product_id, days_ago, qty, price)
-join public.products p on p.source_product_id = v.source_product_id
-join public.purchase_history ph
-  on ph.user_id = '11111111-1111-1111-1111-111111111111'
- and ph.purchased_at::date = current_date - v.days_ago;
+do $$
+declare inserted int;
+begin
+  insert into public.purchase_history_items
+    (purchase_id, product_id, quantity, price_paid, added_to_inventory)
+  select ph.id, p.id, v.qty,
+         round(spp.price * case when v.days_ago = 96 then 0.95 else 1 end, 2),
+         true
+  from (values
+    ('21125083_EA',  3, 2),  -- Mac & Cheese Sauce
+    ('21125083_EA', 96, 2),
+    ('21219491_EA',  3, 2),  -- Peanut Butter
+    ('21219491_EA', 96, 2),
+    ('21535597_EA',  3, 2),  -- Jasmine Rice pouch
+    ('21535597_EA', 96, 2),
+    ('21469394_EA',  3, 2),  -- Jerk Chicken Wings
+    ('21469394_EA', 96, 2),
+    ('21496426_EA',  3, 2),  -- Frozen Red Raspberries
+    ('21496426_EA', 96, 2)
+  ) as v(source_product_id, days_ago, qty)
+  join public.products p on p.source_product_id = v.source_product_id
+  join public.purchase_history ph
+    on ph.user_id = '11111111-1111-1111-1111-111111111111'
+   and ph.purchased_at::date = current_date - v.days_ago
+  join public.store_product_pricing spp
+    on spp.store_id = ph.store_id
+   and spp.product_id = p.id
+   and spp.is_current;
+
+  -- A staple with no current ALDI price would drop out of the join and
+  -- silently break the rates section 7 relies on.
+  get diagnostics inserted = row_count;
+  if inserted <> 10 then
+    raise exception 'section 6 inserted % staple lines, expected 10', inserted;
+  end if;
+end $$;
+
+-- 6b) Section 6 appended lines, so re-total the demo user's trips from their items.
+update public.purchase_history ph
+   set total_amount = t.total
+  from (select purchase_id, sum(quantity * price_paid) as total
+          from public.purchase_history_items
+         group by purchase_id) t
+ where t.purchase_id = ph.id
+   and ph.user_id = '11111111-1111-1111-1111-111111111111';
 
 -- 7) A week of automatic adjustments, so the digest (SCRUM-224) has something to
 --    show after a reset. Rates come from section 6; the 50-day stamp gives each

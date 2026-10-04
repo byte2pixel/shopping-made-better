@@ -6,6 +6,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -191,21 +192,47 @@ class PurchaseTripDetailScreenTest {
     }
 
     @Test
+    fun theLineItemsPantryMarkerIsSpokenButNotTappable() {
+        setScreen(purchase = trip.copy(items = listOf(milk.copy(addedToInventory = true))))
+
+        composeTestRule
+            .onNodeWithContentDescription(
+                string(R.string.history_line_item_pantry_desc),
+                useUnmergedTree = true,
+            )
+            .assertIsDisplayed()
+            .assertHasNoClickAction()
+    }
+
+    @Test
+    fun theHeaderReadsDateItemCountAndTotalAsOneNode() {
+        setScreen()
+
+        val itemCount = composeTestRule.activity.resources
+            .getQuantityString(R.plurals.history_trip_item_count, 1, 1)
+        val dateLine =
+            string(R.string.history_detail_date_items, formatTripDate(trip.purchasedOn), itemCount)
+        // The line item's total is also $7.98, so match the merged header node.
+        composeTestRule
+            .onNode(hasText(dateLine) and hasText(formatPrice(trip.total)))
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun aHousemateTripSaysWhoBoughtIt() {
         setScreen(purchase = trip.copy(purchasedBy = "Demo Roommate", isOwn = false))
 
         composeTestRule
-            .onNodeWithText(string(R.string.history_detail_bought_by))
+            .onNodeWithText(string(R.string.history_bought_by, "Demo Roommate"))
             .assertIsDisplayed()
-        composeTestRule.onNodeWithText("Demo Roommate").assertIsDisplayed()
     }
 
     @Test
-    fun anOwnTripHasNoBoughtByField() {
+    fun anOwnTripHasNoBoughtByLine() {
         setScreen()
 
         composeTestRule
-            .onNodeWithText(string(R.string.history_detail_bought_by))
+            .onNodeWithText(string(R.string.history_bought_by, ""), substring = true)
             .assertDoesNotExist()
     }
 

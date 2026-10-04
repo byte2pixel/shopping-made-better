@@ -284,6 +284,20 @@ Seed the database — with the Supabase containers started, run:
 npx supabase db reset
 ```
 
+#### Resetting the cloud database
+
+Three manual workflows under **Actions** touch the cloud project:
+
+| Workflow | When |
+|----------|------|
+| Deploy Supabase Migrations | Runs on every release; applies new migrations only. Safe to re-run. |
+| Seed Supabase (one-time) | First catalog load after the first deploy. Not re-runnable. |
+| Reset Supabase | Drops the cloud database and rebuilds it from the migrations and both seed files, like a local `db reset`. Every row and every account is lost. |
+
+Reset asks for the phrase `WIPE CLOUD DATABASE` and refuses anything else. It exists to
+carry seed changes to the cloud project **before launch**; once real users have data it
+must never be run.
+
 ### Temporary Dummy Account
 
 For local development there is a **temporary** demo user with pre-populated mock

@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -76,6 +77,7 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListCart
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.ui.ShoppingListItemsScreen
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingUiState
 import com.fullsail.shoppingmadebetter.feature.onboarding.ui.OnboardingViewModel
 import androidx.compose.material3.SnackbarHost
@@ -228,7 +230,9 @@ fun ShoppingMadeBetterApp(
         NavHost(
             navController = navController,
             startDestination = Dest.Splash,
-            modifier = Modifier.padding(innerPadding),
+            modifier = Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding),
         ) {
 
             composable<Dest.Splash> { SplashScreen() }
@@ -266,7 +270,7 @@ fun ShoppingMadeBetterApp(
                 SignUpScreen(
                     onSignedUp = {
 
-                        navController.navigate(Dest.Onboarding) {
+                        navController.navigate(Dest.Onboarding()) {
                             popUpTo(Dest.Login) { inclusive = true }
                             launchSingleTop = true
                         }
@@ -280,9 +284,11 @@ fun ShoppingMadeBetterApp(
                 )
             }
 
-            composable<Dest.Onboarding> {
+            composable<Dest.Onboarding> { entry ->
+                val editing = entry.toRoute<Dest.Onboarding>().editing
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel()
                 val uiState by onboardingViewModel.uiState.collectAsState()
+                val prefill by onboardingViewModel.prefill.collectAsState()
 
 
                 val selectedDiets = rememberSaveable { mutableStateOf(emptySet<String>()) }
@@ -290,12 +296,31 @@ fun ShoppingMadeBetterApp(
                 val selectedGoal = rememberSaveable { mutableStateOf<String?>(null) }
                 val selectedAutoAdjust = rememberSaveable { mutableStateOf<Boolean?>(null) }
 
+                // An edit starts from the saved answers, copied in once so a rotation
+                // after the read doesn't undo what the user has changed since.
+                var seeded by rememberSaveable { mutableStateOf(false) }
+                LaunchedEffect(editing) {
+                    if (editing) onboardingViewModel.loadForEdit()
+                }
+                LaunchedEffect(prefill) {
+                    val saved = prefill ?: return@LaunchedEffect
+                    if (seeded) return@LaunchedEffect
+                    selectedDiets.value = saved.dietaryRestrictions.toSet()
+                    selectedCategories.value = saved.topCategories.toSet()
+                    selectedGoal.value = saved.primaryGoal.takeIf { it.isNotBlank() }
+                    selectedAutoAdjust.value = saved.autoAdjustEnabled
+                    seeded = true
+                }
 
                 LaunchedEffect(uiState) {
                     when (val s = uiState) {
                         is OnboardingUiState.Success -> {
-                            navController.navigate(Dest.ShoppingLists) {
-                                popUpTo(Dest.Onboarding::class) { inclusive = true }
+                            if (editing) {
+                                navController.popBackStack()
+                            } else {
+                                navController.navigate(Dest.ShoppingLists) {
+                                    popUpTo(Dest.Onboarding::class) { inclusive = true }
+                                }
                             }
                         }
                         is OnboardingUiState.Error -> {
@@ -340,7 +365,7 @@ fun ShoppingMadeBetterApp(
                 ProfileScreen(
                     onNavigateToChangePassword = { navController.navigate(Dest.ChangePassword) },
                     onNavigateBack = { navController.popBackStack() },
-                    onEditPreferences = { navController.navigate(Dest.Onboarding) },
+                    onEditPreferences = { navController.navigate(Dest.Onboarding(editing = true)) },
                     onNavigateToHousehold = { navController.navigate(Dest.Household) },
                     onSignOut = navigationViewModel::logout,
                 )

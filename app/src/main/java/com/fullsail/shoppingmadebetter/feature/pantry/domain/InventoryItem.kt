@@ -1,5 +1,9 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.domain
 
+import com.fullsail.shoppingmadebetter.feature.pantry.data.InventoryItemDto
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
+
 data class InventoryItem(
     val id: String,
     val productId: String,
@@ -31,3 +35,23 @@ data class InventoryItem(
     val canUndo: Boolean
         get() = lastAdjustmentReason == AdjustmentReason.Auto && lastAdjustmentId != null
 }
+
+/** One `pantry_items_by_expire` row as the app holds it, with expiry counted from [today]. */
+internal fun InventoryItemDto.toDomain(today: LocalDate) = InventoryItem(
+    id = id,
+    productId = productId,
+    name = name,
+    brand = brand,
+    description = description,
+    size = size,
+    imageUrl = imageUrl,
+    quantity = quantity,
+    expiresInDays = expiryDate?.let { today.daysUntil(it) },
+    location = PantryLocation.fromDbValue(location),
+    lowStockThreshold = lowStockThreshold,
+    lastAdjustmentReason = AdjustmentReason.fromDbValue(lastAdjustmentReason),
+    estimateSource = EstimateSource.fromDbValue(estimateSource),
+    lastAdjustmentId = lastAdjustmentId,
+    addedBy = addedBy,
+    isOwn = isOwn,
+)

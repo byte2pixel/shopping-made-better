@@ -22,6 +22,9 @@
     <string name="profile_auto_adjust_failed">Couldn\'t update auto-adjust</string>
 
     <!-- Onboarding -->
+    <string name="onboarding_title">Profile Setup (%1$d/%2$d)</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_complete">Complete Setup</string>
     <string name="onboarding_auto_adjust_question">Keep your pantry up to date automatically?</string>
     <string name="onboarding_auto_adjust_yes">Yes, lower quantities for me</string>
     <string name="onboarding_auto_adjust_no">No, I\'ll update them myself</string>
@@ -67,16 +70,11 @@
     </plurals>
 
     <!-- Pantry item detail -->
-    <string name="pantry_detail_brand">Brand</string>
-    <string name="pantry_detail_size">Size</string>
-    <string name="pantry_detail_stock">Stock</string>
     <string name="pantry_detail_description">Description</string>
-    <string name="pantry_detail_stores">Stores</string>
-    <string name="pantry_detail_expiration">Expiration</string>
-    <string name="pantry_detail_coming_soon">Coming soon</string>
     <string name="pantry_detail_not_found">Item not found</string>
+    <string name="pantry_detail_lots">In your pantry (%1$d)</string>
+    <string name="pantry_detail_no_lots">Not in your pantry right now.</string>
     <!-- Expiration status shown against the item's remaining shelf life -->
-    <string name="pantry_detail_expires_unknown">No expiration date</string>
     <string name="pantry_detail_expired">Expired</string>
     <string name="pantry_detail_expires_today">Expires today</string>
     <plurals name="pantry_detail_expires_in_days">
@@ -162,9 +160,17 @@
         <item quantity="one">%1$d in stock across all lots</item>
         <item quantity="other">%1$d in stock across all lots</item>
     </plurals>
-    <string name="pantry_location_mixed">Mixed</string>
+    <string name="pantry_card_stat_on_hand">On hand</string>
+    <string name="pantry_card_stat_where">Where</string>
+    <string name="pantry_card_stat_expires">Expires</string>
+    <plurals name="pantry_card_location_count">
+        <item quantity="one">%1$d place</item>
+        <item quantity="other">%1$d places</item>
+    </plurals>
     <string name="pantry_card_location_mixed_desc">Stored in multiple locations</string>
     <string name="pantry_card_expiry_soonest_desc">Soonest expiry: %1$s</string>
+    <string name="pantry_card_expiry_none">No date</string>
+    <string name="pantry_card_expiry_none_desc">No expiry date</string>
     <string name="pantry_card_lot_details">View product details</string>
     <string name="pantry_card_remove_lot">Remove this lot</string>
 
@@ -172,6 +178,7 @@
     <string name="pantry_search_label">Search your pantry</string>
     <string name="pantry_search_clear">Clear search</string>
     <string name="pantry_search_no_matches">No pantry items match</string>
+    <string name="pantry_empty">Nothing in your pantry yet. Add items from a shopping trip, or with the + button.</string>
 
     <!-- Pantry inventory card chip indicators - location -->
     <string name="pantry_card_location_desc">Stored in %1$s</string>
@@ -323,8 +330,10 @@
     <string name="history_filter_date_title_input">Enter dates</string>
     <string name="history_filter_date_start">Start date</string>
     <string name="history_filter_date_end">End date</string>
-    <!-- Drops every filter at once; only shown while at least one is on. -->
+    <!-- Drops every filter at once; only shown while at least one is on. The short
+         form is the header button's label, the long one its spoken description. -->
     <string name="history_filter_clear">Clear filters</string>
+    <string name="history_filter_clear_short">Clear</string>
     <!-- Product search over past trips. Shorter than two characters is ignored, so
          the hint says what the field matches rather than promising instant results. -->
     <string name="history_search_label">Search what you bought</string>
@@ -347,12 +356,8 @@
 
     <!-- History: one completed trip and what was bought on it -->
     <string name="history_detail_not_found">That trip is no longer available</string>
-    <string name="history_detail_store">Store</string>
-    <!-- Shown only on a housemate's trip. -->
-    <string name="history_detail_bought_by">Bought by</string>
-    <string name="history_detail_date">Purchased</string>
-    <string name="history_detail_total">Total</string>
-    <string name="history_detail_items">Items</string>
+    <!-- Trip header line, e.g. "Sep 23, 2026 · 9 items". -->
+    <string name="history_detail_date_items">%1$s · %2$s</string>
     <!-- e.g. "Qty 1.5 × $2.00" -->
     <string name="history_line_quantity_price">Qty %1$s × %2$s</string>
     <!-- Click label on a line item; the checkbox beside it keeps its own label. -->
