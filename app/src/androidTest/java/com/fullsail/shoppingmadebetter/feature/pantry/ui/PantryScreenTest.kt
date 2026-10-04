@@ -355,17 +355,20 @@ class PantryScreenTest {
         onReviewDigest: () -> Unit = {},
     ) {
         val viewModel = PantryViewModel(
-            inventory, trips, insert, delete, deleteInventory, getSkip, setSkip, applyAdjustment,
-            updateLocation, updateExpiry, updateThreshold, alerts, undoAdjustment, autoAdjust,
-            digest, createList, stores, search, addToPantry,
+            inventory, deleteInventory, getSkip, setSkip, applyAdjustment, updateLocation,
+            updateExpiry, updateThreshold, alerts, undoAdjustment, autoAdjust, digest,
         )
+        val listSheetViewModel = AddToListSheetViewModel(trips, insert, delete, createList, stores)
+        val pantrySheetViewModel = AddToPantrySheetViewModel(search, addToPantry, deleteInventory)
         composeTestRule.setContent {
             ShoppingMadeBetterTheme {
                 PantryScreen(
-                onProductClick = onProductClick,
-                onReviewDigest = onReviewDigest,
-                viewModel = viewModel,
-            )
+                    onProductClick = onProductClick,
+                    onReviewDigest = onReviewDigest,
+                    viewModel = viewModel,
+                    listSheetViewModel = listSheetViewModel,
+                    pantrySheetViewModel = pantrySheetViewModel,
+                )
             }
         }
     }
@@ -1186,6 +1189,27 @@ class PantryScreenTest {
     }
 
     @Test
+    fun theNextZeroStockDialogWaitsForTheAddToListSheetToClose() {
+        val emptyYogurt = expiringYogurt.copy(quantity = 0, lastAdjustmentReason = AdjustmentReason.Auto)
+        setScreen(inventory = FakeGetInventoryUseCase(inventoryOf(emptyMilk, emptyYogurt)))
+
+        // Yogurt's dialog comes first; "Add to list" opens the sheet for it.
+        composeTestRule.onNodeWithText(string(R.string.pantry_zero_stock_add_to_list)).performClick()
+        composeTestRule
+            .onNodeWithText(string(R.string.add_to_list_title, "Yogurt"))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_zero_stock_message, "2% Milk"))
+            .assertDoesNotExist()
+
+        Espresso.pressBack()
+
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_zero_stock_message, "2% Milk"))
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun zeroStockDialogsComeOneAtATime() {
         val emptyYogurt = expiringYogurt.copy(quantity = 0, lastAdjustmentReason = AdjustmentReason.Auto)
         setScreen(inventory = FakeGetInventoryUseCase(inventoryOf(emptyMilk, emptyYogurt)))
@@ -1331,6 +1355,35 @@ class PantryScreenTest {
             AddInventoryItem("p1", quantity = 2, location = PantryLocation.Freezer),
             addToPantry.lastInput,
         )
+    }
+
+    @Test
+    fun addingShowsTheNewLotAndUndoRemovesIt() {
+        val inventory = FakeGetInventoryUseCase(inventoryOf(milk))
+        val deleteInventory = FakeDeleteInventoryItemUseCase()
+        setScreen(inventory = inventory, deleteInventory = deleteInventory)
+        openAddToPantrySheet()
+        searchAndPick()
+        val oatMilk = milk.copy(id = "lot-9", productId = "p9", name = SEARCH_RESULT_NAME)
+
+        // The sheet's write lands in the next inventory read; the screen reloads on the event.
+        inventory.output = inventoryOf(milk, oatMilk)
+        composeTestRule.onNodeWithText(string(R.string.pantry_add_confirm)).performClick()
+
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_added, SEARCH_RESULT_NAME))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText(SEARCH_RESULT_NAME).assertIsDisplayed()
+
+        inventory.output = inventoryOf(milk)
+        composeTestRule.onNodeWithText(string(R.string.add_to_list_undo)).performClick()
+
+        // Undo deletes exactly the lot the add created, and the list reloads without it.
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_removed, SEARCH_RESULT_NAME))
+            .assertIsDisplayed()
+        assertEquals("lot-9", deleteInventory.lastId)
+        composeTestRule.onNodeWithText(SEARCH_RESULT_NAME).assertDoesNotExist()
     }
 
 
