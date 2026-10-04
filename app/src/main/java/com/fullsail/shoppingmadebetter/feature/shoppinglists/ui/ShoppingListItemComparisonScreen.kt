@@ -76,7 +76,7 @@ fun ShoppingListItemComparisonScreen(
 ) {
 
     var selectedProduct by rememberSaveable {mutableStateOf<String?>(null)}
-    var bAscending by remember { mutableStateOf(false)}
+    var bAscending by remember { mutableStateOf(true)}
     val uiState by viewModel.uiState.collectAsState()
     val getPermissions = rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestMultiplePermissions())
     {}
@@ -122,51 +122,29 @@ fun ShoppingListItemComparisonScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (bAscending) {
+                val filtered = state.price.filter { it.productTitle == selectedProduct }
+                val sorted = if (bAscending) filtered.sortedBy { it.price } else filtered.sortedByDescending { it.price }
 
-
-                    items(state.price.filter { it.productTitle == selectedProduct }
-                        .sortedBy { it.price }, key = { it.productId + it.storeId }) {
-                        if ((ActivityCompat.checkSelfPermission(
-                                LocalContext.current,
-                                Manifest.permission.ACCESS_FINE_LOCATION
-                            ) != PackageManager.PERMISSION_GRANTED) || (ActivityCompat.checkSelfPermission(
-                                LocalContext.current,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            ) != PackageManager.PERMISSION_GRANTED)
-                        ) {
-                            LaunchedEffect(Unit) {
-                                getPermissions.launch(
-                                    arrayOf(
-                                        Manifest.permission.ACCESS_FINE_LOCATION,
-                                        Manifest.permission.ACCESS_COARSE_LOCATION
-                                    )
+                items(sorted, key = { it.productId + it.storeId }) {
+                    if ((ActivityCompat.checkSelfPermission(
+                            LocalContext.current,
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                        ) != PackageManager.PERMISSION_GRANTED) || (ActivityCompat.checkSelfPermission(
+                            LocalContext.current,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        ) != PackageManager.PERMISSION_GRANTED)
+                    ) {
+                        LaunchedEffect(Unit) {
+                            getPermissions.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
                                 )
-                            }
-
+                            )
                         }
-                        ItemCard(it, viewModel, onItemComparison)
+
                     }
-                }
-                else {
-                    items(state.price.filter { it.productTitle == selectedProduct }.sortedByDescending { it.price }, key = {it.productId + it.storeId }) {
-                        if ((ActivityCompat.checkSelfPermission(
-                                LocalContext.current,
-                                Manifest.permission.ACCESS_FINE_LOCATION
-                            ) != PackageManager.PERMISSION_GRANTED) || (ActivityCompat.checkSelfPermission(
-                                LocalContext.current,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            ) != PackageManager.PERMISSION_GRANTED)
-                        ) {
-                            LaunchedEffect(Unit) {
-                                getPermissions.launch(
-                                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,
-                                        Manifest.permission.ACCESS_COARSE_LOCATION)
-                                )
-                            }
-
-                        }
-                        ItemCard(it, viewModel, onItemComparison) }
+                    ItemCard(it, viewModel, onItemComparison)
                 }
             }
             }
