@@ -5,6 +5,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +30,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -55,6 +58,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -79,7 +83,22 @@ fun ShoppingListItemComparisonScreen(
     val uiState by viewModel.uiState.collectAsState()
     val getPermissions = rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestMultiplePermissions())
     {}
+    if ((ActivityCompat.checkSelfPermission(
+            LocalContext.current,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) != PackageManager.PERMISSION_GRANTED) || (ActivityCompat.checkSelfPermission(
+            LocalContext.current,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) != PackageManager.PERMISSION_GRANTED)
+    ) {
+        LaunchedEffect(Unit) {
+            getPermissions.launch(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION)
+            )
+        }
 
+    }
     if (selectedProduct == null)
     {
         Column{
@@ -107,6 +126,8 @@ fun ShoppingListItemComparisonScreen(
                     }
 
                       else  {
+                        val prices = remember(state.price) {state.price.sortedBy { it.price }}
+                        val highestPrice= prices.maxOf{it.price}
 
             LazyColumn(
                 Modifier
@@ -114,24 +135,10 @@ fun ShoppingListItemComparisonScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(state.price.filter { it.productTitle == selectedProduct }.sortedBy { it.price }, key = {it.productId + it.storeId }) {
-                    if ((ActivityCompat.checkSelfPermission(
-                            LocalContext.current,
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                        ) != PackageManager.PERMISSION_GRANTED) || (ActivityCompat.checkSelfPermission(
-                            LocalContext.current,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                        ) != PackageManager.PERMISSION_GRANTED)
-                    ) {
-                        LaunchedEffect(Unit) {
-                            getPermissions.launch(
-                                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION)
-                            )
-                        }
 
-                    }
-                    ItemCard(it, viewModel, onItemComparison) }
+
+                items(state.price.filter { it.productTitle == selectedProduct }.sortedBy { it.price }, key = {it.productId + it.storeId }) {
+                    ItemCard(it, viewModel, onItemComparison, String.format("%.2f",100 - it.price / highestPrice * 100 )) }
             }
 
               }
@@ -145,7 +152,7 @@ fun ShoppingListItemComparisonScreen(
     @OptIn(ExperimentalMaterial3Api::class)
     @androidx.annotation.RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
         @Composable
-    fun ItemCard(product: StoreProductPricing, viewModel : ItemComparisonViewmodel, onItemComparison: () -> Unit)
+    fun ItemCard(product: StoreProductPricing, viewModel : ItemComparisonViewmodel, onItemComparison: () -> Unit, highestPrice : String)
     {
         val storeList  by viewModel.shoppingLists.collectAsState()
         var showDialog by remember {mutableStateOf(false)}
@@ -268,27 +275,45 @@ fun ShoppingListItemComparisonScreen(
 
                 Text(product.storeName, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(4.dp))
-                Text(product.productTitle + "   "+ product.packageSizing, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    product.productTitle + "   " + product.packageSizing,
+                    style = MaterialTheme.typography.bodyMedium
+                )
                 Spacer(Modifier.height(12.dp))
-                LaunchedEffect(product.storeId){
+                LaunchedEffect(product.storeId) {
                     viewModel.getStoreInfo(product.storeId)
                 }
                 val store = storeInfo[product.storeId]
-                if (store!= null)
-                {
-                        Text(
-                            product.price +"    " +  viewModel.addressToCoordinates(store.address) + " miles away",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                }
-                else
-                {
-                  Text(product.price + "    loading distance...", style = MaterialTheme.typography.bodyMedium,)
+                if (store != null) {
+                    val distance = viewModel.addressToCoordinates(store.address)
+                    Text(
+                        product.displayPrice + (distance?.let { "    $it miles away" } ?: ""),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(Modifier.padding(12.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.padding(12.dp))
+
+                } else {
+                    Text(
+                        product.displayPrice + "    loading distance...",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(Modifier.padding(12.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.padding(12.dp))
 
                 }
+                Row(Modifier.align(Alignment.CenterHorizontally)){
+                Text(
+                    "$highestPrice% off highest price store",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
                 Row(
                 Modifier.align(Alignment.End)
                 ){
+
                     IconButton(
                         onClick =
                             {
@@ -372,7 +397,11 @@ fun ShoppingListItemComparisonScreen(
                 }
                 else if(textFieldState.text == "")
                 {
-                    Text("Out of Stock")
+                    Row(Modifier.background(MaterialTheme.colorScheme.primaryContainer).fillMaxWidth().padding(12.dp))
+                    {
+                        Text("Out of Stock")
+                    }
+
                     Column()
                     {
                         viewModel.itemInformation.collectAsState().value.forEach { result ->
@@ -407,7 +436,11 @@ fun ShoppingListItemComparisonScreen(
 
                         }
                     }
-                    Text("Expiring Soon")
+                    Row(Modifier.background(MaterialTheme.colorScheme.primaryContainer).fillMaxWidth().padding(12.dp))
+                    {
+                        Text("Expiring Soon")
+                    }
+
                     Column()
                     {
                         viewModel.itemInformation.collectAsState().value.forEach { result ->
