@@ -1,6 +1,5 @@
 package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
-import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
@@ -163,7 +161,7 @@ private fun <T> expandSpring() = spring<T>(
  *
  * Add to list lives in the header; every edit (quantity, the product's low-stock
  * threshold, expiry, location) and removal acts from a lot row. The header's
- * aggregate chips are read-only and a tap on them toggles the lots like the rest
+ * captioned stats are read-only and a tap on them toggles the lots like the rest
  * of the header.
  *
  * @param isExpanded whether the lot rows are showing; hoisted so the caller owns it.
@@ -243,9 +241,10 @@ fun ProductCard(
 
 /**
  * The always-visible top of a [ProductCard]: product image and details, the
- * add-to-list action, a rotating chevron, and the aggregate indicator chips.
- * Tapping anywhere on it outside the add-to-list button, the chips included,
- * toggles the lot rows via [onToggleExpanded].
+ * add-to-list action, a rotating chevron, and a row of three captioned stats
+ * (on hand, where, expires) that line up across every card. Tapping anywhere on
+ * it outside the add-to-list button, the stats included, toggles the lot rows via
+ * [onToggleExpanded].
  */
 @Composable
 private fun ProductCardHeader(
@@ -279,12 +278,9 @@ private fun ProductCardHeader(
             ) {
                 Text(text = group.name, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = group.brand,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = group.size,
+                    text = listOf(group.brand, group.size)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -304,16 +300,17 @@ private fun ProductCardHeader(
             )
         }
         Row(
-            modifier = Modifier.padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp),
         ) {
-            TotalValue(
+            TotalStat(
                 totalQuantity = group.totalQuantity,
                 lowStockThreshold = group.lowStockThreshold,
+                modifier = Modifier.weight(1f),
             )
-            LocationValue(group = group)
-            group.earliestExpiresInDays?.let { days -> ExpiryValue(expiresInDays = days) }
+            LocationStat(group = group, modifier = Modifier.weight(1f))
+            ExpiryStat(expiresInDays = group.earliestExpiresInDays, modifier = Modifier.weight(1f))
         }
     }
 }
@@ -501,22 +498,6 @@ private fun EstimateConfirmRow(
     }
 }
 
-/** The drawable icon representing where an item is stored. */
-@DrawableRes
-internal fun PantryLocation.iconRes(): Int = when (this) {
-    PantryLocation.Freezer -> R.drawable.ic_freezer
-    PantryLocation.Fridge -> R.drawable.ic_fridge
-    PantryLocation.Pantry -> R.drawable.ic_pantry
-}
-
-/** The display name for a storage location, shared with the pantry dashboard. */
-@StringRes
-internal fun PantryLocation.labelRes(): Int = when (this) {
-    PantryLocation.Freezer -> R.string.pantry_dashboard_freezer
-    PantryLocation.Fridge -> R.string.pantry_dashboard_fridge
-    PantryLocation.Pantry -> R.string.pantry_dashboard_pantry
-}
-
 /** The three storage locations, in the order they're offered in the location picker. */
 private val locationChoices = listOf(
     PantryLocation.Pantry,
@@ -525,52 +506,49 @@ private val locationChoices = listOf(
 )
 
 /**
- * One read-only aggregate on the card header: an optional icon and a label in one
- * colour, no pill and no click, so it does not promise a tap. The spoken
- * [contentDescription] replaces the text. A tap falls through to the header's toggle.
+ * One column of the header's stats row: a small uppercase caption over a larger value.
+ * Read-only, spoken as [contentDescription]; colour, when any, goes on the value only so
+ * the captions stay quiet and the row cannot be mistaken for the lot chips below it.
  */
 @Composable
-private fun HeaderValue(
-    text: String,
+private fun HeaderStat(
+    caption: String,
+    value: String,
     contentDescription: String,
     modifier: Modifier = Modifier,
-    @DrawableRes iconRes: Int? = null,
-    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    color: Color = MaterialTheme.colorScheme.onSurface,
 ) {
-    Row(
+    Column(
         modifier = modifier.clearAndSetSemantics { this.contentDescription = contentDescription },
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        if (iconRes != null) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(16.dp),
-            )
-        }
-        Text(text = text, style = MaterialTheme.typography.labelLarge, color = color)
+        Text(
+            text = caption.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(text = value, style = MaterialTheme.typography.titleSmall, color = color)
     }
 }
 
-/**
- * The header's location aggregate.
- */
+/** The header's "Where" stat: the shared location, or how many places the lots are in. */
 @Composable
-private fun LocationValue(group: ProductGroup, modifier: Modifier = Modifier) {
+private fun LocationStat(group: ProductGroup, modifier: Modifier = Modifier) {
     val single = group.singleLocation
+    val caption = stringResource(R.string.pantry_card_stat_where)
     if (single != null) {
         val label = stringResource(single.labelRes())
-        HeaderValue(
-            text = label,
+        HeaderStat(
+            caption = caption,
+            value = label,
             contentDescription = stringResource(R.string.pantry_card_location_desc, label),
-            iconRes = single.iconRes(),
             modifier = modifier,
         )
     } else {
-        HeaderValue(
-            text = stringResource(R.string.pantry_location_mixed),
+        val count = group.locations.size
+        HeaderStat(
+            caption = caption,
+            value = pluralStringResource(R.plurals.pantry_card_location_count, count, count),
             contentDescription = stringResource(R.string.pantry_card_location_mixed_desc),
             modifier = modifier,
         )
@@ -578,20 +556,48 @@ private fun LocationValue(group: ProductGroup, modifier: Modifier = Modifier) {
 }
 
 /**
- * The header's expiry aggregate.
+ * The header's "Expires" stat: the soonest lot's expiry, coloured by its severity, or
+ * "No date". Always rendered so the three captions line up on every card.
  */
 @Composable
-private fun ExpiryValue(expiresInDays: Int, modifier: Modifier = Modifier) {
-    HeaderValue(
-        text = expiryChipLabel(expiresInDays),
+private fun ExpiryStat(expiresInDays: Int?, modifier: Modifier = Modifier) {
+    val caption = stringResource(R.string.pantry_card_stat_expires)
+    if (expiresInDays == null) {
+        HeaderStat(
+            caption = caption,
+            value = stringResource(R.string.pantry_card_expiry_none),
+            contentDescription = stringResource(R.string.pantry_card_expiry_none_desc),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = modifier,
+        )
+        return
+    }
+    val bucket = expiryBucket(expiresInDays)
+    HeaderStat(
+        caption = caption,
+        value = expiryStatLabel(expiresInDays),
         contentDescription = stringResource(
             R.string.pantry_card_expiry_soonest_desc,
             expiryChipDescription(expiresInDays),
         ),
-        iconRes = R.drawable.ic_expiring,
-        color = expiryAccent(expiryBucket(expiresInDays)),
+        color = if (bucket == ExpiryBucket.Later) {
+            MaterialTheme.colorScheme.onSurface
+        } else {
+            expiryAccent(bucket)
+        },
         modifier = modifier,
     )
+}
+
+/**
+ * The expiry stat's value: "Expired", "Today", or a spelled-out day count. The product
+ * detail's lot rows use the same words.
+ */
+@Composable
+internal fun expiryStatLabel(expiresInDays: Int): String = if (expiresInDays < 0) {
+    stringResource(R.string.pantry_expiry_expired)
+} else {
+    expiryDraftLabel(expiresInDays)
 }
 
 /**
@@ -650,26 +656,30 @@ private fun AddedByChip(addedBy: String?, modifier: Modifier = Modifier) {
 }
 
 /**
- * The header's total-quantity value: how many are on hand across every lot, colored
- * by the product's stock severity. Read-only; the tag icon stands in for the word
- * "Total" and the spoken description still says it. The threshold it is judged against
- * is edited from a lot's [LotQuantityChip].
+ * The header's "On hand" stat: how many are on hand across every lot, coloured only
+ * when the product is out or running low. The threshold it is judged against is edited
+ * from a lot's [LotQuantityChip].
  */
 @Composable
-private fun TotalValue(
+private fun TotalStat(
     totalQuantity: Int,
     lowStockThreshold: Int?,
     modifier: Modifier = Modifier,
 ) {
-    HeaderValue(
-        text = totalQuantity.toString(),
+    val level = stockLevel(totalQuantity, lowStockThreshold)
+    HeaderStat(
+        caption = stringResource(R.string.pantry_card_stat_on_hand),
+        value = totalQuantity.toString(),
         contentDescription = pluralStringResource(
             R.plurals.pantry_card_total_quantity_desc,
             totalQuantity,
             totalQuantity,
         ),
-        iconRes = R.drawable.ic_tag,
-        color = stockAccent(stockLevel(totalQuantity, lowStockThreshold)),
+        color = if (level == StockLevel.Ok) {
+            MaterialTheme.colorScheme.onSurface
+        } else {
+            stockAccent(level)
+        },
         modifier = modifier,
     )
 }
@@ -682,7 +692,7 @@ private fun TotalValue(
  * that's "out of stock", and an empty lot is the one severity this chip shows.
  * Running low is a property of the product, not of one lot — the threshold is
  * per-product and the quantity that answers it is the total across every lot — so it
- * is colored once, on the header's [TotalQuantityChip], and never here.
+ * is colored once, on the header's [TotalStat], and never here.
  */
 @Composable
 private fun LotQuantityChip(

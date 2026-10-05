@@ -2,9 +2,6 @@ package com.fullsail.shoppingmadebetter.feature.pantry.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.fullsail.shoppingmadebetter.core.ui.ShoppingListPickerState
-import com.fullsail.shoppingmadebetter.feature.pantry.domain.AddInventoryItem
-import com.fullsail.shoppingmadebetter.feature.pantry.domain.AddInventoryItemUseCase
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.AdjustmentReason
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustment
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.ApplyInventoryAdjustmentUseCase
@@ -27,22 +24,9 @@ import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLoca
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThreshold
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.UpdateInventoryLowStockThresholdUseCase
 import com.fullsail.shoppingmadebetter.feature.profile.domain.GetAutoAdjustEnabledUseCase
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.DeleteItemsUseCase
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingList
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.ShoppingListUseCase
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItemUseCase
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch.ProductSearch
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch.ProductSearchUseCase
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.GetShoppingTripsUseCase
-import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
-import com.fullsail.shoppingmadebetter.feature.stores.domain.GetStoresUseCase
-import com.fullsail.shoppingmadebetter.feature.stores.domain.Store
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -59,59 +43,8 @@ sealed interface PantryUiState {
     data object Error : PantryUiState
 }
 
-/** State of the "add to shopping list" bottom sheet. */
-sealed interface AddToListSheetState {
-    data object Hidden : AddToListSheetState
-    data class Visible(
-        val item: InventoryItem,
-        val lists: ShoppingListPickerState,
-        /** Stores a new list can be created at; empty when that load failed. */
-        val stores: List<Store> = emptyList(),
-    ) : AddToListSheetState
-}
-
-/**
- * State of the "add to pantry" bottom sheet. It has two faces behind one state: a
- * catalog search until a product is picked, then the quantity and location controls
- * for it. [location] stays null unless the user picks one, which leaves the choice to
- * the product's category.
- *
- * [results] and [searchFailed] describe the last search that came back, not the one in
- * flight: while [searching] they are the previous keystroke's answer, still on screen,
- * because blanking them mid-type collapses the sheet and bounces it back.
- */
-sealed interface AddToPantrySheetState {
-    data object Hidden : AddToPantrySheetState
-    data class Visible(
-        val query: String = "",
-        val results: List<ProductSearch> = emptyList(),
-        val searching: Boolean = false,
-        /** True when the last search failed, so the sheet says so instead of "no matches". */
-        val searchFailed: Boolean = false,
-        /** True once a search has returned, so "no matches" is only said when it was asked. */
-        val hasSearched: Boolean = false,
-        val selected: ProductSearch? = null,
-        val quantity: Int = 1,
-        val location: PantryLocation? = null,
-    ) : AddToPantrySheetState
-}
-
 /** One-shot outcomes surfaced to the user as a snackbar. */
 sealed interface PantryEvent {
-    data class ItemAdded(
-        val itemName: String,
-        val listName: String,
-        val insertedItemId: String,
-    ) : PantryEvent
-
-    data class AddFailed(val itemName: String) : PantryEvent
-
-    /** The just-added item was removed via Undo. */
-    data class ItemRemoved(val itemName: String) : PantryEvent
-
-    /** Undo failed to remove the just-added item. */
-    data class UndoFailed(val itemName: String) : PantryEvent
-
     /** An item was removed from the pantry (via the card's remove action). */
     data class RemovedFromPantry(val itemName: String) : PantryEvent
 
@@ -123,20 +56,11 @@ sealed interface PantryEvent {
 
     /** A background refresh failed while items were already on screen. */
     data object RefreshFailed : PantryEvent
-
-    /** A product was added to the pantry; [lotId] is what Undo would remove. */
-    data class AddedToPantry(val itemName: String, val lotId: String) : PantryEvent
-
-    /** Adding a product to the pantry failed. */
-    data class AddToPantryFailed(val itemName: String) : PantryEvent
 }
 
 @HiltViewModel
 class PantryViewModel @Inject constructor(
     private val getInventoryUseCase: GetInventoryUseCase,
-    private val getShoppingTripsUseCase: GetShoppingTripsUseCase,
-    private val insertItemUseCase: InsertItemUseCase,
-    private val deleteItemsUseCase: DeleteItemsUseCase,
     private val deleteInventoryItemUseCase: DeleteInventoryItemUseCase,
     private val getSkipRemoveConfirmationUseCase: GetSkipRemoveConfirmationUseCase,
     private val setSkipRemoveConfirmationUseCase: SetSkipRemoveConfirmationUseCase,
@@ -148,22 +72,9 @@ class PantryViewModel @Inject constructor(
     private val undoInventoryAdjustmentUseCase: UndoInventoryAdjustmentUseCase,
     private val getAutoAdjustEnabledUseCase: GetAutoAdjustEnabledUseCase,
     private val getAdjustmentDigestUseCase: GetAdjustmentDigestUseCase,
-    private val shoppingListUseCase: ShoppingListUseCase,
-    private val getStoresUseCase: GetStoresUseCase,
-    private val productSearchUseCase: ProductSearchUseCase,
-    private val addInventoryItemUseCase: AddInventoryItemUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PantryUiState>(PantryUiState.Loading)
     val uiState: StateFlow<PantryUiState> = _uiState.asStateFlow()
-
-    private val _addToListSheet = MutableStateFlow<AddToListSheetState>(AddToListSheetState.Hidden)
-    val addToListSheet: StateFlow<AddToListSheetState> = _addToListSheet.asStateFlow()
-
-    private val _addToPantrySheet = MutableStateFlow<AddToPantrySheetState>(AddToPantrySheetState.Hidden)
-    val addToPantrySheet: StateFlow<AddToPantrySheetState> = _addToPantrySheet.asStateFlow()
-
-    /** The in-flight catalog search, cancelled on the next keystroke so only the last one runs. */
-    private var searchJob: Job? = null
 
     private val _removeConfirm = MutableStateFlow<InventoryItem?>(null)
     val removeConfirm: StateFlow<InventoryItem?> = _removeConfirm.asStateFlow()
@@ -171,15 +82,14 @@ class PantryViewModel @Inject constructor(
     /** Lots answered this session, so a failed write or a stale reload cannot re-prompt. */
     private val _handledAlertLotIds = MutableStateFlow<Set<String>>(emptySet())
 
-    /** The zero-stock estimate to confirm now, if any; hidden while a sheet or dialog is up. */
+    /**
+     * The zero-stock estimate to confirm now, if any; hidden while the remove dialog is up.
+     * The screen also holds it back while either sheet is open.
+     */
     val zeroStockAlert: StateFlow<InventoryItem?> = combine(
-        uiState, _handledAlertLotIds, addToListSheet, addToPantrySheet, removeConfirm,
-    ) { state, handled, sheet, pantrySheet, remove ->
-        if (state !is PantryUiState.Success ||
-            sheet !is AddToListSheetState.Hidden ||
-            pantrySheet !is AddToPantrySheetState.Hidden ||
-            remove != null
-        ) {
+        uiState, _handledAlertLotIds, removeConfirm,
+    ) { state, handled, remove ->
+        if (state !is PantryUiState.Success || remove != null) {
             null
         } else {
             getPantryEstimateAlertsUseCase
@@ -249,254 +159,6 @@ class PantryViewModel @Inject constructor(
     /** Drops every lot's latest reason so nothing reads as estimated, undoable or alerting. */
     private fun List<ProductGroup>.withoutEstimates(): List<ProductGroup> =
         map { group -> group.copy(lots = group.lots.map { it.copy(lastAdjustmentReason = null) }) }
-
-    /**
-     * Opens the sheet for [item] and loads the user's shopping lists to pick from,
-     * plus the stores a brand-new list could be created at. The two run together, and
-     * a failed store load only disables creating — picking an existing list still works.
-     */
-    fun onAddToListClicked(item: InventoryItem) {
-        _addToListSheet.value = AddToListSheetState.Visible(item, ShoppingListPickerState.Loading)
-        viewModelScope.launch {
-            val stores = async { stores() }
-            val lists = when (val out = getShoppingTripsUseCase.execute(Unit)) {
-                is GetShoppingTripsUseCase.Output.Success -> if (out.trips.isEmpty()) ShoppingListPickerState.Empty
-                else ShoppingListPickerState.Loaded(out.trips)
-
-                is GetShoppingTripsUseCase.Output.Failure -> ShoppingListPickerState.Error
-            }
-            // Only apply if the sheet is still open for the same item.
-            val current = _addToListSheet.value
-            if (current is AddToListSheetState.Visible && current.item.id == item.id) {
-                _addToListSheet.value = current.copy(lists = lists, stores = stores.await())
-            }
-        }
-    }
-
-    /** Every store, or none when the fetch fails — the sheet treats empty as "can't create". */
-    private suspend fun stores(): List<Store> =
-        when (val out = getStoresUseCase.execute(Unit)) {
-            is GetStoresUseCase.Output.Success -> out.stores
-            is GetStoresUseCase.Output.Failure -> emptyList()
-        }
-
-    /** Adds the sheet's item to [trip]'s shopping list, then reports the outcome. */
-    fun onListChosen(trip: ShoppingTrip) {
-        val current = _addToListSheet.value
-        if (current !is AddToListSheetState.Visible) return
-        val item = current.item
-        _addToListSheet.value = AddToListSheetState.Hidden
-        viewModelScope.launch {
-            addToList(trip.shoppingListId, trip.listName, item)
-        }
-    }
-
-    /**
-     * Creates a list called [name] at [storeId], then adds the sheet's item to it —
-     * the point of creating it from here. A failed create reports the same add-failed
-     * snackbar as a failed add; either way nothing reached the list.
-     */
-    fun onCreateList(name: String, storeId: String) {
-        val current = _addToListSheet.value
-        if (current !is AddToListSheetState.Visible) return
-        val item = current.item
-        _addToListSheet.value = AddToListSheetState.Hidden
-        val listName = name.trim()
-        viewModelScope.launch {
-            val out = shoppingListUseCase.execute(
-                ShoppingList(
-                    shoppingListId = null,
-                    storeId = storeId,
-                    name = listName,
-                    // Sharing is household-wide through RLS; the column is unused.
-                    shared = false,
-                )
-            )
-            val listId = (out as? ShoppingListUseCase.Output.Success)?.list?.shoppingListId
-            if (listId == null) {
-                _events.send(PantryEvent.AddFailed(item.name))
-            } else {
-                addToList(listId, listName, item)
-            }
-        }
-    }
-
-    /** Puts [item] on the list [listId], reporting the outcome as a snackbar event. */
-    private suspend fun addToList(listId: String, listName: String, item: InventoryItem) {
-        val out = insertItemUseCase.execute(
-            InsertItem(
-                shoppingListId = listId,
-                productId = item.productId,
-                quantity = 1,
-                note = "",
-                isChecked = false,
-                addInventory = true,
-            )
-        )
-        val event = when (out) {
-            is InsertItemUseCase.Output.Success -> PantryEvent.ItemAdded(
-                itemName = item.name,
-                listName = listName,
-                insertedItemId = out.insertedItemId,
-            )
-
-            is InsertItemUseCase.Output.Failure -> PantryEvent.AddFailed(item.name)
-        }
-        _events.send(event)
-    }
-
-    /**
-     * Undoes an add by removing the just-created shopping-list item [insertedItemId],
-     * then reports the outcome. [itemName] is only used to label the resulting snackbar.
-     */
-    fun undoAdd(insertedItemId: String, itemName: String) {
-        viewModelScope.launch {
-            val event = when (deleteItemsUseCase.execute(insertedItemId)) {
-                is DeleteItemsUseCase.Output.Success -> PantryEvent.ItemRemoved(itemName)
-                is DeleteItemsUseCase.Output.Failure -> PantryEvent.UndoFailed(itemName)
-            }
-            _events.send(event)
-        }
-    }
-
-    fun dismissAddToListSheet() {
-        _addToListSheet.value = AddToListSheetState.Hidden
-    }
-
-    /** Opens the add-to-pantry sheet on an empty search. */
-    fun onAddToPantryClicked() {
-        _addToPantrySheet.value = AddToPantrySheetState.Visible()
-    }
-
-    /**
-     * Searches the catalog for [query] after a short pause, so a fast typist sends one
-     * request rather than one per letter. Below [MIN_SEARCH_LENGTH] characters nothing is
-     * sent: a single letter matches most of the catalog and would only cost a round trip.
-     */
-    fun onAddToPantryQuery(query: String) {
-        val current = _addToPantrySheet.value
-        if (current !is AddToPantrySheetState.Visible) return
-        searchJob?.cancel()
-        val term = query.trim()
-        if (term.length < MIN_SEARCH_LENGTH) {
-            _addToPantrySheet.value = current.copy(
-                query = query,
-                results = emptyList(),
-                searching = false,
-                searchFailed = false,
-                hasSearched = false,
-            )
-            return
-        }
-        // Only `searching` changes here. The previous results stay put until the new ones
-        // land, so the sheet keeps its height instead of collapsing onto a spinner and
-        // springing back on every keystroke.
-        _addToPantrySheet.value = current.copy(query = query, searching = true)
-        searchJob = viewModelScope.launch {
-            delay(SEARCH_DEBOUNCE_MS)
-            val out = productSearchUseCase.execute(term.escapedForLike())
-            // The cancel above usually wins, but a result that outran it must not
-            // overwrite what the user has typed since.
-            val latest = _addToPantrySheet.value
-            if (latest is AddToPantrySheetState.Visible && latest.query == query) {
-                _addToPantrySheet.value = when (out) {
-                    is ProductSearchUseCase.Output.Success -> latest.copy(
-                        results = out.product,
-                        searching = false,
-                        searchFailed = false,
-                        hasSearched = true,
-                    )
-
-                    is ProductSearchUseCase.Output.Failure -> latest.copy(
-                        results = emptyList(),
-                        searching = false,
-                        searchFailed = true,
-                        hasSearched = true,
-                    )
-                }
-            }
-        }
-    }
-
-    /** Picks [product] and moves the sheet on to the quantity and location controls. */
-    fun onAddToPantryProductSelected(product: ProductSearch) {
-        val current = _addToPantrySheet.value
-        if (current !is AddToPantrySheetState.Visible) return
-        searchJob?.cancel()
-        _addToPantrySheet.value = current.copy(selected = product, searching = false)
-    }
-
-    /** Goes back to the results without losing the query, so a mis-tap is one tap to fix. */
-    fun onAddToPantryProductCleared() {
-        val current = _addToPantrySheet.value
-        if (current !is AddToPantrySheetState.Visible) return
-        _addToPantrySheet.value = current.copy(selected = null, quantity = 1, location = null)
-    }
-
-    fun onAddToPantryQuantity(quantity: Int) {
-        val current = _addToPantrySheet.value
-        if (current !is AddToPantrySheetState.Visible) return
-        _addToPantrySheet.value =
-            current.copy(quantity = quantity.coerceIn(1, MAX_PANTRY_QUANTITY))
-    }
-
-    /** Sets where the lot is stored; [location] null hands the choice back to the product. */
-    fun onAddToPantryLocation(location: PantryLocation?) {
-        val current = _addToPantrySheet.value
-        if (current !is AddToPantrySheetState.Visible) return
-        _addToPantrySheet.value = current.copy(location = location)
-    }
-
-    /**
-     * Adds the picked product as a new lot, then reloads so the card appears with the
-     * expiry and location the database derived. The snackbar carries the new lot's id so
-     * Undo can remove exactly what was added.
-     */
-    fun onAddToPantryConfirm() {
-        val current = _addToPantrySheet.value
-        if (current !is AddToPantrySheetState.Visible) return
-        val product = current.selected ?: return
-        dismissAddToPantrySheet()
-        viewModelScope.launch {
-            val out = addInventoryItemUseCase.execute(
-                AddInventoryItem(
-                    productId = product.productId,
-                    quantity = current.quantity,
-                    location = current.location,
-                ),
-            )
-            val event = when (out) {
-                is AddInventoryItemUseCase.Output.Success -> {
-                    loadInventory()
-                    PantryEvent.AddedToPantry(product.productName, out.lotId)
-                }
-
-                is AddInventoryItemUseCase.Output.Failure ->
-                    PantryEvent.AddToPantryFailed(product.productName)
-            }
-            _events.send(event)
-        }
-    }
-
-    /** Undoes an add by deleting the lot [lotId] it created, then reloading. */
-    fun undoAddToPantry(lotId: String, itemName: String) {
-        viewModelScope.launch {
-            val event = when (deleteInventoryItemUseCase.execute(lotId)) {
-                is DeleteInventoryItemUseCase.Output.Success -> {
-                    loadInventory()
-                    PantryEvent.RemovedFromPantry(itemName)
-                }
-
-                is DeleteInventoryItemUseCase.Output.Failure -> PantryEvent.RemoveFailed(itemName)
-            }
-            _events.send(event)
-        }
-    }
-
-    fun dismissAddToPantrySheet() {
-        searchJob?.cancel()
-        _addToPantrySheet.value = AddToPantrySheetState.Hidden
-    }
 
     /**
      * Shows the confirmation dialog unless the user previously chose "don't ask again".
@@ -584,9 +246,8 @@ class PantryViewModel @Inject constructor(
         }
     }
 
-    /** "Add to list": confirms [item] at zero and opens the add-to-list sheet for it. */
+    /** "Add to list": confirms [item] at zero; the screen opens the add-to-list sheet for it. */
     fun onZeroStockOut(item: InventoryItem) {
-        onAddToListClicked(item)
         markAlertHandled(item)
         onConfirmEstimate(item)
     }
@@ -753,22 +414,4 @@ class PantryViewModel @Inject constructor(
             )
         }
     }
-
-    private companion object {
-        /** Shortest query worth sending; below this most of the catalog matches. */
-        const val MIN_SEARCH_LENGTH = 2
-
-        /** How long typing has to pause before the search goes out. */
-        const val SEARCH_DEBOUNCE_MS = 300L
-    }
 }
-
-/**
- * This text as something safe to hand to `LIKE`. `%` and `_` are wildcards and `\`
- * escapes them, so all three are escaped — otherwise searching for "100% Whole Grains"
- * would match anything starting with "100".
- */
-private fun String.escapedForLike(): String =
-    replace("\\", "\\\\")
-        .replace("%", "\\%")
-        .replace("_", "\\_")

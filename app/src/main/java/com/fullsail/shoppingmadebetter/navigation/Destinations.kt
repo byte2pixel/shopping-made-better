@@ -25,8 +25,13 @@ sealed interface Dest {
     @Serializable
     data object SignUp : Dest
 
+    /**
+     * The four preference steps. Sign-up runs them blank and lands on Shopping Lists;
+     * Profile's "Edit Dietary Preferences & Goals" runs them with [editing] set, which
+     * pre-selects the saved answers and returns to Profile on save.
+     */
     @Serializable
-    data object Onboarding : Dest
+    data class Onboarding(val editing: Boolean = false) : Dest
     @Serializable
     data object ShoppingLists : Dest
     @Serializable

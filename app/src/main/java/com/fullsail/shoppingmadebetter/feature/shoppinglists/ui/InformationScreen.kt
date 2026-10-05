@@ -40,7 +40,7 @@ fun InformationScreen(
                 Text("Couldn't load your lists", Modifier.align(Alignment.Center))
 
             is ItemInformationState.Success ->{
-                Column()
+                Column(Modifier.fillMaxSize().padding(16.dp))
                 {
 
                     ProductImage(imageUrl = state.item.id.image, modifier = Modifier.height(100.dp).fillMaxWidth(),  contentDescription = state.item.id.title)

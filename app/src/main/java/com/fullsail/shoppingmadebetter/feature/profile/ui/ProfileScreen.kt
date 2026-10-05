@@ -33,6 +33,8 @@ fun ProfileScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val autoAdjustFailedMessage = stringResource(R.string.profile_auto_adjust_failed)
 
+    LaunchedEffect(Unit) { viewModel.load() }
+
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {

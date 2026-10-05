@@ -8,8 +8,12 @@ import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -214,6 +218,11 @@ class HistoryScreenTest {
         composeTestRule
             .onNodeWithText(plural(R.plurals.history_trip_item_count, 4, 4))
             .assertIsDisplayed()
+        // The count is a value on the card, not a chip of its own: the card is what opens.
+        composeTestRule
+            .onNodeWithText(plural(R.plurals.history_trip_item_count, 4, 4), useUnmergedTree = true)
+            .assertHasNoClickAction()
+            .assert(hasAnyAncestor(hasClickAction()))
     }
 
     @Test

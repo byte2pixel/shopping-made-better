@@ -15,6 +15,13 @@ class PantryRepositoryImpl @Inject constructor(
         postgrest.from("pantry_items_by_expire").select().decodeList<InventoryItemDto>()
     }
 
+    override suspend fun getInventoryItems(productId: String): List<InventoryItemDto> =
+        withContext(Dispatchers.IO) {
+            postgrest.from("pantry_items_by_expire")
+                .select { filter { eq("productId", productId) } }
+                .decodeList<InventoryItemDto>()
+        }
+
     override suspend fun deleteInventoryItem(id: String) = withContext(Dispatchers.IO) {
         postgrest.from("inventory_items").delete { filter { eq("id", id) } }
         Unit

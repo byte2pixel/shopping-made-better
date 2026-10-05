@@ -21,7 +21,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
-import com.fullsail.shoppingmadebetter.core.ui.LabelChip
+import com.fullsail.shoppingmadebetter.core.ui.InlineValue
 import com.fullsail.shoppingmadebetter.core.ui.OwnerChip
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseLineItem
 import com.fullsail.shoppingmadebetter.feature.history.domain.PurchaseTrip
@@ -83,14 +83,15 @@ fun PurchaseTripCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                LabelChip(
-                    label = pluralStringResource(
+                // A value, not a chip: it opens nothing, the card does.
+                InlineValue(
+                    text = pluralStringResource(
                         R.plurals.history_trip_item_count,
                         trip.itemCount,
                         trip.itemCount,
                     ),
-                    accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     iconRes = R.drawable.ic_shopping_cart,
+                    style = MaterialTheme.typography.labelMedium,
                 )
                 if (!trip.isOwn) {
                     OwnerChip(

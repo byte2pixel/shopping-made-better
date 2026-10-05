@@ -5,6 +5,12 @@ import kotlinx.datetime.LocalDate
 interface PantryRepository {
     suspend fun getInventoryItems(): List<InventoryItemDto>
 
+    /**
+     * The household's lots of [productId] from the same view, soonest expiry first; a
+     * housemate's lots come back with `isOwn = false`. Empty when nobody holds it.
+     */
+    suspend fun getInventoryItems(productId: String): List<InventoryItemDto>
+
     /** Deletes the inventory row [id]. RLS scopes the delete to the current user. */
     suspend fun deleteInventoryItem(id: String)
 

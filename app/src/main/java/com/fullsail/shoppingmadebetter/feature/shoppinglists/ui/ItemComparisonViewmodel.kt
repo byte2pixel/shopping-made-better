@@ -100,11 +100,15 @@ class ItemComparisonViewmodel @Inject constructor(
         }
     }
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
-    fun addressToCoordinates(storeLocation : String) : String
+    fun addressToCoordinates(storeLocation : String) : String?
     {
         val getUserLocation = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        val location =
-            getUserLocation.getLastKnownLocation(LocationManager.GPS_PROVIDER) ?: return "error"
+        val location = try {
+            getUserLocation.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+        }catch (e: SecurityException)
+        {
+            null
+        }?: return null
 
         val geocoder =  Geocoder(context, Locale.getDefault())
         val addressLocation = geocoder.getFromLocationName(storeLocation , 1)?.firstOrNull()
@@ -123,7 +127,7 @@ class ItemComparisonViewmodel @Inject constructor(
             return String.format(Locale.getDefault(),"%.1f",milesAway)
 
         }
-        return "error"
+        return null
 
         }
 
