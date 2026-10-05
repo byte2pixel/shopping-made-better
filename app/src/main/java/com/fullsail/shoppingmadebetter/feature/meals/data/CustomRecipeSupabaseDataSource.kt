@@ -60,6 +60,7 @@ class CustomRecipeSupabaseDataSource @Inject constructor(
                     {
                         set("name", title)
                         set("description", "Custom Recipe: $category")
+                        set("ingredients", ingredients)
                     }
                 ) {
                     filter {

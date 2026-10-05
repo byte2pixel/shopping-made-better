@@ -8,6 +8,8 @@ import com.fullsail.shoppingmadebetter.feature.meals.domain.Ingredient
 import com.fullsail.shoppingmadebetter.feature.meals.domain.Meal
 import com.fullsail.shoppingmadebetter.feature.meals.domain.SelectMealUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,15 +35,15 @@ sealed interface MealsUiState {
 class MealsViewModel @Inject constructor(
     private val repository: MealsRepository,
     private val selectMealUseCase: SelectMealUseCase,
-    private val deleteCustomRecipeUseCase: DeleteCustomRecipeUseCase
+    private val deleteCustomRecipeUseCase: DeleteCustomRecipeUseCase,
+    private val supabaseClient: SupabaseClient
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MealsUiState>(MealsUiState.Loading)
     val uiState: StateFlow<MealsUiState> = _uiState.asStateFlow()
 
-    // This must match the 'createdBy' string on your Custom Recipes for the buttons to appear.
-    // Replace this with the actual user ID from your authentication state when available.
-    val currentUserId: String = "YOUR_AUTH_USER_ID"
+
+    val currentUserId: String? = supabaseClient.auth.currentUserOrNull()?.id
 
     private var allMeals: List<Meal> = emptyList()
 

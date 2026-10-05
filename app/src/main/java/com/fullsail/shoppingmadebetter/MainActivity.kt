@@ -393,7 +393,7 @@ fun ShoppingMadeBetterApp(
                     },
 
                     onNavigateToCreate = {
-                        navController.navigate(Dest.CreateRecipe)
+                        navController.navigate(route = Dest.CreateRecipe())
                     }
                 )
             }
@@ -404,7 +404,7 @@ fun ShoppingMadeBetterApp(
                     mealId = args.mealId,
                     onNavigateBack = { navController.popBackStack() },
                     navigateToEditRecipe = { id ->
-
+                        navController.navigate(Dest.CreateRecipe(mealId = id))
                     }
                 )
             }

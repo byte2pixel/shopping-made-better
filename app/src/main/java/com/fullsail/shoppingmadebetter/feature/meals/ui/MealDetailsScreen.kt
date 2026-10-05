@@ -232,7 +232,7 @@ fun MealDetailsScreen(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(text = "$scaledQty${ingredient.name}")
+                        Text(text = "$scaledQty ${ingredient.name}")
                         Text(text = ingredient.price, fontWeight = FontWeight.Bold)
                     }
                 }
@@ -270,7 +270,7 @@ fun MealDetailsScreen(
             } else {
                 instructions.forEachIndexed { index, step ->
                     Text(
-                        text = "${index + 1}.$step",
+                        text = "${index + 1}. $step",
                         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
                     )
                 }
@@ -609,7 +609,7 @@ fun MealDetailsContent(
 
         instructions.forEachIndexed { index, step ->
             Text(
-                text = "${index + 1}.$step",
+                text = "${index + 1}. $step",
                 modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
             )
         }

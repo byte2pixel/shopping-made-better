@@ -353,6 +353,17 @@ def main() -> None:
             )
             out.write(",\n".join(batch))
             out.write("\nON CONFLICT (store_id, product_id, effective_date) DO NOTHING;\n\n")
+            # ----------------------------------------------------------------
+                    # Meals Seed Data (Requested by Mel for MVP testing)
+                    # ----------------------------------------------------------------
+                    out.write("-- ------------------------------------------------------------\n")
+                    out.write("-- Mock Meals for UI Testing\n")
+                    out.write("-- ------------------------------------------------------------\n")
+                    out.write(
+                        "INSERT INTO public.meals (id, name, description, ingredients) VALUES\n"
+                        "  (gen_random_uuid(), 'Classic Chicken Alfredo', 'Custom Recipe: Can Make', 'Chicken, Pasta, Cream'),\n"
+                        "  (gen_random_uuid(), 'Garlic Butter Steak Bites', 'Custom Recipe: Almost There', 'Steak, Butter, Garlic');\n\n"
+                    )
 
     print(f"\nSeed file written -> {OUTPUT_PATH}")
     print(f"  Stores:          {len(STORES)}")
