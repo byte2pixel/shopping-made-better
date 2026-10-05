@@ -68,6 +68,7 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearc
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.storeProductPricing.StoreProductPricing
 import com.fullsail.shoppingmadebetter.navigation.Dest
+import kotlin.collections.forEach
 
 
 @Composable
@@ -303,6 +304,22 @@ fun ShoppingListItemComparisonScreen(
             {
 
                 Text(product.storeName, style = MaterialTheme.typography.titleMedium)
+                val pricePercent = highestPrice.toDouble()
+                if (pricePercent == 0.0)
+                {
+                    Icon(painterResource(id = R.drawable.ic_bookmark), tint= {Color.Red},"Discount Price", Modifier.size(24.dp))
+                }
+                else if (pricePercent <= 9.0)
+                {
+                    Icon(painterResource(id = R.drawable.ic_bookmark), tint= {Color.Yellow},"Discount Price", Modifier.size(24.dp))
+
+                }
+                else
+                {
+                    Icon(painterResource(id = R.drawable.ic_bookmark), tint= {Color.Green},"Discount Price", Modifier.size(24.dp))
+
+                }
+
                 Spacer(Modifier.height(4.dp))
                 Text(
                     product.productTitle + "   " + product.packageSizing,
@@ -434,12 +451,18 @@ fun ShoppingListItemComparisonScreen(
                     Column()
                     {
                         viewModel.itemInformation.collectAsState().value.forEach { result ->
-                            if (result.totalQuantity != 0)
+                            if (result.lowStockThreshold == null) {
+                                if ( result.totalQuantity != 0 )
+                                {
+                                    return@forEach
+                                }
+                            }
+                            else if (result.totalQuantity > result.lowStockThreshold)
                             {
                                 return@forEach
                             }
                             ListItem(
-                                headlineContent = { Text(result.name)
+                                headlineContent = { Text(result.name + " quantity remaining: "+result.totalQuantity)
                                 },
                                 trailingContent = {
                                     IconButton(onClick = {
@@ -472,13 +495,18 @@ fun ShoppingListItemComparisonScreen(
 
                     Column()
                     {
+                        val expirationDaysThreshold = 3
                         viewModel.itemInformation.collectAsState().value.forEach { result ->
-                            if (result.earliestExpiresInDays != 0)
+                            if (result.earliestExpiresInDays == null)
+                            {
+                                return@forEach
+                            }
+                            else if (result.earliestExpiresInDays > expirationDaysThreshold )
                             {
                                 return@forEach
                             }
                             ListItem(
-                                headlineContent = { Text(result.name)
+                                headlineContent = { Text(result.name + "expiring in: " + result.earliestExpiresInDays + " days")
                                 },
                                 trailingContent = {
                                     IconButton(onClick = {
