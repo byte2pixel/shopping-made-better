@@ -504,7 +504,7 @@ fun ShoppingListItemComparisonScreen(
                                 return@forEach
                             }
                             ListItem(
-                                headlineContent = { Text(result.name + "expiring in: " + result.earliestExpiresInDays + " days")
+                                headlineContent = { Text(result.name + " expiring in: " + result.earliestExpiresInDays + " days")
                                 },
                                 trailingContent = {
                                     IconButton(onClick = {
