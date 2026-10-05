@@ -66,7 +66,6 @@ import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearc
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.storeProductPricing.StoreProductPricing
 import com.fullsail.shoppingmadebetter.navigation.Dest
-import kotlin.collections.forEach
 
 
 @Composable
@@ -303,20 +302,13 @@ fun ShoppingListItemComparisonScreen(
 
                 Text(product.storeName, style = MaterialTheme.typography.titleMedium)
                 val pricePercent = highestPrice.toDouble()
-                if (pricePercent == 0.0)
-                {
-                    Icon(painterResource(id = R.drawable.ic_bookmark), tint= {Color.Red},"Discount Price", Modifier.size(24.dp))
+                val flagColor = when {
+                    pricePercent == 0.0 -> Color.Red
+                    pricePercent <= 9.0 -> Color.Yellow
+                    else -> Color.Green
                 }
-                else if (pricePercent <= 9.0)
-                {
-                    Icon(painterResource(id = R.drawable.ic_bookmark), tint= {Color.Yellow},"Discount Price", Modifier.size(24.dp))
 
-                }
-                else
-                {
-                    Icon(painterResource(id = R.drawable.ic_bookmark), tint= {Color.Green},"Discount Price", Modifier.size(24.dp))
-
-                }
+                Icon(painterResource(id = R.drawable.ic_bookmark), tint= {flagColor},"Discount Price", Modifier.size(24.dp))
 
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -443,7 +435,7 @@ fun ShoppingListItemComparisonScreen(
                 {
                     Row(Modifier.background(MaterialTheme.colorScheme.primaryContainer).fillMaxWidth().padding(12.dp))
                     {
-                        Text("Out of Stock")
+                        Text("Running Low")
                     }
 
                     Column()
@@ -493,7 +485,7 @@ fun ShoppingListItemComparisonScreen(
 
                     Column()
                     {
-                        val expirationDaysThreshold = 3
+                        val expirationDaysThreshold = 5
                         viewModel.itemInformation.collectAsState().value.forEach { result ->
                             if (result.earliestExpiresInDays == null)
                             {
@@ -503,8 +495,9 @@ fun ShoppingListItemComparisonScreen(
                             {
                                 return@forEach
                             }
+                            val expired = if (result.earliestExpiresInDays > 0)  (result.earliestExpiresInDays.toString() + " days") else "expired"
                             ListItem(
-                                headlineContent = { Text(result.name + "expiring in: " + result.earliestExpiresInDays + " days")
+                                headlineContent = { Text(result.name + " expiring in: " + expired )
                                 },
                                 trailingContent = {
                                     IconButton(onClick = {
