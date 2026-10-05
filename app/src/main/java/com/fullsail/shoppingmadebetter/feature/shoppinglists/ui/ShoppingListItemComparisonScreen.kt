@@ -127,14 +127,15 @@ fun ShoppingListItemComparisonScreen(
                     }
 
                       else  {
+                        val prices = remember(state.price) {state.price.sortedBy { it.price }}
+                        val highestPrice= prices.maxOf{it.price}
                           Column() {
                         Row()
                         {
                             IconButton( onClick = {
                                 bAscending = !bAscending
                             }) { Icon(painterResource(id = R.drawable.ic_filter_list), contentDescription = "Sort Type", Modifier.size(24.dp))}
-                        val prices = remember(state.price) {state.price.sortedBy { it.price }}
-                        val highestPrice= prices.maxOf{it.price}
+
 
                         }
             LazyColumn(
@@ -165,7 +166,7 @@ fun ShoppingListItemComparisonScreen(
                         }
 
                     }
-                    ItemCard(it, viewModel, onItemComparison)
+                    ItemCard(it, viewModel, onItemComparison, String.format("%.2f",100 - it.price / highestPrice * 100 ))
                 }
             }
             }
