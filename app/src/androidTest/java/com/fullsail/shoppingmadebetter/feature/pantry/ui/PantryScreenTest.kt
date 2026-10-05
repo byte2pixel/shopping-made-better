@@ -85,10 +85,15 @@ class PantryScreenTest {
         override suspend fun execute(input: Unit) = output
     }
 
+    /** [gate], when set, holds the lists back so a test can land them after the sheet opens. */
     private class FakeGetShoppingTripsUseCase(
         var output: GetShoppingTripsUseCase.Output = GetShoppingTripsUseCase.Output.Success(emptyList()),
+        private val gate: CompletableDeferred<Unit>? = null,
     ) : GetShoppingTripsUseCase {
-        override suspend fun execute(input: Unit) = output
+        override suspend fun execute(input: Unit): GetShoppingTripsUseCase.Output {
+            gate?.await()
+            return output
+        }
     }
 
     private class FakeInsertItemUseCase(
@@ -779,6 +784,34 @@ class PantryScreenTest {
             .onNodeWithText(string(R.string.add_to_list_title, "2% Milk"))
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Weekly").assertIsDisplayed()
+    }
+
+    @Test
+    fun theSheetShowsEveryListWhenTheyLoadAfterItOpens() {
+        val gate = CompletableDeferred<Unit>()
+        val trips = listOf(
+            weeklyTrip,
+            weeklyTrip.copy(shoppingListId = "l2", listName = "Whole Foods Weekly"),
+            weeklyTrip.copy(shoppingListId = "l3", listName = "Publix Weekly"),
+        )
+        setScreen(
+            trips = FakeGetShoppingTripsUseCase(GetShoppingTripsUseCase.Output.Success(trips), gate)
+        )
+
+        composeTestRule
+            .onNodeWithContentDescription(string(R.string.pantry_add_to_list))
+            .performClick()
+        composeTestRule
+            .onNodeWithText(string(R.string.add_to_list_title, "2% Milk"))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Publix Weekly").assertDoesNotExist()
+
+        gate.complete(Unit)
+        composeTestRule.waitForIdle()
+
+        // On screen, not merely composed: a sheet left at its loading height hides these.
+        composeTestRule.onNodeWithText("Publix Weekly").assertIsDisplayed()
+        composeTestRule.onNodeWithText(string(R.string.add_to_list_create)).assertIsDisplayed()
     }
 
     @Test
