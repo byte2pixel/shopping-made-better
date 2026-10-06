@@ -34,7 +34,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SearchBar
@@ -61,11 +60,13 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
+import com.fullsail.shoppingmadebetter.core.ui.ContentSizedBottomSheet
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.insertItem.InsertItem
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch.ProductSearch
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.shoppingTrip.ShoppingTrip
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.storeProductPricing.StoreProductPricing
 import com.fullsail.shoppingmadebetter.navigation.Dest
+import kotlin.collections.forEach
 
 
 @Composable
@@ -213,7 +214,7 @@ fun ShoppingListItemComparisonScreen(
 
         if (pickList)
         {
-            ModalBottomSheet(onDismissRequest = { pickList = false }) {
+            ContentSizedBottomSheet(onDismissRequest = { pickList = false }) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
