@@ -9,11 +9,9 @@
 
     <!-- Top app bar navigation icons -->
     <string name="nav_back">Back</string>
-    <string name="nav_menu">Menu</string>
 
-    <!-- Navigation drawer menu -->
+    <!-- Top app bar Profile action -->
     <string name="menu_profile">Profile &amp; Settings</string>
-    <string name="menu_logout">Log out</string>
 
     <!-- Profile & Settings screen -->
     <string name="profile_pantry_header">Pantry</string>
