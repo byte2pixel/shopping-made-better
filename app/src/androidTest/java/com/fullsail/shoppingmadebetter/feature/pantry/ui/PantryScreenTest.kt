@@ -190,11 +190,16 @@ class PantryScreenTest {
             ShoppingListUseCase.Output.Success(input.copy(shoppingListId = "new-id"))
     }
 
+    /** [gate], when set, holds the results back so a test can watch the search in flight. */
     private class FakeProductSearchUseCase(
         private val output: ProductSearchUseCase.Output =
             ProductSearchUseCase.Output.Success(listOf(ProductSearch("p1", SEARCH_RESULT_NAME))),
+        private val gate: CompletableDeferred<Unit>? = null,
     ) : ProductSearchUseCase {
-        override suspend fun execute(input: String): ProductSearchUseCase.Output = output
+        override suspend fun execute(input: String): ProductSearchUseCase.Output {
+            gate?.await()
+            return output
+        }
     }
 
     private class FakeAddInventoryItemUseCase(
@@ -1403,6 +1408,48 @@ class PantryScreenTest {
         // No location chip is selected, so the sheet says the product decides.
         composeTestRule.onNodeWithText(string(R.string.pantry_add_location_auto)).assertIsDisplayed()
         composeTestRule.onNodeWithText(string(R.string.pantry_add_confirm)).assertIsDisplayed()
+    }
+
+    @Test
+    fun clearingTheAddToPantrySearchEmptiesTheResults() {
+        setScreen()
+        openAddToPantrySheet()
+        val clear = string(R.string.pantry_add_search_clear)
+        composeTestRule.onNodeWithContentDescription(clear).assertDoesNotExist()
+
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_add_search_hint))
+            .performTextInput("oat")
+        composeTestRule.waitUntil(SHEET_TIMEOUT_MS) {
+            composeTestRule.onAllNodesWithText(SEARCH_RESULT_NAME).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeTestRule.onNodeWithContentDescription(clear).performClick()
+
+        composeTestRule.onNodeWithText(SEARCH_RESULT_NAME).assertDoesNotExist()
+        composeTestRule.onNodeWithText(string(R.string.pantry_add_search_prompt)).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(clear).assertDoesNotExist()
+    }
+
+    @Test
+    fun theClearButtonWaitsForTheSearchToFinish() {
+        val gate = CompletableDeferred<Unit>()
+        setScreen(search = FakeProductSearchUseCase(gate = gate))
+        openAddToPantrySheet()
+        val clear = string(R.string.pantry_add_search_clear)
+
+        composeTestRule
+            .onNodeWithText(string(R.string.pantry_add_search_hint))
+            .performTextInput("oat")
+
+        // The slot holds the spinner while the search is out, not the clear button.
+        composeTestRule.onNodeWithContentDescription(clear).assertDoesNotExist()
+
+        gate.complete(Unit)
+        composeTestRule.waitUntil(SHEET_TIMEOUT_MS) {
+            composeTestRule.onAllNodesWithContentDescription(clear).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(SEARCH_RESULT_NAME).assertIsDisplayed()
     }
 
     @Test
