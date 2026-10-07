@@ -113,6 +113,10 @@ class HistoryScreenTest {
 
     private var clickedTripId: String? = null
 
+    /** The hero title on the default scope. */
+    private val householdTitle: String
+        get() = string(R.string.history_insights_this_month, string(R.string.history_scope_household))
+
     private fun string(resId: Int, vararg args: Any) =
         composeTestRule.activity.getString(resId, *args)
 
@@ -275,9 +279,51 @@ class HistoryScreenTest {
 
         // The list anchored on the insights slot, not the first trip, so the cards land
         // in view; without the slot they sit above the viewport and are not displayed.
-        awaitText(string(R.string.history_insights_this_month))
-        composeTestRule.onNodeWithText(string(R.string.history_insights_this_month)).assertIsDisplayed()
+        awaitText(householdTitle)
+        composeTestRule.onNodeWithText(householdTitle).assertIsDisplayed()
         composeTestRule.onNodeWithText("Store 0").assertIsDisplayed()
+    }
+
+    @Test
+    fun theSpendCardSaysWhichScopeItShows() {
+        setScreen(
+            history = FakeGetPurchaseHistoryUseCase(
+                GetPurchaseHistoryUseCase.Output.Success(listOf(aldiTrip), endReached = true),
+            ),
+            spend = FakeGetSpendSummaryUseCase(GetSpendSummaryUseCase.Output.Success(augustSummary)),
+        )
+        awaitText(householdTitle)
+
+        composeTestRule.onNodeWithText(string(R.string.history_scope_mine)).performClick()
+
+        val mineTitle = string(R.string.history_insights_this_month, string(R.string.history_scope_mine))
+        awaitText(mineTitle)
+        composeTestRule.onNodeWithText(mineTitle).assertIsDisplayed()
+        composeTestRule.onNodeWithText(householdTitle).assertDoesNotExist()
+    }
+
+    @Test
+    fun aFilterShowsTheUnfilteredCaption() {
+        val viewModel = setScreen(
+            history = FakeGetPurchaseHistoryUseCase(
+                GetPurchaseHistoryUseCase.Output.Success(listOf(aldiTrip), endReached = true),
+            ),
+            spend = FakeGetSpendSummaryUseCase(GetSpendSummaryUseCase.Output.Success(augustSummary)),
+        )
+        val caption = string(R.string.history_insights_unfiltered)
+        awaitText(householdTitle)
+        composeTestRule.onNodeWithText(caption).assertDoesNotExist()
+
+        composeTestRule.runOnIdle { viewModel.toggleStore("s-1") }
+
+        awaitText(caption)
+        composeTestRule.onNodeWithText(caption).assertIsDisplayed()
+
+        composeTestRule.runOnIdle { viewModel.clearFilters() }
+
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(caption).fetchSemanticsNodes().isEmpty()
+        }
     }
 
     @Test

@@ -177,6 +177,7 @@ private fun HistoryContent(
 
         HistoryList(
             trips = trips,
+            ownOnly = filter.ownOnly,
             // Asked of the filter itself, so the later search filter picks the same
             // message up without this screen having to learn about it.
             isFiltered = filter.isActive,
@@ -196,6 +197,7 @@ private fun HistoryContent(
 @Composable
 private fun HistoryList(
     trips: LazyPagingItems<PurchaseTripSummary>,
+    ownOnly: Boolean,
     isFiltered: Boolean,
     isRefiltering: Boolean,
     spendSummary: SpendSummary?,
@@ -215,7 +217,12 @@ private fun HistoryList(
         // leave the cards above the viewport.
         item(key = INSIGHTS_KEY) {
             if (spendSummary != null) {
-                SpendInsightsSection(summary = spendSummary, modifier = Modifier.animateItem())
+                SpendInsightsSection(
+                    summary = spendSummary,
+                    ownOnly = ownOnly,
+                    isFiltered = isFiltered,
+                    modifier = Modifier.animateItem(),
+                )
             } else {
                 Spacer(Modifier.fillMaxWidth())
             }

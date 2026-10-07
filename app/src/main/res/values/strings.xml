@@ -272,7 +272,8 @@
          none matching. Telling them "no purchases yet" here would read as data loss. -->
     <string name="history_no_matches">No trips match your filters. Try clearing one.</string>
     <!-- Spend insights above the trip list. Hidden entirely when there is no history. -->
-    <string name="history_insights_this_month">This month</string>
+    <string name="history_insights_this_month">This month · %1$s</string>
+    <string name="history_insights_unfiltered">Filters don\'t apply to these cards</string>
     <plurals name="history_insights_trips">
         <item quantity="one">%1$d trip</item>
         <item quantity="other">%1$d trips</item>

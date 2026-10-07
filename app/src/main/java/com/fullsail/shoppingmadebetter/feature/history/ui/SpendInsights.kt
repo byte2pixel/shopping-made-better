@@ -45,26 +45,47 @@ import kotlin.math.roundToInt
  *
  * Each card hides itself when it has nothing to say, so a first month shows a total
  * with no delta rather than a fabricated comparison.
+ *
+ * The cards follow the Household / Mine scope but not the filters, so the title names
+ * the scope and a caption says so while a filter is active.
  */
 @Composable
-internal fun SpendInsightsSection(summary: SpendSummary, modifier: Modifier = Modifier) {
+internal fun SpendInsightsSection(
+    summary: SpendSummary,
+    ownOnly: Boolean,
+    isFiltered: Boolean,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(bottom = 4.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        MonthSpendCard(thisMonth = summary.thisMonth, lastMonth = summary.lastMonth)
+        MonthSpendCard(
+            thisMonth = summary.thisMonth,
+            lastMonth = summary.lastMonth,
+            scopeLabel = stringResource(
+                if (ownOnly) R.string.history_scope_mine else R.string.history_scope_household,
+            ),
+        )
         if (summary.byStore.isNotEmpty()) {
             StoreBreakdownCard(stores = summary.byStore)
         }
         summary.cheapest?.let { CheapestStoreCard(cheapest = it) }
+        if (isFiltered) {
+            Text(
+                text = stringResource(R.string.history_insights_unfiltered),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
 /** The hero: this month's total, its trip count, and the change since last month. */
 @Composable
-private fun MonthSpendCard(thisMonth: MonthlySpend, lastMonth: MonthlySpend?) {
+private fun MonthSpendCard(thisMonth: MonthlySpend, lastMonth: MonthlySpend?, scopeLabel: String) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -74,7 +95,7 @@ private fun MonthSpendCard(thisMonth: MonthlySpend, lastMonth: MonthlySpend?) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.history_insights_this_month),
+                    text = stringResource(R.string.history_insights_this_month, scopeLabel),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -282,10 +303,19 @@ internal fun previewSummary(
 )
 
 @Composable
-private fun SpendInsightsPreviewHost(summary: SpendSummary) {
+private fun SpendInsightsPreviewHost(
+    summary: SpendSummary,
+    ownOnly: Boolean = false,
+    isFiltered: Boolean = false,
+) {
     ShoppingMadeBetterTheme {
         Surface(color = MaterialTheme.colorScheme.background) {
-            SpendInsightsSection(summary = summary, modifier = Modifier.padding(16.dp))
+            SpendInsightsSection(
+                summary = summary,
+                ownOnly = ownOnly,
+                isFiltered = isFiltered,
+                modifier = Modifier.padding(16.dp),
+            )
         }
     }
 }
@@ -294,6 +324,12 @@ private fun SpendInsightsPreviewHost(summary: SpendSummary) {
 @Composable
 private fun SpendInsightsPreview() {
     SpendInsightsPreviewHost(previewSummary())
+}
+
+@Preview(showBackground = true, name = "Mine, with a filter active")
+@Composable
+private fun SpendInsightsMineFilteredPreview() {
+    SpendInsightsPreviewHost(previewSummary(), ownOnly = true, isFiltered = true)
 }
 
 @Preview(showBackground = true, name = "Spent more than last month")
