@@ -3,12 +3,18 @@ package com.fullsail.shoppingmadebetter.feature.pantry.ui
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -23,6 +29,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -30,6 +42,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
@@ -112,6 +125,9 @@ data class PantryDashboardCard(
 /**
  * Horizontally scrollable row of dashboard cards shown above the pantry list.
  *
+ * Cards are sized so three and a half fit the row, so the fourth visibly peeks in, and
+ * whichever edge has more behind it fades to the background.
+ *
  * @param cards the cards to display, in order.
  * @param selected the set of currently active (highlighted) filters.
  * @param onToggle invoked with a filter when its card is tapped.
@@ -123,24 +139,87 @@ fun PantryDashboard(
     onToggle: (PantryDashboardFilter) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyRow(
-        modifier = modifier,
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        items(cards, key = { it.filter }) { card ->
-            DashboardCard(
-                card = card,
-                isSelected = card.filter in selected,
-                onClick = { onToggle(card.filter) },
-            )
+    val listState = rememberLazyListState()
+    val background = MaterialTheme.colorScheme.background
+
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val cardWidth = ((maxWidth - ROW_EDGE_PADDING - CARD_SPACING * 3) / CARDS_PER_ROW)
+            .coerceIn(MIN_CARD_WIDTH, MAX_CARD_WIDTH)
+
+        LazyRow(
+            state = listState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(DASHBOARD_TAG)
+                .scrollEdgeFades(listState, background),
+            contentPadding = PaddingValues(horizontal = ROW_EDGE_PADDING, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(CARD_SPACING),
+        ) {
+            items(cards, key = { it.filter }) { card ->
+                DashboardCard(
+                    card = card,
+                    width = cardWidth,
+                    isSelected = card.filter in selected,
+                    onClick = { onToggle(card.filter) },
+                )
+            }
         }
     }
 }
 
+/**
+ * Fades each edge of a horizontal list to [background] while there is content beyond
+ * it, so the row looks like it scrolls. The scroll flags are snapshot reads inside the
+ * draw pass, so the fades redraw as the row moves without recomposing it.
+ */
+private fun Modifier.scrollEdgeFades(listState: LazyListState, background: Color): Modifier =
+    drawWithContent {
+        drawContent()
+        val fadeWidth = FADE_WIDTH.toPx()
+        if (listState.canScrollBackward) {
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0f to background,
+                    1f to Color.Transparent,
+                    startX = 0f,
+                    endX = fadeWidth,
+                ),
+                size = Size(fadeWidth, size.height),
+            )
+        }
+        if (listState.canScrollForward) {
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0f to Color.Transparent,
+                    1f to background,
+                    startX = size.width - fadeWidth,
+                    endX = size.width,
+                ),
+                topLeft = Offset(size.width - fadeWidth, 0f),
+                size = Size(fadeWidth, size.height),
+            )
+        }
+    }
+
+/** Test tag for the dashboard row, so a test can scroll it. */
+internal const val DASHBOARD_TAG = "pantryDashboard"
+
+private val ROW_EDGE_PADDING = 16.dp
+private val CARD_SPACING = 12.dp
+private val CARD_HEIGHT = 96.dp
+private val FADE_WIDTH = 24.dp
+
+/** How many cards fit the row: the half is the peek that shows it scrolls. */
+private const val CARDS_PER_ROW = 3.5f
+
+/** Keeps the cards readable on a narrow phone and stops them inflating on a tablet. */
+private val MIN_CARD_WIDTH = 80.dp
+private val MAX_CARD_WIDTH = 112.dp
+
 @Composable
 private fun DashboardCard(
     card: PantryDashboardCard,
+    width: Dp,
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -170,7 +249,8 @@ private fun DashboardCard(
         contentColor = contentColor,
         shadowElevation = if (isSelected) 8.dp else 4.dp,
         modifier = Modifier
-            .size(96.dp)
+            .width(width)
+            .height(CARD_HEIGHT)
             .toggleable(
                 value = isSelected,
                 role = Role.Switch,
