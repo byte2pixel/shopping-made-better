@@ -14,6 +14,7 @@ import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 
 private const val STEP_COUNT = 4
+private const val GOAL_STEP = 2
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,7 +69,11 @@ fun OnboardingScreen(
                     horizontalArrangement = Arrangement.End
                 ) {
                     if (currentStep < STEP_COUNT - 1) {
-                        Button(onClick = { currentStep++ }) {
+                        // The goal step is required; the optional steps always let you continue.
+                        Button(
+                            onClick = { currentStep++ },
+                            enabled = currentStep != GOAL_STEP || selectedGoal != null,
+                        ) {
                             Text(stringResource(R.string.onboarding_next))
                         }
                     } else {
