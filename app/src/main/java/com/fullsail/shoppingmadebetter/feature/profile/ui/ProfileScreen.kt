@@ -47,12 +47,12 @@ fun ProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Profile & Settings") },
+                title = { Text(stringResource(R.string.profile_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             painter = painterResource(R.drawable.ic_arrow_back),
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.nav_back)
                         )
                     }
                 }
@@ -69,7 +69,7 @@ fun ProfileScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "Preferences",
+                text = stringResource(R.string.profile_preferences_header),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )
@@ -83,15 +83,15 @@ fun ProfileScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Edit Dietary Preferences & Goals")
+                    Text(stringResource(R.string.profile_edit_preferences))
                     Icon(
-                        painter = painterResource(R.drawable.ic_arrow_back), // Or appropriate forward arrow icon
-                        contentDescription = "Edit Preferences"
+                        painter = painterResource(R.drawable.ic_chevron_right),
+                        contentDescription = null
                     )
                 }
             }
 
-            Divider()
+            HorizontalDivider()
 
             Text(
                 text = stringResource(R.string.profile_pantry_header),
@@ -104,7 +104,7 @@ fun ProfileScreen(
                 onToggled = viewModel::onAutoAdjustToggled,
             )
 
-            Divider()
+            HorizontalDivider()
 
             Text(
                 text = stringResource(R.string.household_section),
@@ -119,10 +119,10 @@ fun ProfileScreen(
                 Text(stringResource(R.string.household_manage))
             }
 
-            Divider()
+            HorizontalDivider()
 
             Text(
-                text = "Account Security",
+                text = stringResource(R.string.profile_security_header),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )
@@ -131,7 +131,7 @@ fun ProfileScreen(
                 onClick = onNavigateToChangePassword,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Change Password")
+                Text(stringResource(R.string.profile_change_password))
             }
 
             Spacer(modifier = Modifier.weight(1f))
@@ -140,7 +140,7 @@ fun ProfileScreen(
                 onClick = onSignOut,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
-                Text("Sign Out", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.profile_sign_out), color = MaterialTheme.colorScheme.error)
             }
         }
     }

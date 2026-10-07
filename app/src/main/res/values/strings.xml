@@ -18,6 +18,12 @@
     <string name="profile_auto_adjust_title">Auto-adjust pantry quantities</string>
     <string name="profile_auto_adjust_description">Lowers quantities based on how often you buy each item.</string>
     <string name="profile_auto_adjust_failed">Couldn\'t update auto-adjust</string>
+    <string name="profile_title">Profile &amp; Settings</string>
+    <string name="profile_preferences_header">Preferences</string>
+    <string name="profile_edit_preferences">Edit Dietary Preferences &amp; Goals</string>
+    <string name="profile_security_header">Account Security</string>
+    <string name="profile_change_password">Change Password</string>
+    <string name="profile_sign_out">Sign Out</string>
 
     <!-- Onboarding -->
     <string name="onboarding_title">Profile Setup (%1$d/%2$d)</string>
