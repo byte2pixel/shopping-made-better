@@ -10,12 +10,16 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.unit.width
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performClick
 import androidx.test.espresso.Espresso
@@ -994,6 +998,37 @@ class PantryScreenTest {
         composeTestRule.onNodeWithContentDescription(expiringCard).performClick()
         composeTestRule.onNodeWithText("Yogurt").assertIsDisplayed()
         composeTestRule.onNodeWithText("Canned Beans").assertIsDisplayed()
+    }
+
+    @Test
+    fun theFourthDashboardCardPeeksIn() {
+        setScreen()
+        // Matched on the label and colon so the count does not matter.
+        val freezerCard = composeTestRule.onNode(
+            hasContentDescription(string(R.string.pantry_dashboard_freezer) + ":", substring = true),
+        )
+        val root = composeTestRule.onRoot().getBoundsInRoot()
+        val full = freezerCard.getUnclippedBoundsInRoot()
+        val visible = freezerCard.getBoundsInRoot()
+
+        // It starts inside the row and runs off its right edge.
+        assertTrue("left ${full.left} should be inside ${root.right}", full.left < root.right)
+        assertTrue("right ${full.right} should be beyond ${root.right}", full.right > root.right)
+        val shown = visible.width / full.width
+        assertTrue("fourth card shows $shown of its width", shown in 0.35f..0.65f)
+    }
+
+    @Test
+    fun scrollingTheDashboardRevealsThePantryCard() {
+        setScreen()
+        val pantryCard = hasContentDescription(
+            string(R.string.pantry_dashboard_pantry) + ":",
+            substring = true,
+        )
+
+        composeTestRule.onNodeWithTag(DASHBOARD_TAG).performScrollToNode(pantryCard)
+
+        composeTestRule.onNode(pantryCard).assertIsDisplayed()
     }
 
     @Test
