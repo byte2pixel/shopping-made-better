@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.LabelChip
 import com.fullsail.shoppingmadebetter.feature.household.domain.Household
@@ -80,7 +81,12 @@ fun HouseholdScreen(
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) { viewModel.load() }
+    // Every return to the screen, not just the first open: a housemate who joined while the
+    // app was in the background shows up without leaving and coming back.
+    LifecycleResumeEffect(Unit) {
+        viewModel.load()
+        onPauseOrDispose { }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -96,6 +102,7 @@ fun HouseholdScreen(
                 HouseholdEvent.RemoveFailed -> R.string.household_error_remove
                 HouseholdEvent.RegenerateFailed -> R.string.household_error_regenerate
                 HouseholdEvent.NotHead -> R.string.household_error_not_head
+                HouseholdEvent.RefreshFailed -> R.string.household_load_error
             }
             snackbarHostState.showSnackbar(resources.getString(message))
         }

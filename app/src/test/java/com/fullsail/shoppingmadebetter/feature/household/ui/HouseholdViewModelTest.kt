@@ -32,12 +32,14 @@ class HouseholdViewModelTest {
     private val self = HouseholdMember(id = "u2", displayName = "Demo Roommate", isHead = false, isSelf = true)
     private val memberOutput = GetHouseholdUseCase.Output.Member(household, listOf(head, self))
 
-    /** Returns [outputs] in order and repeats the last one. */
+    /** Returns [outputs] in order and repeats the last one; [gate], once set, holds each read. */
     private class FakeGetHouseholdUseCase(vararg outputs: GetHouseholdUseCase.Output) : GetHouseholdUseCase {
         private val queue = outputs.toMutableList()
         var calls = 0
+        var gate: CompletableDeferred<Unit>? = null
         override suspend fun execute(input: Unit): GetHouseholdUseCase.Output {
             calls++
+            gate?.await()
             return if (queue.size > 1) queue.removeAt(0) else queue.first()
         }
     }
@@ -525,5 +527,51 @@ class HouseholdViewModelTest {
 
         assertFalse(viewModel.busy.value)
         assertEquals(1, rename.inputs.size)
+    }
+
+    @Test
+    fun `load keeps the current household on screen while it refreshes`() = runTest {
+        val joined = memberOutput.copy(members = listOf(head, self, otherMember.copy(id = "u3", displayName = "New Housemate")))
+        val get = FakeGetHouseholdUseCase(memberOutput, joined)
+        val viewModel = viewModel(get = get)
+        viewModel.load()
+        val gate = CompletableDeferred<Unit>()
+        get.gate = gate
+
+        viewModel.load()
+
+        assertEquals(HouseholdUiState.Member(household, listOf(head, self)), viewModel.uiState.value)
+        gate.complete(Unit)
+        assertEquals(HouseholdUiState.Member(household, joined.members), viewModel.uiState.value)
+        assertEquals(2, get.calls)
+    }
+
+    @Test
+    fun `a failed reload keeps the members and reports it`() = runTest {
+        val viewModel = viewModel(
+            get = FakeGetHouseholdUseCase(memberOutput, GetHouseholdUseCase.Output.Failure(IOException("boom"))),
+        )
+        viewModel.load()
+
+        viewModel.load()
+
+        assertEquals(HouseholdEvent.RefreshFailed, viewModel.events.first())
+        assertEquals(HouseholdUiState.Member(household, listOf(head, self)), viewModel.uiState.value)
+    }
+
+    @Test
+    fun `a failed reload keeps the join form and reports it`() = runTest {
+        val viewModel = viewModel(
+            get = FakeGetHouseholdUseCase(
+                GetHouseholdUseCase.Output.None,
+                GetHouseholdUseCase.Output.Failure(IOException("boom")),
+            ),
+        )
+        viewModel.load()
+
+        viewModel.load()
+
+        assertEquals(HouseholdEvent.RefreshFailed, viewModel.events.first())
+        assertEquals(HouseholdUiState.None, viewModel.uiState.value)
     }
 }
