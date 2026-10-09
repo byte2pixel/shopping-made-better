@@ -31,10 +31,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.ProductImage
+import com.fullsail.shoppingmadebetter.core.ui.expirySpan
+import com.fullsail.shoppingmadebetter.core.ui.expirySpanLabel
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.InventoryItem
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.feature.pantry.ui.LowStockThresholdStepper
-import com.fullsail.shoppingmadebetter.feature.pantry.ui.expiryStatLabel
 import com.fullsail.shoppingmadebetter.feature.pantry.ui.iconRes
 import com.fullsail.shoppingmadebetter.feature.pantry.ui.labelRes
 import com.fullsail.shoppingmadebetter.feature.product.domain.ProductDetail
@@ -231,15 +232,15 @@ private fun LotDetailRow(lot: InventoryItem, modifier: Modifier = Modifier) {
 }
 
 /**
- * A lot's expiry in the pantry card's words ("Expired", "Today", "7 days", "No date");
- * overdue in the error colour, undated muted.
+ * A lot's expiry in the pantry card's words ("Expired", "Today", "7 days", "6 months",
+ * "No date"); overdue in the error color, undated muted.
  */
 @Composable
 private fun LotExpiry(expiresInDays: Int?, modifier: Modifier = Modifier) {
     val text = if (expiresInDays == null) {
         stringResource(R.string.pantry_card_expiry_none)
     } else {
-        expiryStatLabel(expiresInDays)
+        expirySpanLabel(expirySpan(expiresInDays))
     }
     val color = when {
         expiresInDays == null -> MaterialTheme.colorScheme.onSurfaceVariant
