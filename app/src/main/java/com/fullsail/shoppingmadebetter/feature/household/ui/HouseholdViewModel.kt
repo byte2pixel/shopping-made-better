@@ -41,6 +41,7 @@ sealed interface HouseholdEvent {
     data object RemoveFailed : HouseholdEvent
     data object RegenerateFailed : HouseholdEvent
     data object NotHead : HouseholdEvent
+    data object RefreshFailed : HouseholdEvent
 }
 
 @HiltViewModel
@@ -143,12 +144,24 @@ class HouseholdViewModel @Inject constructor(
         refresh()
     }
 
+    /**
+     * Whatever is on screen stays there until the read lands, so a reload never flashes the
+     * spinner over the members or the join form; only the first load starts from [Loading].
+     * A failed reload over a settled screen keeps it and says so, rather than swapping the
+     * members for an error page.
+     */
     private suspend fun refresh() {
-        _uiState.value = HouseholdUiState.Loading
+        val current = _uiState.value
         _uiState.value = when (val out = getHouseholdUseCase.execute(Unit)) {
             GetHouseholdUseCase.Output.None -> HouseholdUiState.None
             is GetHouseholdUseCase.Output.Member -> HouseholdUiState.Member(out.household, out.members)
-            is GetHouseholdUseCase.Output.Failure -> HouseholdUiState.Error
+            is GetHouseholdUseCase.Output.Failure ->
+                if (current is HouseholdUiState.Member || current is HouseholdUiState.None) {
+                    _events.send(HouseholdEvent.RefreshFailed)
+                    current
+                } else {
+                    HouseholdUiState.Error
+                }
         }
     }
 

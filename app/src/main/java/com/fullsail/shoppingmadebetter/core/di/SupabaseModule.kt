@@ -33,7 +33,13 @@ object SupabaseModule {
             supabaseKey = BuildConfig.SUPABASE_ANON_KEY,
         ) {
             install(Postgrest)
-            install(Auth)
+            install(Auth) {
+                // With the callbacks on, the plugin drops the session to Initializing when
+                // the app goes to the background and reloads it from storage on foreground;
+                // reads fired on resume land in that gap with no token and fail as anon.
+                // Off, the session and its refresh timer stay as they are across the switch.
+                enableLifecycleCallbacks = false
+            }
         }
 
     @Provides
