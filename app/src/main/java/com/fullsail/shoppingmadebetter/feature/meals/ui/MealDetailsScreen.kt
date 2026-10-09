@@ -32,6 +32,7 @@ import com.fullsail.shoppingmadebetter.ui.theme.ShoppingMadeBetterTheme
 fun MealDetailsScreen(
     mealId: String,
     onNavigateBack: () -> Unit,
+    navigateToEditRecipe: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MealsViewModel = hiltViewModel()
 ) {
@@ -42,7 +43,33 @@ fun MealDetailsScreen(
     val categoryName = meal?.category ?: "Loading..."
     var isFavorite by remember { mutableStateOf(false) }
     var servingMultiplier by remember { mutableStateOf(1) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Recipe") },
+            text = { Text("Are you sure you want to permanently delete this recipe? This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        viewModel.deleteRecipe(mealId)
+                        onNavigateBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     if (mealId.isBlank() || mealId == "error") {
         MealNotFoundState(onNavigateBack = onNavigateBack, modifier = modifier)
@@ -250,6 +277,25 @@ fun MealDetailsScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+
+
+            if (meal?.createdBy != null && meal.createdBy == viewModel.currentUserId) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    OutlinedButton(onClick = { navigateToEditRecipe(mealId) }) {
+                        Text("Edit Recipe")
+                    }
+
+                    Button(
+                        onClick = { showDeleteDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Delete Recipe")
+                    }
+                }
+            }
 
             Text(
                 text = "You Might Also Like",
@@ -570,7 +616,6 @@ fun MealDetailsContent(
     }
 }
 
-// Update your preview function to use the clean static content
 @Preview(showBackground = true)
 @Composable
 private fun MealDetailsScreenPreview() {
@@ -608,9 +653,8 @@ private fun MealNotFoundPreview() {
     ShoppingMadeBetterTheme {
         MealDetailsScreen(
             mealId = "",
-            onNavigateBack = {}
+            onNavigateBack = {},
+            navigateToEditRecipe = {}
         )
     }
 }
-
-

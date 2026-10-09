@@ -15,5 +15,6 @@ data class MealDto(
     @SerialName("calories") val calories: String? = null,
     @SerialName("protein") val protein: String? = null,
     @SerialName("carbs") val carbs: String? = null,
-    @SerialName("fat") val fat: String? = null
+    @SerialName("fat") val fat: String? = null,
+    @SerialName(value = "created_by") val createdBy: String? = null
 )

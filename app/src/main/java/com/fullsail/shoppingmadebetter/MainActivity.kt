@@ -387,7 +387,7 @@ fun ShoppingMadeBetterApp(
                     },
 
                     onNavigateToCreate = {
-                        navController.navigate(Dest.CreateRecipe)
+                        navController.navigate(route = Dest.CreateRecipe())
                     }
                 )
             }
@@ -396,7 +396,10 @@ fun ShoppingMadeBetterApp(
                 val args = entry.toRoute<Dest.MealDetails>()
                 com.fullsail.shoppingmadebetter.feature.meals.ui.MealDetailsScreen(
                     mealId = args.mealId,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { navController.popBackStack() },
+                    navigateToEditRecipe = { id ->
+                        navController.navigate(Dest.CreateRecipe(mealId = id))
+                    }
                 )
             }
 

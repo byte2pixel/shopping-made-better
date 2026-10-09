@@ -10,4 +10,7 @@ interface MealsRepository {
 
     suspend fun saveCustomRecipe(mealDto: MealDto): Result<Unit>
     suspend fun saveCustomMeal(title: String, category: String, ingredients: String)
+
+    suspend fun deleteCustomRecipe(mealId: String): Result<Unit>
+    suspend fun updateCustomRecipe(mealId: String, title: String, category: String, ingredients: String): Result<Unit>
 }

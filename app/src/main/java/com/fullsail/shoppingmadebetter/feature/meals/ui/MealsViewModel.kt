@@ -3,10 +3,13 @@ package com.fullsail.shoppingmadebetter.feature.meals.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fullsail.shoppingmadebetter.feature.meals.data.MealsRepository
+import com.fullsail.shoppingmadebetter.feature.meals.domain.DeleteCustomRecipeUseCase
 import com.fullsail.shoppingmadebetter.feature.meals.domain.Ingredient
 import com.fullsail.shoppingmadebetter.feature.meals.domain.Meal
 import com.fullsail.shoppingmadebetter.feature.meals.domain.SelectMealUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,11 +34,16 @@ sealed interface MealsUiState {
 @HiltViewModel
 class MealsViewModel @Inject constructor(
     private val repository: MealsRepository,
-    private val selectMealUseCase: SelectMealUseCase
+    private val selectMealUseCase: SelectMealUseCase,
+    private val deleteCustomRecipeUseCase: DeleteCustomRecipeUseCase,
+    private val supabaseClient: SupabaseClient
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MealsUiState>(MealsUiState.Loading)
     val uiState: StateFlow<MealsUiState> = _uiState.asStateFlow()
+
+
+    val currentUserId: String? = supabaseClient.auth.currentUserOrNull()?.id
 
     private var allMeals: List<Meal> = emptyList()
 
@@ -56,6 +64,7 @@ class MealsViewModel @Inject constructor(
                         itemCount = dto.itemCount,
                         totalPrice = dto.totalPrice,
                         category = dto.category,
+                        createdBy = dto.createdBy,
                         ingredients = listOf(
                             Ingredient("1", "Chicken breast", "1 Lbs", "$3.19"),
                             Ingredient("2", "Fettuccine Pasta", "16 oz", "$2.59"),
@@ -172,6 +181,20 @@ class MealsViewModel @Inject constructor(
             } catch (e: Exception) {
                 println("Error in toggleFavorite: ${e.message}")
             }
+        }
+    }
+
+    fun deleteRecipe(mealId: String) {
+        viewModelScope.launch {
+            val result = deleteCustomRecipeUseCase(mealId)
+            result.fold(
+                onSuccess = {
+                    loadMeals()
+                },
+                onFailure = { exception ->
+                    println("Error deleting recipe: ${exception.message}")
+                }
+            )
         }
     }
 }
