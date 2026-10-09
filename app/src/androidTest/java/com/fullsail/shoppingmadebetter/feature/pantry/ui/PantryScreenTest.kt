@@ -439,17 +439,42 @@ class PantryScreenTest {
         )
         toggleCard("2% Milk")
 
-        // Well past the "expiring soon" threshold, but the lot's chip is still there
-        // and still opens the editor, so a mistyped date can be corrected.
+        // Well past the "expiring soon" threshold, but the lot's chip is still there,
+        // now in weeks, and still opens the editor, so a mistyped date can be corrected.
         composeTestRule
-            .onNodeWithContentDescription(
-                quantityString(R.plurals.pantry_detail_expires_in_days, 30, 30)
-            )
+            .onNodeWithContentDescription(quantityString(R.plurals.expiry_span_weeks_left, 4, 4))
             .performClick()
 
         composeTestRule
             .onNodeWithText(string(R.string.pantry_expiry_edit_label))
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun farOutExpiriesReadInMonthsNotDays() {
+        setScreen(
+            inventory = FakeGetInventoryUseCase(inventoryOf(milk.copy(expiresInDays = 180)))
+        )
+
+        // The header stat (spoken only, its text semantics are cleared) and the lot chip
+        // say the same thing; neither mentions 180 days.
+        composeTestRule
+            .onNodeWithContentDescription(
+                string(
+                    R.string.pantry_card_expiry_soonest_desc,
+                    quantityString(R.plurals.expiry_span_months_left, 6, 6),
+                ),
+                useUnmergedTree = true,
+            )
+            .assertIsDisplayed()
+
+        toggleCard("2% Milk")
+        composeTestRule
+            .onNodeWithText(string(R.string.expiry_span_months_short, 6))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(quantityString(R.plurals.pantry_expiry_days, 180, 180))
+            .assertDoesNotExist()
     }
 
     @Test
