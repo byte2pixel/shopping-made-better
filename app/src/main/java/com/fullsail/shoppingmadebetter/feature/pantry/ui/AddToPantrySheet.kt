@@ -10,16 +10,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,15 +27,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.ContentSizedBottomSheet
+import com.fullsail.shoppingmadebetter.core.ui.SearchField
 import com.fullsail.shoppingmadebetter.core.ui.Stepper
 import com.fullsail.shoppingmadebetter.feature.pantry.domain.PantryLocation
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.domain.productSearch.ProductSearch
 
 /** Highest quantity the add-to-pantry stepper will climb to. */
 internal const val MAX_PANTRY_QUANTITY = 99
-
-/** Fixed footprint for the search spinner, so the field does not resize when it appears. */
-private val SEARCH_INDICATOR_SLOT = 24.dp
 
 /**
  * Height reserved for whatever is under the search field. The catalog returns up to ten
@@ -112,10 +107,10 @@ internal fun AddToPantrySheet(
  * the product's title and nothing else.
  *
  * A search in flight never takes anything off screen. The spinner lives in the field's
- * trailing slot, which holds the same space whether or not it is spinning, and the rows
- * below stay as the last search left them until the next one lands. Swapping the rows for
- * a spinner instead — which is what this did first — collapsed the sheet and bounced it
- * back on every keystroke.
+ * trailing slot, which holds the same space whether it shows the spinner, the clear button
+ * or nothing, and the rows below stay as the last search left them until the next one
+ * lands. Swapping the rows for a spinner instead — which is what this did first — collapsed
+ * the sheet and bounced it back on every keystroke.
  */
 @Composable
 private fun SearchPhase(
@@ -123,24 +118,12 @@ private fun SearchPhase(
     onQueryChange: (String) -> Unit,
     onProductSelected: (ProductSearch) -> Unit,
 ) {
-    OutlinedTextField(
+    SearchField(
         value = state.query,
         onValueChange = onQueryChange,
-        label = { Text(stringResource(R.string.pantry_add_search_hint)) },
-        singleLine = true,
-        trailingIcon = {
-            Box(
-                modifier = Modifier.size(SEARCH_INDICATOR_SLOT),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (state.searching) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                    )
-                }
-            }
-        },
+        label = stringResource(R.string.pantry_add_search_hint),
+        clearContentDescription = stringResource(R.string.pantry_add_search_clear),
+        busy = state.searching,
         modifier = Modifier.fillMaxWidth(),
     )
     Box(
