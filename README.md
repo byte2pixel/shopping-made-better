@@ -108,7 +108,9 @@ The app is organized around four tabs, backed by shared accounts and households:
 **To install a build:**
 
 1. Build the app from source using the [Development Setup](#development-setup) steps
-   below, or obtain a signed `.apk` from a project maintainer.
+   below, or download the signed `.apk` attached to the latest
+   [GitHub Release](https://github.com/byte2pixel/shopping-made-better/releases),
+   which is built against the cloud Supabase project.
 2. Enable installing apps from your build source (Android Studio handles this
    automatically when deploying to a connected device or emulator).
 3. Run the app from Android Studio, or install the APK with `adb install app.apk`.
@@ -308,10 +310,11 @@ Re-run both steps whenever the generator or the CSV changes.
 
 #### Resetting the cloud database
 
-Three manual workflows under **Actions** touch the cloud project:
+Four workflows under **Actions** touch the cloud project:
 
 | Workflow | When |
 |----------|------|
+| Release APK | Runs when a GitHub Release is published; builds a signed APK against the cloud project from the `production` environment's `SUPABASE_URL` variable, `SUPABASE_ANON_KEY` secret and `RELEASE_KEYSTORE_*` secrets, and attaches it to the release. A manual run only uploads a workflow artifact. |
 | Deploy Supabase Migrations | Runs when a GitHub Release is published; applies new migrations only. Safe to re-run. |
 | Seed Supabase (one-time) | First catalog load after the first deploy. Not re-runnable. |
 | Reset Supabase (destructive, pre-launch only) | Drops the cloud database and rebuilds it from the migrations and both seed files, like a local `db reset`. Every row and every account is lost. |
