@@ -8,15 +8,30 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-// Supabase connection config is read from local.properties (never committed).
-// The URL falls back to the standard emulator->host address; the key has no
-// default and must be set per-teammate (see README "Setting Up Supabase Locally").
+// Supabase connection config is read from local.properties (never committed),
+// then from the environment, which is how the release workflow supplies the
+// cloud project's values. The URL falls back to the standard emulator->host
+// address; the key has no default and must be set per-teammate (see README
+// "Setting Up Supabase Locally").
 val localProperties = Properties().apply {
     val localPropertiesFile = rootProject.file("local.properties")
     if (localPropertiesFile.exists()) {
         localPropertiesFile.inputStream().use { load(it) }
     }
 }
+
+fun buildSetting(name: String): String? =
+    localProperties.getProperty(name)?.takeIf { it.isNotBlank() }
+        ?: System.getenv(name)?.takeIf { it.isNotBlank() }
+
+// Release signing comes only from the environment (the release workflow decodes
+// the keystore from a secret). Without it, assembleRelease produces an unsigned APK.
+val releaseKeystorePath = System.getenv("RELEASE_KEYSTORE_PATH")?.takeIf { it.isNotBlank() }
+
+// The release workflow derives both from the release tag (v<major>.<minor>.<patch>);
+// local and PR builds keep the defaults.
+val versionNameFromEnv = System.getenv("VERSION_NAME")?.takeIf { it.isNotBlank() }
+val versionCodeFromEnv = System.getenv("VERSION_CODE")?.toIntOrNull()
 
 android {
     namespace = "com.fullsail.shoppingmadebetter"
@@ -28,27 +43,44 @@ android {
         applicationId = "com.fullsail.shoppingmadebetter"
         minSdk = 30
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = versionCodeFromEnv ?: 1
+        versionName = versionNameFromEnv ?: "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField(
             "String",
             "SUPABASE_URL",
-            "\"${localProperties.getProperty("SUPABASE_URL") ?: "http://10.0.2.2:54321"}\"",
+            "\"${buildSetting("SUPABASE_URL") ?: "http://10.0.2.2:54321"}\"",
         )
         buildConfigField(
             "String",
             "SUPABASE_ANON_KEY",
-            "\"${localProperties.getProperty("SUPABASE_ANON_KEY") ?: ""}\"",
+            "\"${buildSetting("SUPABASE_ANON_KEY") ?: ""}\"",
         )
+    }
+
+    signingConfigs {
+        if (releaseKeystorePath != null) {
+            create("release") {
+                storeFile = file(releaseKeystorePath)
+                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                // PKCS12 keystores (keytool's default) share one password, so the
+                // key password is optional.
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")?.takeIf { it.isNotBlank() }
+                    ?: System.getenv("RELEASE_KEYSTORE_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             optimization {
                 enable = false
+            }
+            if (releaseKeystorePath != null) {
+                signingConfig = signingConfigs.getByName("release")
             }
         }
         debug {
