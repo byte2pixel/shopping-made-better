@@ -70,10 +70,9 @@ fun ShoppingListCartScreen(
             },
             confirmButton = {
 
+                // complete_shopping_trip removes the checked rows itself, do not delete them here.
                 TextButton(modifier = Modifier.fillMaxWidth(), onClick = {  showDialog = false
-                    viewModel.markAllPurchased(listId)
-                    checkedItems.forEach { viewModel.deleteItems(it) }
-                    viewModel.clearCheckedItems()}) {
+                    viewModel.markAllPurchased(listId)}) {
                     Text(text = "Yes", textAlign = TextAlign.Right)
                 }
             },
