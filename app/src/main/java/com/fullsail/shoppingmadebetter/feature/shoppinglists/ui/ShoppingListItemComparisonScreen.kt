@@ -332,10 +332,13 @@ fun ShoppingListItemComparisonScreen(
                 Spacer(Modifier.height(4.dp))
                 //Display the percent off of the highest priced store.
                 Row(){
-                    Text(
-                        "$highestPrice% off highest price store",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                    if (highestPrice != "0.00"){
+                        Text(
+                            "$highestPrice% off highest price store",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+
                 }
 
                 Spacer(Modifier.height(4.dp))
