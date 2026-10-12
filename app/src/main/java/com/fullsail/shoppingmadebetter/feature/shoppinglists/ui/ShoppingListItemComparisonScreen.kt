@@ -313,21 +313,30 @@ fun ShoppingListItemComparisonScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
 
-
             Column(modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth())
             {
 //Flag that changes color based on the discount price for some visual stimulation for the user
-                Text(product.storeName, style = MaterialTheme.typography.titleMedium)
                 val pricePercent = highestPrice.toDouble()
                 val flagColor = when {
                     pricePercent == 0.0 -> Color.Red
                     pricePercent <= 9.0 -> Color.Yellow
                     else -> Color.Green
                 }
+                Row(){
+                    Text(product.storeName, style = MaterialTheme.typography.titleMedium)
+                    Icon(painterResource(id = R.drawable.ic_bookmark), tint= {flagColor},"Discount Price", Modifier.size(24.dp))
 
-                Icon(painterResource(id = R.drawable.ic_bookmark), tint= {flagColor},"Discount Price", Modifier.size(24.dp))
+                }
+                Spacer(Modifier.height(4.dp))
+                //Display the percent off of the highest priced store.
+                Row(){
+                    Text(
+                        "$highestPrice% off highest price store",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
 
                 Spacer(Modifier.height(4.dp))
                 //Shows the product title and the sizing unit to help differentiate items of same name but different size
@@ -349,36 +358,30 @@ fun ShoppingListItemComparisonScreen(
                         product.displayPrice + (distance?.let { "    $it miles away" } ?: ""),
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                    Spacer(Modifier.padding(12.dp))
+                    Spacer(Modifier.padding(6.dp))
                     HorizontalDivider()
-                    Spacer(Modifier.padding(12.dp))
+
 
                 } else {
                     Text(
                         product.displayPrice + "    loading distance...",
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                    Spacer(Modifier.padding(12.dp))
+                    Spacer(Modifier.padding(6.dp))
                     HorizontalDivider()
-                    Spacer(Modifier.padding(12.dp))
+
 
                 }
-                //Display the percent off of the highest priced store.
-                Row(Modifier.align(Alignment.CenterHorizontally)){
-                Text(
-                    "$highestPrice% off highest price store",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
+
                 //Provides user with  a shopping list button they can also press to open the add to cart modal
                 Row(
-                Modifier.align(Alignment.End)
+                    Modifier.align(Alignment.End)
                 ){
 
                     IconButton(
                         onClick =
                             {
-                               pickList = true
+                                pickList = true
                             },
                     )
                     {
@@ -389,7 +392,6 @@ fun ShoppingListItemComparisonScreen(
         }
 
     }
-
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun SimpleSearchBar(
