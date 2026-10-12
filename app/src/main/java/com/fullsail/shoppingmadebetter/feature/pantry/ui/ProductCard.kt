@@ -49,6 +49,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fullsail.shoppingmadebetter.R
 import com.fullsail.shoppingmadebetter.core.ui.LabelChip
+import com.fullsail.shoppingmadebetter.core.ui.expirySpan
+import com.fullsail.shoppingmadebetter.core.ui.expirySpanDescription
+import com.fullsail.shoppingmadebetter.core.ui.expirySpanLabel
+import com.fullsail.shoppingmadebetter.core.ui.expirySpanShortLabel
 import com.fullsail.shoppingmadebetter.core.ui.OwnerChip
 import com.fullsail.shoppingmadebetter.core.ui.ProductImage
 import com.fullsail.shoppingmadebetter.core.ui.Stepper
@@ -126,26 +130,6 @@ private fun expiryAccent(bucket: ExpiryBucket): Color {
         ExpiryBucket.Soon -> if (dark) expirySoonAccentDark else expirySoonAccentLight
         ExpiryBucket.Later -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-}
-
-/** The compact expiry chip label: "Expired", "Today", or a short day count. */
-@Composable
-private fun expiryChipLabel(expiresInDays: Int): String = when {
-    expiresInDays < 0 -> stringResource(R.string.pantry_expiry_expired)
-    expiresInDays == 0 -> stringResource(R.string.pantry_expiry_today)
-    else -> stringResource(R.string.pantry_expiry_in_days_short, expiresInDays)
-}
-
-/** The spoken expiry chip description, spelling out what the short label means. */
-@Composable
-private fun expiryChipDescription(expiresInDays: Int): String = when {
-    expiresInDays < 0 -> stringResource(R.string.pantry_detail_expired)
-    expiresInDays == 0 -> stringResource(R.string.pantry_detail_expires_today)
-    else -> pluralStringResource(
-        R.plurals.pantry_detail_expires_in_days,
-        expiresInDays,
-        expiresInDays,
-    )
 }
 
 /** The spring driving the expander and chevron */
@@ -573,12 +557,13 @@ private fun ExpiryStat(expiresInDays: Int?, modifier: Modifier = Modifier) {
         return
     }
     val bucket = expiryBucket(expiresInDays)
+    val span = expirySpan(expiresInDays)
     HeaderStat(
         caption = caption,
-        value = expiryStatLabel(expiresInDays),
+        value = expirySpanLabel(span),
         contentDescription = stringResource(
             R.string.pantry_card_expiry_soonest_desc,
-            expiryChipDescription(expiresInDays),
+            expirySpanDescription(span),
         ),
         color = if (bucket == ExpiryBucket.Later) {
             MaterialTheme.colorScheme.onSurface
@@ -587,17 +572,6 @@ private fun ExpiryStat(expiresInDays: Int?, modifier: Modifier = Modifier) {
         },
         modifier = modifier,
     )
-}
-
-/**
- * The expiry stat's value: "Expired", "Today", or a spelled-out day count. The product
- * detail's lot rows use the same words.
- */
-@Composable
-internal fun expiryStatLabel(expiresInDays: Int): String = if (expiresInDays < 0) {
-    stringResource(R.string.pantry_expiry_expired)
-} else {
-    expiryDraftLabel(expiresInDays)
 }
 
 /**
@@ -808,13 +782,14 @@ private fun ExpiryChip(
 ) {
     var expanded by remember { mutableStateOf(false) }
     var draft by remember { mutableIntStateOf(expiresInDays) }
+    val span = expirySpan(expiresInDays)
 
     Box(modifier = modifier) {
         LabelChip(
-            label = expiryChipLabel(expiresInDays),
+            label = expirySpanShortLabel(span),
             accentColor = expiryAccent(bucket),
             iconRes = R.drawable.ic_expiring,
-            contentDescription = expiryChipDescription(expiresInDays),
+            contentDescription = expirySpanDescription(span),
             onClick = {
                 draft = expiresInDays
                 expanded = true
@@ -858,7 +833,10 @@ private fun ExpiryChip(
     }
 }
 
-/** The stepper's value label for [days] until expiry: "Today" at 0, otherwise a day count. */
+/**
+ * The stepper's value label for [days] until expiry: "Today" at 0, otherwise an exact day
+ * count, since this is what the user is editing.
+ */
 @Composable
 private fun expiryDraftLabel(days: Int): String = if (days == 0) {
     stringResource(R.string.pantry_expiry_today)
@@ -1007,6 +985,21 @@ private fun ProductCardNoExpiryPreview() {
     ProductCardPreviewScaffold(
         group = previewGroup(listOf(previewLot(id = "1", expiresInDays = null))),
         isExpanded = false,
+    )
+}
+
+@Preview(showBackground = true, name = "Long-life lots, expanded")
+@Composable
+private fun ProductCardLongLifePreview() {
+    // Frozen and canned shelf lives: the header reads "6 months", the chips "6m" and "2y".
+    ProductCardPreviewScaffold(
+        group = previewGroup(
+            listOf(
+                previewLot(id = "1", quantity = 2, expiresInDays = 180, location = PantryLocation.Freezer),
+                previewLot(id = "2", quantity = 4, expiresInDays = 730, location = PantryLocation.Pantry),
+            ),
+        ),
+        isExpanded = true,
     )
 }
 
