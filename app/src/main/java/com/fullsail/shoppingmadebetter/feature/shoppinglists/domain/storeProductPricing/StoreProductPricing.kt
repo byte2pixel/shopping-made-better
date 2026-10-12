@@ -8,6 +8,7 @@ data class StoreProductPricing(
      val displayPrice: String,
      val productTitle: String,
      val productBrand: String? = null,
+     //Package sizing used for helping to differentiate items of different prices and identical names
      val packageSizing: String?,
 ) {
 }

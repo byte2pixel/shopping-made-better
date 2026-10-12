@@ -9,6 +9,7 @@ class CompleteShoppingTripUseCaseImpl @Inject constructor(
 ) : CompleteShoppingTripUseCase {
     override suspend fun execute(input: String): CompleteShoppingTripUseCase.Output =
         try {
+            //Completes a shopping trip adding it to the pantry
             repository.completeShoppingTrip(input)
             CompleteShoppingTripUseCase.Output.Success
         } catch (e: Exception) {

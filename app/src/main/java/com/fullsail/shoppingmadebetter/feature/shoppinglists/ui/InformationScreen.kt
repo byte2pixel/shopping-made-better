@@ -42,7 +42,7 @@ fun InformationScreen(
             is ItemInformationState.Success ->{
                 Column(Modifier.fillMaxSize().padding(16.dp))
                 {
-
+                    //Builds out the product information screen Product image, title brand, category description.
                     ProductImage(imageUrl = state.item.id.image, modifier = Modifier.height(100.dp).fillMaxWidth(),  contentDescription = state.item.id.title)
                     state.item.id.title?.let { Text(it, style = MaterialTheme.typography.headlineLarge) }
                    Row()

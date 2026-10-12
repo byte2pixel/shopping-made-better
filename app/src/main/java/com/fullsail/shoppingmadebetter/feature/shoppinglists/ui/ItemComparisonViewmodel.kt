@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 import javax.inject.Inject
 
+//State outcomes for the item comparison viewmodel
 sealed interface ItemComparisonUIState {
     data object Loading : ItemComparisonUIState
     data class SearchSuccess(val products: List<ProductSearch>) : ItemComparisonUIState
@@ -61,10 +62,11 @@ class ItemComparisonViewmodel @Inject constructor(
     val storeMap =  MutableStateFlow<Map<String, StoreAddressInformation>>(emptyMap())
     private val _uiState = MutableStateFlow<ItemComparisonUIState>(ItemComparisonUIState.Loading)
     val uiState: StateFlow<ItemComparisonUIState> = _uiState.asStateFlow()
-
+//Refresh the pantries information and the available shopping lists
     init { getShoppingLists()
         getPantryItemInformation() }
 
+    //Get information about the pantrys item
     fun getPantryItemInformation()
     {
         viewModelScope.launch {
@@ -81,7 +83,7 @@ class ItemComparisonViewmodel @Inject constructor(
 
         }
     }
-
+//Get information about the stores address to be used to calculate distance.
     fun getStoreInfo(id : String)
     {
         viewModelScope.launch {
@@ -99,9 +101,11 @@ class ItemComparisonViewmodel @Inject constructor(
 
         }
     }
+    //Calculate the addresses distance from users last known location
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
     fun addressToCoordinates(storeLocation : String) : String?
     {
+        //Start acquiring the users location
         val getUserLocation = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val location = try {
             getUserLocation.getLastKnownLocation(LocationManager.GPS_PROVIDER)
@@ -111,7 +115,9 @@ class ItemComparisonViewmodel @Inject constructor(
         }?: return null
 
         val geocoder =  Geocoder(context, Locale.getDefault())
+        //Get coordinates from address
         val addressLocation = geocoder.getFromLocationName(storeLocation , 1)?.firstOrNull()
+        //If not null calculate the distance between the user and the address location's coordinates
         if (addressLocation != null) {
 
             val distance = FloatArray(1)
@@ -127,10 +133,11 @@ class ItemComparisonViewmodel @Inject constructor(
             return String.format(Locale.getDefault(),"%.1f",milesAway)
 
         }
+        //if failed return null
         return null
 
         }
-
+//Setup searching query the database for product information based on the users input.
     fun search(search : String)
     {
         _uiState.value = ItemComparisonUIState.Loading
@@ -144,6 +151,7 @@ class ItemComparisonViewmodel @Inject constructor(
         }
     }
 
+    //Add item to shopping list
     fun addItem(item : InsertItem)
     {
         _uiState.value = ItemComparisonUIState.Loading
@@ -151,6 +159,7 @@ class ItemComparisonViewmodel @Inject constructor(
             insertItemUseCase.execute(item)
         }
     }
+    //Create a new list than add item to the shopping list
 
     fun createListAddItem(product : StoreProductPricing, listName : String)
     {
@@ -160,6 +169,7 @@ class ItemComparisonViewmodel @Inject constructor(
                 is ShoppingListUseCase.Output.Success ->{
                     if (out.list.shoppingListId != null)
                     {
+                        //Calls add item to add a list to created shopping list
                         addItem(InsertItem(out.list.shoppingListId, product.productId, 1, "", false, true))
 
                     }
@@ -172,7 +182,7 @@ class ItemComparisonViewmodel @Inject constructor(
         }
     }
 
-
+//Gets the products from the product id
     fun showProducts(prodId : String)
     {
         _uiState.value = ItemComparisonUIState.Loading
@@ -187,7 +197,7 @@ class ItemComparisonViewmodel @Inject constructor(
     }
 
 
-
+//Get all shopping lists and the executes waiting if success.
     fun getShoppingLists(waiting : () -> Unit = {})
     {
         viewModelScope.launch {

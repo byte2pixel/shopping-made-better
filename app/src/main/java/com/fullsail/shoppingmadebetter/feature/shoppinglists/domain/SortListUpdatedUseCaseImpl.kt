@@ -7,6 +7,7 @@ import javax.inject.Inject
 class SortListUpdatedUseCaseImpl  @Inject constructor(
     private val repository: ShoppingListRepository,
 ) : SortListUpdatedUseCase {
+    //sorts list by date updated
     override suspend fun execute(input : Unit): SortListUpdatedUseCase.Output {
         return try {
             repository.sortListByCreated()

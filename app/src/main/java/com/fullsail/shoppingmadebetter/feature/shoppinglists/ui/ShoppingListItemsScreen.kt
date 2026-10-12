@@ -47,7 +47,7 @@ fun ShoppingListItemsScreen(
     ) {
 
     val uiState by viewModel.uiState.collectAsState()
-
+//get the items from the list id
     LaunchedEffect(listId) { viewModel.getItems(listId) }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -70,6 +70,7 @@ fun ShoppingListItemsScreen(
         },
     ) { innerPadding ->
         Box(Modifier.fillMaxSize().padding(innerPadding)) {
+            //handling different shopping list states
             when (val state = uiState) {
                 ShoppingTripsUiState.Loading ->
                     CircularProgressIndicator(Modifier.align(Alignment.Center))
@@ -85,7 +86,7 @@ fun ShoppingListItemsScreen(
                             Modifier.fillMaxSize().padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-
+                            //Prints shopping list item rows
                             items(state.items, key = { it.id }) { ListRow(it,viewModel) }
                         }
                     }
@@ -95,6 +96,7 @@ fun ShoppingListItemsScreen(
                 else -> {}
 
             }
+            //Go to cart button
             FloatingActionButton(onClick = {
                 onItemComparison(Dest.ShoppingListCartScreen(listId))
             }, Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding( 20.dp)) { Icon(painterResource(id = R.drawable.ic_shopping_cart), contentDescription = "Go to cart", Modifier.size(24.dp))}
@@ -102,6 +104,7 @@ fun ShoppingListItemsScreen(
         }
     }
 }
+//List row that controls the appearance and
 @Composable
 fun ListRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel) {
 

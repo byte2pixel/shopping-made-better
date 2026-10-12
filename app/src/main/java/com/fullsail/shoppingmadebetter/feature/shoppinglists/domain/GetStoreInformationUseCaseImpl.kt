@@ -8,12 +8,13 @@ import javax.inject.Inject
 class GetStoreInformationUseCaseImpl @Inject constructor(
 private val repository: ShoppingListRepository,
 ) : GetStoreInformationUseCase {
+    //Get information on the store typically used for getting the stores address for coordinate calculation
     override suspend fun execute(input: String): GetStoreInformationUseCase.Output {
         return try {
             GetStoreInformationUseCase.Output.Success(repository.getStoreAddress(input).toDomain())
 
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to grab product information: ${e.message}", e)
+            Log.e(TAG, "Failed to grab store information: ${e.message}", e)
             GetStoreInformationUseCase.Output.Failure(e)
         }
     }

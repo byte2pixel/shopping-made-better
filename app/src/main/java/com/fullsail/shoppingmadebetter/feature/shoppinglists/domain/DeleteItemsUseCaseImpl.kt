@@ -3,10 +3,10 @@ package com.fullsail.shoppingmadebetter.feature.shoppinglists.domain
 import android.util.Log
 import com.fullsail.shoppingmadebetter.feature.shoppinglists.data.ShoppingListRepository
 import javax.inject.Inject
-
 class DeleteItemsUseCaseImpl @Inject constructor(
     private val repository: ShoppingListRepository,
 ) : DeleteItemsUseCase {
+    //Deletes a item using the items Id
     override suspend fun execute(id : String): DeleteItemsUseCase.Output {
         return try {
             repository.deleteItem(id)

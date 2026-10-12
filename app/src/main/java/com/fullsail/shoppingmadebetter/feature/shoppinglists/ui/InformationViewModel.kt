@@ -23,6 +23,7 @@ class InformationViewModel @Inject constructor(
 )  : ViewModel() {
     private val _uiState = MutableStateFlow<ItemInformationState>(ItemInformationState.Loading)
     val uiState: StateFlow<ItemInformationState> = _uiState.asStateFlow()
+    //Get the items information from its item id.
     fun getItem(input: String) {
         _uiState.value = ItemInformationState.Loading
         viewModelScope.launch {

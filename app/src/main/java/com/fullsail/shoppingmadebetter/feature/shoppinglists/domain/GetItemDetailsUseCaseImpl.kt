@@ -8,6 +8,7 @@ import javax.inject.Inject
 class GetItemDetailsUseCaseImpl  @Inject constructor(
     private val repository: ShoppingListRepository,
 ) : GetItemDetailsUseCase {
+    //Gets information on the item
     override suspend fun execute(input: String): GetItemDetailsUseCase.Output {
         return try {
             GetItemDetailsUseCase.Output.Success(repository.getItemDetails(input).toDomain())

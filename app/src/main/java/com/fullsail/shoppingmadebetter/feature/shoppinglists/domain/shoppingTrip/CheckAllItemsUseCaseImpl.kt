@@ -7,6 +7,7 @@ import javax.inject.Inject
 class CheckAllItemsUseCaseImpl @Inject constructor(
     private val repository: ShoppingListRepository,
 ) : CheckAllItemsUseCase {
+    //Check all items in a list
     override suspend fun execute(input: String): CheckAllItemsUseCase.Output =
         try {
             repository.checkAllItems(input)

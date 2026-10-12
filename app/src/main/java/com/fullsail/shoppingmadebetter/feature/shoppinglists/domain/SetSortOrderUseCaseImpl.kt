@@ -7,6 +7,7 @@ import javax.inject.Inject
 class SetSortOrderUseCaseImpl @Inject constructor(
     private val repository: ShoppingListRepository,
 ) : SetSortOrderUseCase {
+    //Uses sort Order to swap the new sortOrder values between the listIds
     override suspend fun execute(input: SortOrder): SetSortOrderUseCase.Output {
         return try {
             repository.setSortOrder(input.listId, input.newSortOrder, input.listId2, input.newSortOrder2 )
