@@ -76,10 +76,12 @@ fun ShoppingListItemComparisonScreen(
     onInfoScreen :(dest : Dest) -> Unit,
 
 ) {
-
+//holds the selected product the user finds using the search bar for use in item comparison
     var selectedProduct by rememberSaveable {mutableStateOf<String?>(null)}
+    //Controls which was the items are sorted
     var bAscending by remember { mutableStateOf(true)}
     val uiState by viewModel.uiState.collectAsState()
+    //Ensures the user gets permissions required to use the location functionality
     val getPermissions = rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestMultiplePermissions())
     {}
     if ((ActivityCompat.checkSelfPermission(
@@ -98,6 +100,7 @@ fun ShoppingListItemComparisonScreen(
         }
 
     }
+    //Ensures that selected product == null and displays the search bar
     if (selectedProduct == null)
     {
         Column{
@@ -105,6 +108,7 @@ fun ShoppingListItemComparisonScreen(
                                          viewModel.showProducts(product)}, viewModel, onInfoScreen)
         }
     }
+    //Otherwise it shows informaiton for the selected item from  different stores
     else
     {
 
@@ -112,6 +116,7 @@ fun ShoppingListItemComparisonScreen(
         {
             when (val state = uiState)
             {
+                //Handles the state of getting the information of the selected items.
                 ItemComparisonUIState.Loading ->
                     CircularProgressIndicator(Modifier.align(Alignment.Center))
 
@@ -123,13 +128,14 @@ fun ShoppingListItemComparisonScreen(
                     if (state.price.isEmpty()) {
                         Text("No Prices Available yet", Modifier.align(Alignment.Center))
                     }
-
+                        //If everything goes well it continues the code to show to compared item at different stores
                       else  {
                         val prices = remember(state.price) {state.price.sortedBy { it.price }}
                         val highestPrice= prices.maxOf{it.price}
                           Column() {
                         Row()
                         {
+                            //Sort icon button
                             IconButton( onClick = {
                                 bAscending = !bAscending
                             }) { Icon(painterResource(id = R.drawable.ic_filter_list), contentDescription = "Sort Type", Modifier.size(24.dp))}
@@ -142,9 +148,11 @@ fun ShoppingListItemComparisonScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                //Filters the prices based on the product title of the selected product
                 val filtered = state.price.filter { it.productTitle == selectedProduct }
+                //Sorts the lists based on the value of bAscending
                 val sorted = if (bAscending) filtered.sortedBy { it.price } else filtered.sortedByDescending { it.price }
-
+//Ensures the permission is gotten than asks again if it isnt.
                 items(sorted, key = { it.productId + it.storeId }) {
                     if ((ActivityCompat.checkSelfPermission(
                             LocalContext.current,
@@ -164,6 +172,7 @@ fun ShoppingListItemComparisonScreen(
                         }
 
                     }
+                    //Display the item card
                     ItemCard(it, viewModel, onItemComparison, String.format("%.2f",100 - it.price / highestPrice * 100 ))
                 }
             }
@@ -176,21 +185,27 @@ fun ShoppingListItemComparisonScreen(
     }
 
 }
+//Handles the drawing of all the required information for each item card.
     @OptIn(ExperimentalMaterial3Api::class)
     @androidx.annotation.RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
         @Composable
     fun ItemCard(product: StoreProductPricing, viewModel : ItemComparisonViewmodel, onItemComparison: () -> Unit, highestPrice : String)
     {
+        //Holds the store list
         val storeList  by viewModel.shoppingLists.collectAsState()
+        //Controls showing the dialog when the user sets it to true
         var showDialog by remember {mutableStateOf(false)}
+        //Controls picking a list dialog
         var pickList by remember {mutableStateOf(false)}
+        //Holds the name of the list
         var listName by remember {mutableStateOf("")}
         var list : ShoppingTrip? = null
+        //Holds information from the stores
         val storeInfo by viewModel.storeMap.collectAsState()
 
 
 
-
+//Used whenever add is clicked for existing apps
         fun onAddClicked()
         {
             if (list != null)
@@ -205,12 +220,13 @@ fun ShoppingListItemComparisonScreen(
 
 
         }
-
+//Used when you wish to create a new dialog and sets the show dialog to true
         fun onAddNewListClicked()
         {
                 showDialog = true
         }
 
+        //Controls when a list is being picked through to add an item to a shopping list
         if (pickList)
         {
             ModalBottomSheet(onDismissRequest = { pickList = false }) {
@@ -228,6 +244,7 @@ fun ShoppingListItemComparisonScreen(
                     )
                     Column()
                     {
+                        //iterates through the available lists for the item
                         val lists by viewModel.shoppingLists.collectAsState()
                         for (s in lists) {
                             if (s.storeId == product.storeId) {
@@ -247,6 +264,7 @@ fun ShoppingListItemComparisonScreen(
 
                             }
                         }
+                        //Create new list button
                         Card(colors = CardDefaults.cardColors( containerColor = BottomSheetDefaults.ContainerColor, contentColor = MaterialTheme.colorScheme.primary), onClick = {onAddNewListClicked()}) {
                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center)
                            {Text("Create new list",style = MaterialTheme.typography.titleMedium)}
@@ -257,7 +275,7 @@ fun ShoppingListItemComparisonScreen(
 
             }
         }
-
+//Controls the show dialog button this is used to create  a new list and name it.
         if (showDialog)
         {
             AlertDialog(
@@ -282,7 +300,7 @@ fun ShoppingListItemComparisonScreen(
                 },
             )
         }
-
+//When clicked opens the modal to allow the user to select their lists
         OutlinedCard(
             onClick = {
                pickList = true
@@ -299,7 +317,7 @@ fun ShoppingListItemComparisonScreen(
                 .padding(16.dp)
                 .fillMaxWidth())
             {
-
+//Flag that changes color based on the discount price for some visual stimulation for the user
                 Text(product.storeName, style = MaterialTheme.typography.titleMedium)
                 val pricePercent = highestPrice.toDouble()
                 val flagColor = when {
@@ -311,16 +329,20 @@ fun ShoppingListItemComparisonScreen(
                 Icon(painterResource(id = R.drawable.ic_bookmark), tint= {flagColor},"Discount Price", Modifier.size(24.dp))
 
                 Spacer(Modifier.height(4.dp))
+                //Shows the product title and the sizing unit to help differentiate items of same name but different size
                 Text(
                     product.productTitle + "   " + product.packageSizing,
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(Modifier.height(12.dp))
+                //Gets store information for distance calculation
                 LaunchedEffect(product.storeId) {
                     viewModel.getStoreInfo(product.storeId)
                 }
+                //Ensures store is not null
                 val store = storeInfo[product.storeId]
                 if (store != null) {
+                    //then attempts to get the distance from it
                     val distance = viewModel.addressToCoordinates(store.address)
                     Text(
                         product.displayPrice + (distance?.let { "    $it miles away" } ?: ""),
@@ -340,12 +362,14 @@ fun ShoppingListItemComparisonScreen(
                     Spacer(Modifier.padding(12.dp))
 
                 }
+                //Display the percent off of the highest priced store.
                 Row(Modifier.align(Alignment.CenterHorizontally)){
                 Text(
                     "$highestPrice% off highest price store",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
+                //Provides user with  a shopping list button they can also press to open the add to cart modal
                 Row(
                 Modifier.align(Alignment.End)
                 ){
@@ -373,20 +397,24 @@ fun ShoppingListItemComparisonScreen(
         onInfoScreen :(dest : Dest) -> Unit
 
         ) {
+        //Holds the search results from the searchbar
         var searchResults by remember { mutableStateOf(emptyList<ProductSearch>()) }
         val modifier = Modifier
         val uiState by viewModel.uiState.collectAsState()
         var expanded by rememberSaveable { mutableStateOf(true) }
+        //Holds the users text input
         val textFieldState =  rememberTextFieldState("")
+        //Filters the search results based on the product name and textfield
         var filteredResults = searchResults.filter {
             it.productName.contains(textFieldState.text, ignoreCase = true)
         }
-
+//Controls the state of the shopping list
         when (val state = uiState) {
 
             ItemComparisonUIState.Error ->
                 Text("Search suggestions couldn't be loaded")
             is ItemComparisonUIState.SearchSuccess -> {
+                //When search is successful it filters and suggests matching items to the user
                 searchResults = state.products.map { it }
                 filteredResults = searchResults.filter {
                     it.productName.contains(textFieldState.text, ignoreCase = true)
@@ -401,6 +429,7 @@ fun ShoppingListItemComparisonScreen(
             .fillMaxSize()
             .semantics { isTraversalGroup = true }
     ) {
+        //Creates a search bar for the user to search items with
         SearchBar(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -414,6 +443,7 @@ fun ShoppingListItemComparisonScreen(
 
                                     },
                     onSearch = {
+
                         onSearch(textFieldState.text.toString())
 
                         expanded = false
@@ -426,11 +456,14 @@ fun ShoppingListItemComparisonScreen(
             expanded = expanded,
             onExpandedChange = { expanded = it },
         ) {
+            //Shows when text field state isn't empty and results are empty
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 if (filteredResults.isEmpty() && textFieldState.text != "")
                 {
                     Text("No results could be found")
                 }
+                //When text field state is empty show the user information about their pantry like when they are running low
+                // Or when an item they have is expiring and suggest they buy it.
                 else if(textFieldState.text == "")
                 {
                     Row(Modifier.background(MaterialTheme.colorScheme.primaryContainer).fillMaxWidth().padding(12.dp))
@@ -527,7 +560,7 @@ fun ShoppingListItemComparisonScreen(
 
                 }
                 else {
-
+//Displays the filtered results for the items they searched allowing users to click on the items or their information to add to their cart or learn more.
 
                 filteredResults.forEach { result ->
                     Row(Modifier.border(width = 1.dp , color = Color.Black)) {

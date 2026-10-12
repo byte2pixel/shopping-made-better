@@ -57,14 +57,15 @@ class ShoppingListItemsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<ShoppingListItemsState>(ShoppingListItemsState.Loading)
     val uiState: StateFlow<ShoppingListItemsState> = _uiState.asStateFlow()
 
+    //Handles items that are checked
     private val _checkedItems = MutableStateFlow<List<String>>(emptyList())
     val checkedItems: StateFlow<List<String>> = _checkedItems.asStateFlow()
-
+//Handles when list is purchased even state or when the purchase fails
     private val _events = Channel<ShoppingListItemsEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
 
-    //init { }
+    //Adds item to the list, allowing the user to clone an item in their list,
     fun addItem(item : InsertItem, listId : String, itemName : String)
     {
         viewModelScope.launch {
@@ -85,6 +86,7 @@ class ShoppingListItemsViewModel @Inject constructor(
 
         }
     }
+    //Allows the user to update the quantity of items in their list.
     fun updateQuantity(id : String, newQuantity:Int )
     {
         viewModelScope.launch {
@@ -109,10 +111,12 @@ class ShoppingListItemsViewModel @Inject constructor(
             }
         }
     }
+    //Controls plus button to increase the items quantity when pressed.
     fun increaseQuantity(item : ShoppingListItems)
     {
         updateQuantity(item.id , item.quantity + 1)
     }
+    //Controls plus button to decrease the items quantity when pressed.
     fun decreaseQuantity(item:ShoppingListItems)
     {
         if (item.quantity > 1){
@@ -120,6 +124,7 @@ class ShoppingListItemsViewModel @Inject constructor(
         }
 
     }
+    //Toggles the checked state on a cart item
     fun toggleItemCheck(itemId: String) {
         val current = _checkedItems.value.toMutableList()
         if (itemId in current) {
@@ -129,11 +134,12 @@ class ShoppingListItemsViewModel @Inject constructor(
         }
         _checkedItems.value = current
     }
-
+//Clears the checked items list and empties it
     fun clearCheckedItems() {
         _checkedItems.value.forEach { deleteItems(it) }
         _checkedItems.value = emptyList()
     }
+    //Get the checked items into the _checkedItems state and refreshes the uiState value with the regotten items
     fun getItems(input : String)  {
         _uiState.value = ShoppingListItemsState.Loading
         viewModelScope.launch {
@@ -148,12 +154,13 @@ class ShoppingListItemsViewModel @Inject constructor(
             }
         }
     }
-
+//Sets the item from its id's checkmart state to whatever states value is
     fun checkItem(id : String, state : Boolean){
         viewModelScope.launch{
             when (getIsCheckedUseCase.execute(isChecked(id, state))) {
                 is isCheckedUseCase.Output.Success ->
                 {
+                    //Manually updates the list to not cause screen flickering or database calls
                     val currentState = _uiState.value
                     if (currentState is ShoppingListItemsState.Success) {
                         val newCheckedItems = currentState.items.map{
@@ -177,12 +184,13 @@ class ShoppingListItemsViewModel @Inject constructor(
             }
         }
     }
-
+//Delete an item off of the list with its given id
     fun deleteItems(input : String)
     {
         viewModelScope.launch {
              when (getDeleteItemsUseCase.execute(input)) {
                 is DeleteItemsUseCase.Output.Success -> {
+                    //When success manually  update the list to avoid refreshing from database
                     val currentState = _uiState.value
                     if (currentState is ShoppingListItemsState.Success) {
                         val postDeletedList = currentState.items.filter { it.id != input }
@@ -197,6 +205,9 @@ class ShoppingListItemsViewModel @Inject constructor(
 
     }
 
+    //Calls an RPC to mark all purchase items and ask to push it to pantry
+    //This removes all checked items from the below list ID and may or may not push them to the pantry
+    //Based on user input
     fun markAllPurchased(listId : String) {
         _uiState.value = ShoppingListItemsState.Loading
         viewModelScope.launch {

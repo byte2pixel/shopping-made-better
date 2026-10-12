@@ -7,6 +7,8 @@ import javax.inject.Inject
 class isCheckedUseCaseImpl @Inject constructor(
     private val repository: ShoppingListRepository,
 ) : isCheckedUseCase {
+    //sets the check box to the input
+    //isChecked = id and state
     override suspend fun execute(input : isChecked ): isCheckedUseCase.Output {
         return try {
             repository.toggleCheckBox(input.id,input.value)

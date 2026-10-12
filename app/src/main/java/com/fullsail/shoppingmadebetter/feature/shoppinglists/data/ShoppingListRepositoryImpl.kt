@@ -29,12 +29,12 @@ class ShoppingListRepositoryImpl @Inject constructor(
                 }
                 .decodeList<StoreProductPricingDto>()
         }
-
+//returns all shopping lists belonging to the user and returns them in ascending order.
     override suspend fun getTrips(): List<ShoppingTripDto> = withContext(Dispatchers.IO) {
         postgrest.from("shopping_trip_summaries").select()
         { order("sort_order", Order.ASCENDING)}
             .decodeList<ShoppingTripDto>()
-    }
+    }//Returns a list of products
     override suspend fun getProduct(searchName : String): List<ProductSearchDto> = withContext(Dispatchers.IO) {
 
         postgrest.from("products").select{
@@ -53,7 +53,7 @@ class ShoppingListRepositoryImpl @Inject constructor(
         Log.d("InsertItem", "Insert completed successfully: ${inserted.id}")
         return inserted
     }
-
+//Gets information about the list and then createes a shoppinglist off of it then returns the list
     override suspend fun addList(list: ShoppingList) : ShoppingList {
            val response = postgrest.from("shopping_lists").insert(ShoppingListDto(
              null,list.storeId, list.name, list.shared)){ select()}.decodeSingle<ShoppingListDto>()
@@ -67,7 +67,7 @@ class ShoppingListRepositoryImpl @Inject constructor(
 
 
          }
-
+//Gets the items off of a lists ID
     override suspend fun getItems(list: String) : List<ShoppingListItemsDto> = withContext(Dispatchers.IO) {
         postgrest
             .from("shopping_list_item_named_view")
@@ -78,6 +78,7 @@ class ShoppingListRepositoryImpl @Inject constructor(
             }
             .decodeList<ShoppingListItemsDto>()
     }
+    //deletes items off of the item id
     override suspend fun deleteItem(itemId : String)
     {
         postgrest
@@ -92,7 +93,7 @@ class ShoppingListRepositoryImpl @Inject constructor(
 
     }
 
-
+//Remove a list out of the database from the listId
     override suspend fun removeList(listId: String) {
         postgrest.from("shopping_lists").delete{
             filter{
@@ -101,7 +102,7 @@ class ShoppingListRepositoryImpl @Inject constructor(
 
         }
     }
-
+//Rename a list, based off of its list id and new name
     override suspend fun renameList(listId: String, newName: String) {
         postgrest.from("shopping_lists").update(
             {
@@ -113,7 +114,7 @@ class ShoppingListRepositoryImpl @Inject constructor(
             }
         }
     }
-
+//Updates a lists quantity based off the list id and the int of new quantity
     override suspend fun updateQuantity(id: String, newQuantity: Int) {
         postgrest.from("shopping_list_items").update(
             {
@@ -125,6 +126,7 @@ class ShoppingListRepositoryImpl @Inject constructor(
             }
         }
     }
+    //Get item details about an item from an items id and returns them
     override suspend fun getItemDetails(id : String) : ItemDetailsDto
     {
        return postgrest.from("products")
@@ -135,13 +137,13 @@ class ShoppingListRepositoryImpl @Inject constructor(
             }
             .decodeSingle<ItemDetailsDto>()
     }
-
+//Complete a shopping list  removing checked items and adding them to pantry from a lists id
     override suspend fun completeShoppingTrip(listId: String) {
         postgrest.rpc("complete_shopping_trip", buildJsonObject { put("p_list_id", listId) })
 
         Log.d("CompleteTrip", "List: $listId marked purchased")
     }
-
+//Takes the item id and a state and then toggles the checkbox state
     override suspend fun toggleCheckBox(id: String, value: Boolean) {
         postgrest.from("shopping_list_items").update(
             {
@@ -169,15 +171,15 @@ class ShoppingListRepositoryImpl @Inject constructor(
 
         Log.d("CheckAllItems", "List: $listId items all checked")
     }
-
+//Changes the sort_order to order by created
     override suspend fun sortListByCreated() {
        postgrest.rpc("sortlistbycreatedat")
     }
-
+//Changes the sort_order to order by updated
     override suspend fun sortListByUpdated() {
         postgrest.rpc("sortlistbyupdatedat")
     }
-
+//Changes the sort order of 2 lists and manually swaps them.
     override suspend fun setSortOrder(list1: String, sortOrder: Int, list2: String, sortOrder2 : Int) {
         postgrest.rpc("swap_list_order_rpc", buildJsonObject {
             put("list_id_1", list1)
@@ -186,7 +188,7 @@ class ShoppingListRepositoryImpl @Inject constructor(
             put("sort_order_2", sortOrder2)
         } )
     }
-
+//Get information of a store from the stores ID
     override suspend fun getStoreAddress(id: String): StoreAddressInformationDto {
         return postgrest.from("stores").select() {
             filter{

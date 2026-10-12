@@ -7,6 +7,7 @@ import javax.inject.Inject
 class ShoppingListUseCaseImpl  @Inject constructor(
     private val repository: ShoppingListRepository,
 ) : ShoppingListUseCase {
+    //Creates a new shopping list off of values given in the shopping list input
       override suspend fun execute(input: ShoppingList): ShoppingListUseCase.Output {
           return try {
             ShoppingListUseCase.Output.Success(repository.addList(input))

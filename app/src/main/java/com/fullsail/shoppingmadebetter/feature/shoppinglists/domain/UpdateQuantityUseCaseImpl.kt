@@ -7,7 +7,7 @@ import javax.inject.Inject
 class UpdateQuantityUseCaseImpl @Inject constructor(
     private val repository: ShoppingListRepository,
 ) : UpdateQuantityUseCase {
-
+//Updates the quantity Quantity update = id, quantity
     override suspend fun execute(input: QuantityUpdate): UpdateQuantityUseCase.Output {
         return try{
             repository.updateQuantity(input.id, input.quantity)

@@ -7,7 +7,7 @@ import javax.inject.Inject
 class RenameShoppingListUseCaseImpl @Inject constructor(
     private val repository: ShoppingListRepository,
 ) : RenameShoppingListUseCase {
-
+//renames a list using the listId and new name provided in the RenameList input
     override suspend fun execute(input: RenameList): RenameShoppingListUseCase.Output {
         return try{
             repository.renameList(input.listId, input.newName)

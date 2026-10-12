@@ -7,6 +7,7 @@ import javax.inject.Inject
 class RemoveListUseCaseImpl @Inject constructor(
     private val repository: ShoppingListRepository,
 ) : RemoveListUseCase {
+    //Deletes a list using the listId
     override suspend fun execute(listId: String): RemoveListUseCase.Output {
         return try {
             repository.removeList(listId)

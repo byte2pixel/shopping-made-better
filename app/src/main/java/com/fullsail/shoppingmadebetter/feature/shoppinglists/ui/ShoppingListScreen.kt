@@ -40,12 +40,16 @@ fun ShoppingListsScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     val lifecycleOwner = LocalLifecycleOwner.current
-
+    //Dialog states
     var showDeleteDialog by remember {mutableStateOf(false)}
     var showRenameDialog by remember {mutableStateOf(false)}
+    //Set to whatever list dialog is editing
     var selectedList by remember {mutableStateOf<String?>(null)}
+    //Bool that controls which sort type is currently being used:
+    // true = created false = updated
     var sortType by remember {mutableStateOf(false)}
 
+    //Handles the user input for the list they wish to rename.
     if (showRenameDialog)
     {
         var listName by remember {mutableStateOf("")}
@@ -76,7 +80,7 @@ fun ShoppingListsScreen(
 
             )
     }
-
+    //Handles the user input for deleting their list
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = {},
@@ -105,7 +109,7 @@ fun ShoppingListsScreen(
         )
     }
 
-
+//Handles the inital loading of the shopping lists.
     DisposableEffect(lifecycleOwner)
     {
         val observer = LifecycleEventObserver { _, event ->
@@ -122,6 +126,8 @@ fun ShoppingListsScreen(
             {
                 Row(Modifier.fillMaxWidth())
                 {
+                    //Icon button for the filter list between created and updated
+                    // toggling between the two every press
                     IconButton(onClick = {
                         sortType = !sortType
                         if(sortType)
@@ -153,13 +159,14 @@ fun ShoppingListsScreen(
                                 Modifier.fillMaxSize().padding(top= 60.dp, start = 16.dp,end = 16.dp    ),
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-
+                                //Iterates through each item creating a card for each list
                                 items(state.trips, key = { it.shoppingListId }) { TripCard(it, onDelete =  {
-
+                                    //sets up code to run when delete is pressed.
                                     showDeleteDialog = true
                                     selectedList = it.shoppingListId
 
                                 }, onRename = {
+                                    //sets up code to run when rename is pressed
                                     showRenameDialog = true
                                     selectedList = it.shoppingListId
                                 } ,onItemComparison = onItemComparison,
@@ -170,16 +177,18 @@ fun ShoppingListsScreen(
                         }
 
                 }
+                //Button to bring you to the item comparison screen allowing you to add new items.
                 FloatingActionButton(onClick = {onItemComparison(Dest.ShoppingListItemComparison)}, modifier = Modifier.align(
                     Alignment.BottomEnd).padding(bottom = 70.dp, end = 16.dp).size(60.dp), shape = CircleShape ) {
                     Icon(painterResource(id = R.drawable.ic_add), contentDescription = "add", Modifier.size(24.dp))}
             }
         }
-
+//Handles the look of each shopping list card
 @Composable
 private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison :(dest : Dest) -> Unit, onRename: () -> Unit, tripList : List<ShoppingTrip>, viewModel: ShoppingTripsViewModel = hiltViewModel(),  )
 {
     OutlinedCard(
+        //On click opens shopping list in cart view
         onClick = {onItemComparison(Dest.ShoppingListCartScreen(trip.shoppingListId))
         },
         Modifier.fillMaxWidth(),
@@ -189,11 +198,14 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
         {
             Row(verticalAlignment = Alignment.CenterVertically){
                 Text(trip.listName, style = MaterialTheme.typography.titleMedium)
+                //Ensures list is users own and not a shared list
                 if (trip.isOwn) {
+                    //Calls onRename when rename button is pressed
                     IconButton(onClick = {
                         onRename()
                     }) { Icon(painterResource(id = R.drawable.ic_edit), contentDescription = "rename", Modifier.size(24.dp))}
                 } else {
+                    //No rename button informs you who it was created by.
                     Spacer(Modifier.width(8.dp))
                     OwnerChip(
                         text = stringResource(
@@ -206,8 +218,10 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
             Text(trip.updatedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date.toString())
             }
             Spacer(Modifier.height(4.dp))
+            //Displays the store name on the shopping list card
             Text(trip.storeName, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
+            //Displays the total cost on the shopping list card
             Text(
                 $$"$${trip.itemCount} items · $$${"%.2f".format(trip.totalCost)}",
                 style = MaterialTheme.typography.bodyMedium,
@@ -217,12 +231,15 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
                 modifier= Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End)
             {
+                //Checks if trip is the user's own
                 if (trip.isOwn) {
+                    //If it is it will allow the user to use the delete list button
                     IconButton(onClick = {onDelete()})
                     {
                         Icon(painterResource(id = R.drawable.ic_delete), contentDescription = "delete", Modifier.size(24.dp))
                     }
                 }
+              //  Draws the cart button and opens into cart when pressed
                 IconButton(onClick = {onItemComparison(Dest.ShoppingListCartScreen(trip.shoppingListId))})
                 {
                     Icon(painterResource(id = R.drawable.ic_cart), contentDescription = "Cart", Modifier.size(24.dp))
@@ -230,10 +247,14 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
                 }
                 // Reordering writes shopping_lists.sort_order, which stays owner-only.
                 if (trip.isOwn) {
+                    // If users own list they can reorder it.
+                    // Otherwise, they cannot write to the sort order for the list
                     IconButton(onClick = {
                         tripList.forEach {
+                            //checks if lists are 1 away from each other
                             if (it.sortOrder == trip.sortOrder - 1)
                             {
+                                //Moves sort order up button
                                 viewModel.setSortOrder(SortOrder(trip.shoppingListId,trip.sortOrder,it.shoppingListId, it.sortOrder))
 
                             }
@@ -243,8 +264,10 @@ private fun TripCard(trip: ShoppingTrip, onDelete: () -> Unit, onItemComparison 
                         Icon(painterResource(id = R.drawable.ic_up), contentDescription = "move list up", Modifier.size(24.dp))
                     }
                     IconButton(onClick = {tripList.forEach {
+                        //checks if lists are 1 away from each other
                         if (it.sortOrder == trip.sortOrder + 1)
                         {
+                            //Moves sort order down button
                             viewModel.setSortOrder(SortOrder(trip.shoppingListId,trip.sortOrder,it.shoppingListId, it.sortOrder))
                         }
                     }})

@@ -18,12 +18,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+//State outcomes of the Shopping Trip ViewModel
 sealed interface ShoppingTripsUiState {
     data object Loading : ShoppingTripsUiState
     data class Success(val trips: List<ShoppingTrip>) : ShoppingTripsUiState
     data object Error : ShoppingTripsUiState
 }
 
+//
 @HiltViewModel
 class ShoppingTripsViewModel @Inject constructor(
     private val getShoppingTripsUseCase: GetShoppingTripsUseCase,
@@ -38,12 +40,14 @@ class ShoppingTripsViewModel @Inject constructor(
     val uiState: StateFlow<ShoppingTripsUiState> = _uiState.asStateFlow()
 
     init { load() }
+    //Sorts the list by the date they were created
     fun sortListsByCreated()
     {
         viewModelScope.launch {
             when(getSortListCreatedUseCase.execute(Unit))
             {
                is SortListCreatedUseCase.Output.Success -> {
+                   //Refreshes the lists
                    load()
                 }
 
@@ -54,6 +58,8 @@ class ShoppingTripsViewModel @Inject constructor(
             }
         }
     }
+    //Swaps the sort order of two different lists
+    //Sort order is listId, newSortOrderValue, listId2, newSortOrderValue2
     fun setSortOrder(s : SortOrder)
     {
         viewModelScope.launch {
@@ -70,12 +76,14 @@ class ShoppingTripsViewModel @Inject constructor(
             }
         }
     }
+    //sorts the list by the date they were last updated
     fun sortListsByUpdated()
     {
         viewModelScope.launch {
             when(getSortListUpdatedUseCase.execute(Unit))
             {
                 is SortListUpdatedUseCase.Output.Success -> {
+                    //Refreshes the lists
                     load()
                 }
 
@@ -86,12 +94,14 @@ class ShoppingTripsViewModel @Inject constructor(
             }
         }
     }
-    fun removeList (listName : String)
+    //Used to delete a list by the lists Id
+    fun removeList (listId : String)
     {
         _uiState.value = ShoppingTripsUiState.Loading
         viewModelScope.launch {
-             when (getRemoveListUseCase.execute(listName)) {
+             when (getRemoveListUseCase.execute(listId)) {
                 is RemoveListUseCase.Output.Success ->{
+                    //Refreshes the lists
                     load()
                 }
                 is RemoveListUseCase.Output.Failure ->
@@ -104,7 +114,7 @@ class ShoppingTripsViewModel @Inject constructor(
         }
 
     }
-
+//Refreshes the users lists
     fun load() {
         _uiState.value = ShoppingTripsUiState.Loading
         viewModelScope.launch {
@@ -116,6 +126,8 @@ class ShoppingTripsViewModel @Inject constructor(
             }
         }
     }
+    //Renames a given list
+    // Takes Rename list : (listId, newName)
 
     fun renameList(rename : RenameList)
     {
@@ -124,6 +136,7 @@ class ShoppingTripsViewModel @Inject constructor(
             when (getRenameListUseCase.execute(rename) ){
                 is RenameShoppingListUseCase.Output.Success ->
                 {
+                    //refreshes the lists
                     load()
 
                 }

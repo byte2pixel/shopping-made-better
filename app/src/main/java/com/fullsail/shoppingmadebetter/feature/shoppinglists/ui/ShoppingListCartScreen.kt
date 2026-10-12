@@ -52,11 +52,15 @@ fun ShoppingListCartScreen(
 ) {
 
     val uiState by viewModel.uiState.collectAsState()
+    //list of checked items from the viewmodel
     val checkedItems by viewModel.checkedItems.collectAsState()
+    //Controlling if showing the push checked items to pantry dialog.
     var showDialog by remember {mutableStateOf(false)}
+    //Toggle if showing filtering by unchecked and checked
     var toggledFilter by remember {mutableStateOf(false)}
+    //Adds confirmation for when the list is being deleted
     var toggledDelete by remember {mutableStateOf(false)}
-
+    //When true prompts the user if theyd like to send their checked items ot the pantry and does so.
     if (showDialog)
     {
         AlertDialog(
@@ -99,6 +103,7 @@ fun ShoppingListCartScreen(
                 } else {
                     Column(Modifier.fillMaxWidth()) {
                         Row(modifier = Modifier.align(Alignment.Start)) {
+                            //Toggles the check marked to be filtered into individual lists
                             IconButton(onClick = {
                                 toggledFilter = !toggledFilter
                             }, )
@@ -111,6 +116,7 @@ fun ShoppingListCartScreen(
                             }
                             IconButton(onClick = {
                                toggledDelete = !toggledDelete
+                                //Sets up visible deletion toggling so the user can see what parts of the list they are deleting
                             }, modifier = if (toggledDelete) {
                                 Modifier.background(Color.Red ,RoundedCornerShape(12.dp))
                             } else {
@@ -126,16 +132,16 @@ fun ShoppingListCartScreen(
                             }
                         }
 
-
+//Splits the list if the toggledfilter state is set
                         if (toggledFilter) {
                         Text("Unchecked")
                         LazyColumn(
                             Modifier.weight(1f).padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-
+                                //Iterates through items that are not checked
                             items(state.items.filter { !it.checked }, key = { it.id }) {
-
+            //Sets up cart rows  to display each row
                                 CartRow(it, viewModel, onItemCrossed = {
                                     if (toggledDelete)
                                     {
@@ -158,11 +164,12 @@ fun ShoppingListCartScreen(
                                 }, listId,onInfoScreen)
                             }
                         }
-
+            //Check column
                             Text("Checked")
                             LazyColumn(Modifier.weight(1f).padding(16.dp),
                                     verticalArrangement = Arrangement.spacedBy(12.dp),) {
                                 items(state.items.filter { it.checked }, key = { it.id }) {
+                                    //iterates through items that are filtered into checked to set up rows for each checked item
                                     CartRow(it, viewModel, onItemCrossed = {
                                         if (toggledDelete)
                                         {
@@ -187,13 +194,14 @@ fun ShoppingListCartScreen(
                         }
                         else
                         {
+                            //Unchecked and checked combined into one unordered list.
                             LazyColumn(
                                 Modifier.weight(1f).padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
 
                                 items(state.items, key = { it.id }) {
-
+                        //iterates through items and sets up cart row for each one
                                     CartRow(it, viewModel, onItemCrossed = {
                                         if (toggledDelete)
                                         {
@@ -238,19 +246,20 @@ fun ShoppingListCartScreen(
         ) { Text("Complete List")}
     }
 }
+//Builds out the cart row the user uses to see each cart item.
 @Composable
 fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onItemCrossed: () -> Unit, onItemUncrossed : () -> Unit, listId : String, onInfoScreen :(dest : Dest) -> Unit) {
-
+//Show the options panel state
     var optionsShown by remember{ mutableStateOf(false)}
     Card(Modifier.fillMaxWidth().clickable(onClick = {
-
+//Sets up the item being crossed when it is checked or not
         if (!item.checked)
         onItemCrossed()
 
         else {
         onItemUncrossed()
         }
-
+//controls colors based on checked state
     }), colors = CardDefaults.cardColors(
 
         if (!item.checked)
@@ -265,10 +274,11 @@ fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onI
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically)
         {
 
-
+//Controls icon shown while the items are not checked
         if (!item.checked)
         {
             Text(item.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+            //Icon button to the information menu
             IconButton(onClick = {
                 onInfoScreen(Dest.InformationScreen(item.productId))
             })
@@ -279,7 +289,9 @@ fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onI
                     Modifier.size(24.dp)
                 )
             }
+            //Opens the options menu allowing further control
             if(optionsShown) {
+                //button to decrease quantity
                 IconButton(onClick = {
                     viewModel.decreaseQuantity(item)
                 })
@@ -290,7 +302,9 @@ fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onI
                         Modifier.size(24.dp)
                     )
                 }
+                //Shows quantity
                 Text(item.quantity.toString(), style = MaterialTheme.typography.bodyLarge)
+                //Button to increase o quantity
                 IconButton(onClick = {
                         viewModel.increaseQuantity(item)
                 })
@@ -301,6 +315,7 @@ fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onI
                         Modifier.size(24.dp)
                     )
                 }
+                //Clones the item allowing users to have niche control over their list and how it checks
                 IconButton(onClick = {
                     val clonedItem = InsertItem(listId, item.productId, 1, "", item.checked, true)
                     viewModel.addItem(clonedItem, listId, item.title)
@@ -312,7 +327,7 @@ fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onI
                         contentDescription = "clone",
                         Modifier.size(24.dp)
                     )
-                }
+                }//Re toggles the options shown to false when the user is done
                 IconButton(onClick = {
                     optionsShown = false
                 })
@@ -324,9 +339,11 @@ fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onI
                     )
                 }
             }
+            //Shows options pertaining to when the items are checked
             else {
                 Text(item.quantity.toString(), style = MaterialTheme.typography.bodyLarge)
                 IconButton(onClick = {
+                    //Opens up the options menu
                     optionsShown = true
 
                 })
@@ -339,6 +356,7 @@ fun CartRow(item : ShoppingListItems, viewModel: ShoppingListItemsViewModel, onI
                 }
             }
         } else {
+            //Shows item name and information and draws the information screen access button
             Text(item.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, textDecoration = TextDecoration.LineThrough)
             IconButton(onClick = {
                 onInfoScreen(Dest.InformationScreen(item.productId))

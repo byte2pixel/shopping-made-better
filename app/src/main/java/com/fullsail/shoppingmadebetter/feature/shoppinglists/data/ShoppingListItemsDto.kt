@@ -10,6 +10,7 @@ data class ShoppingListItemsDto(
     @SerialName("product_id") val productId: String,
     @SerialName("quantity") val quantity: Int,
     @SerialName("title") val title: String,
+    //Controls if the item is crossed off in cart page
     @SerialName("is_checked") val checked: Boolean = false,
 
 ) {
